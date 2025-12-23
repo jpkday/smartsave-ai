@@ -16,6 +16,7 @@ export default function Prices() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [selectedStore, setSelectedStore] = useState<string>(STORES[0]); // For mobile view
+  const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All'); // For item filtering
 
   // Load items and prices when page loads
   useEffect(() => {
@@ -233,6 +234,29 @@ export default function Prices() {
     return 0;
   });
 
+  // Filter items based on selected item filter and whether they have any prices
+  const filteredItems = sortedItems.filter(item => {
+    // For mobile: check if item has price for the selected store
+    const mobileHasPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0') > 0;
+    
+    // For desktop: check if item has any prices entered (excluding 0.00)
+    const hasAnyPrice = STORES.some(store => {
+      const price = parseFloat(prices[`${store}-${item}`] || '0');
+      return price > 0;
+    });
+    
+    // On mobile (when selectedStore is used), filter by selected store's prices
+    // On desktop, filter by any store having prices
+    const shouldShow = window.innerWidth < 768 ? mobileHasPrice : hasAnyPrice;
+    
+    // If no valid prices, hide the item
+    if (!shouldShow) return false;
+    
+    // Apply item filter
+    if (selectedItemFilter === 'All') return true;
+    return item === selectedItemFilter;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -255,10 +279,22 @@ export default function Prices() {
           <select
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
             {STORES.sort().map(store => (
             <option key={store} value={store}>{store}</option>
+            ))}
+          </select>
+          
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Item:</label>
+          <select
+            value={selectedItemFilter}
+            onChange={(e) => setSelectedItemFilter(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+          >
+            <option value="All">All Items</option>
+            {sortedItems.map(item => (
+              <option key={item} value={item}>{item}</option>
             ))}
           </select>
         </div>
@@ -266,7 +302,7 @@ export default function Prices() {
         {/* Mobile View - Single Store */}
         <div className="md:hidden bg-white rounded-lg shadow-lg">
           <div className="divide-y">
-            {sortedItems.map((item, idx) => (
+            {filteredItems.map((item, idx) => (
               <div key={item} className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex-1">
@@ -290,7 +326,7 @@ export default function Prices() {
                     ) : (
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-800 text-base">
-                          {idx + 1}. {item}
+                          {selectedItemFilter === 'All' && `${idx + 1}. `}{item}
                         </span>
                         <div className="flex gap-2">
                           <button
@@ -323,6 +359,71 @@ export default function Prices() {
                     onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
                   />
                 </div>
+                
+                {/* Price Comparison Message */}
+                {(() => {
+                  const currentPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0');
+                  if (currentPrice === 0) return null;
+                  
+                  // Get all prices for this item
+                  const itemPrices = STORES.map(store => ({
+                    store,
+                    price: parseFloat(prices[`${store}-${item}`] || '0')
+                  })).filter(p => p.price > 0);
+                  
+                  if (itemPrices.length <= 1) {
+                    return (
+                      <div className="mt-3 p-4 rounded-lg border-2 bg-blue-50 border-blue-300">
+                        <p className="text-sm text-blue-800 font-semibold">
+                          ℹ️ Only price tracked - add prices from other stores to compare
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  const sortedPrices = itemPrices.sort((a, b) => a.price - b.price);
+                  const bestPrice = sortedPrices[0];
+                  const isBest = currentPrice === bestPrice.price;
+                  const savings = currentPrice - bestPrice.price;
+                  
+                  if (isBest) {
+                    return (
+                      <div className="mt-3 p-4 rounded-lg border-2 bg-green-50 border-green-500">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">✅</span>
+                          <div>
+                            <p className="text-base font-bold text-green-800">Best Price!</p>
+                            <p className="text-sm text-green-700">Buy now at {selectedStore}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else if (savings <= 0.25) {
+                    return (
+                      <div className="mt-3 p-4 rounded-lg border-2 bg-yellow-50 border-yellow-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">⚠️</span>
+                          <div>
+                            <p className="text-base font-bold text-yellow-800">Close Enough</p>
+                            <p className="text-sm text-yellow-700">{bestPrice.store} is only ${savings.toFixed(2)} cheaper</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="mt-3 p-4 rounded-lg border-2 bg-red-50 border-red-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">❌</span>
+                          <div>
+                            <p className="text-base font-bold text-red-800">Skip This One</p>
+                            <p className="text-sm text-red-700">{bestPrice.store} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             ))}
           </div>
@@ -330,6 +431,21 @@ export default function Prices() {
 
         {/* Desktop View - Full Table */}
         <div className="hidden md:block bg-white rounded-lg shadow-lg overflow-x-auto">
+          {/* Desktop Item Filter */}
+          <div className="p-4 border-b bg-gray-50">
+            <label className="inline-block text-sm font-semibold text-gray-700 mr-3">Filter Item:</label>
+            <select
+              value={selectedItemFilter}
+              onChange={(e) => setSelectedItemFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+            >
+              <option value="All">All Items</option>
+              {sortedItems.map(item => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          
           <table className="w-full">
             <thead className="bg-blue-600 text-white">
               <tr>
@@ -341,7 +457,7 @@ export default function Prices() {
               </tr>
             </thead>
             <tbody>
-              {sortedItems.map((item, idx) => (
+              {filteredItems.map((item, idx) => (
                 <tr key={item} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-4 font-medium text-gray-800">
                     {editingItem === item ? (
