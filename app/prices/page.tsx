@@ -36,12 +36,12 @@ export default function Prices() {
       .select('*')
       .eq('user_id', USER_ID);
     
-    if (pricesData) {
-      const pricesObj: {[key: string]: string} = {};
-      pricesData.forEach(p => {
-        pricesObj[`${p.store}-${p.item_name}`] = p.price;
-      });
-      setPrices(pricesObj);
+      if (pricesData) {
+        const pricesObj: {[key: string]: string} = {};
+        pricesData.forEach(p => {
+          pricesObj[`${p.store}-${p.item_name}`] = parseFloat(p.price).toFixed(2);
+        });
+        setPrices(pricesObj);
 
       // Get most recent update time
       if (pricesData.length > 0) {
