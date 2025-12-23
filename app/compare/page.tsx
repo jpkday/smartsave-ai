@@ -5,7 +5,9 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
-const USER_ID = '00000000-0000-0000-0000-000000000000';
+// TODO: Replace with actual user_id from auth system
+// Currently all users share data (single household mode)
+const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function Compare() {
   const [prices, setPrices] = useState<{[key: string]: string}>({});
@@ -34,7 +36,7 @@ export default function Compare() {
     const { data: pricesData } = await supabase
       .from('prices')
       .select('*')
-      .eq('user_id', USER_ID);
+      .eq('user_id', SHARED_USER_ID);
     
     if (pricesData) {
       const pricesObj: {[key: string]: string} = {};

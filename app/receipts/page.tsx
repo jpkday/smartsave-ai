@@ -5,7 +5,9 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
-const USER_ID = '00000000-0000-0000-0000-000000000000';
+// TODO: Replace with actual user_id from auth system
+// Currently all users share data (single household mode)
+const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ReceiptItem {
   item: string;
@@ -85,7 +87,7 @@ export default function Receipts() {
       if (!items.includes(ri.item)) {
         await supabase
           .from('items')
-          .insert({ name: ri.item, user_id: USER_ID });
+          .insert({ name: ri.item, user_id: SHARED_USER_ID });
         setItems([...items, ri.item]);
       }
     }
@@ -98,7 +100,7 @@ export default function Receipts() {
           item_name: ri.item,
           store: store,
           price: ri.price,
-          user_id: USER_ID,
+          user_id: SHARED_USER_ID,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'item_name,store,user_id'

@@ -5,7 +5,9 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
-const USER_ID = '00000000-0000-0000-0000-000000000000'; // Temporary until we add auth
+// TODO: Replace with actual user_id from auth system
+// Currently all users share data (single household mode)
+const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function Prices() {
   const [prices, setPrices] = useState<{[key: string]: string}>({});
@@ -34,7 +36,7 @@ export default function Prices() {
     const { data: pricesData } = await supabase
       .from('prices')
       .select('*')
-      .eq('user_id', USER_ID);
+      .eq('user_id', SHARED_USER_ID);
     
       if (pricesData) {
         const pricesObj: {[key: string]: string} = {};
@@ -75,7 +77,7 @@ export default function Prices() {
         .delete()
         .eq('item_name', item)
         .eq('store', store)
-        .eq('user_id', USER_ID);
+        .eq('user_id', SHARED_USER_ID);
     } else {
       // Upsert (insert or update)
       await supabase
@@ -84,7 +86,7 @@ export default function Prices() {
           item_name: item,
           store: store,
           price: priceValue,
-          user_id: USER_ID,
+          user_id: SHARED_USER_ID,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'item_name,store,user_id'
