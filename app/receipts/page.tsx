@@ -2,8 +2,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
+import { supabase } from '../lib/supabase';
 
 const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
+const USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ReceiptItem {
   item: string;
@@ -18,14 +20,22 @@ export default function Receipts() {
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    const savedItems = localStorage.getItem('smartsave-items');
-    if (savedItems) {
-      setItems(JSON.parse(savedItems));
-    }
+    loadItems();
     // Set today's date as default
     const today = new Date().toISOString().split('T')[0];
     setDate(today);
   }, []);
+
+  const loadItems = async () => {
+    const { data } = await supabase
+      .from('items')
+      .select('name')
+      .order('name');
+    
+    if (data) {
+      setItems(data.map(i => i.name));
+    }
+  };
 
   const addRow = () => {
     setReceiptItems([...receiptItems, { item: '', price: '' }]);
@@ -56,7 +66,7 @@ export default function Receipts() {
     setReceiptItems(updated);
   };
 
-  const saveReceipt = () => {
+  const saveReceipt = async () => {
     if (!store) {
       alert('Please select a store');
       return;
@@ -70,47 +80,30 @@ export default function Receipts() {
       return;
     }
 
+    // Add any new items to the database
+    for (const ri of validItems) {
+      if (!items.includes(ri.item)) {
+        await supabase
+          .from('items')
+          .insert({ name: ri.item, user_id: USER_ID });
+        setItems([...items, ri.item]);
+      }
+    }
+
     // Update prices in the database
-    const savedPrices = localStorage.getItem('smartsave-prices');
-    const prices = savedPrices ? JSON.parse(savedPrices) : {};
-
-    // Add any new items to the items list
-    const currentItems = [...items];
-    let itemsUpdated = false;
-    validItems.forEach(ri => {
-    if (!currentItems.includes(ri.item)) {
-        currentItems.push(ri.item);
-        itemsUpdated = true;
+    for (const ri of validItems) {
+      await supabase
+        .from('prices')
+        .upsert({
+          item_name: ri.item,
+          store: store,
+          price: ri.price,
+          user_id: USER_ID,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'item_name,store,user_id'
+        });
     }
-    });
-    if (itemsUpdated) {
-    localStorage.setItem('smartsave-items', JSON.stringify(currentItems));
-    setItems(currentItems);
-    }
-
-    validItems.forEach(ri => {
-    prices[`${store}-${ri.item}`] = ri.price;
-    });
-
-    validItems.forEach(ri => {
-      prices[`${store}-${ri.item}`] = ri.price;
-    });
-
-    localStorage.setItem('smartsave-prices', JSON.stringify(prices));
-    const now = new Date().toLocaleString();
-    localStorage.setItem('smartsave-last-updated', now);
-
-    // Save receipt history
-    const receipts = localStorage.getItem('smartsave-receipts');
-    const receiptHistory = receipts ? JSON.parse(receipts) : [];
-    receiptHistory.push({
-      store,
-      date,
-      items: validItems,
-      total: validItems.reduce((sum, ri) => sum + parseFloat(ri.price), 0),
-      timestamp: now
-    });
-    localStorage.setItem('smartsave-receipts', JSON.stringify(receiptHistory));
 
     alert(`Receipt saved! Updated ${validItems.length} prices for ${store}`);
     
@@ -118,6 +111,9 @@ export default function Receipts() {
     setStore('');
     setDate(new Date().toISOString().split('T')[0]);
     setReceiptItems([{ item: '', price: '' }]);
+    
+    // Reload items in case new ones were added
+    loadItems();
   };
 
   const total = receiptItems.reduce((sum, ri) => {
@@ -127,8 +123,8 @@ export default function Receipts() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-      <Header currentPage="Receipts" />
-      <h1 className="text-4xl font-bold text-gray-800 mb-8">Enter Receipt</h1>
+        <Header currentPage="Receipts" />
+        <h1 className="text-4xl font-bold text-gray-800 mb-8">Enter Receipt</h1>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Store and Date Selection */}
@@ -142,7 +138,7 @@ export default function Receipts() {
               >
                 <option value="">Select a store...</option>
                 {STORES.sort().map(s => (
-                <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
@@ -163,22 +159,22 @@ export default function Receipts() {
             <div className="space-y-3">
               {receiptItems.map((ri, idx) => (
                 <div key={idx} className="flex gap-3 items-center">
-                    <div className="flex-1">
+                  <div className="flex-1">
                     <input
-                        type="text"
-                        list={`items-${idx}`}
-                        value={ri.item}
-                        onChange={(e) => updateItem(idx, 'item', e.target.value)}
-                        placeholder="Type or select item..."
-                        ref={(el) => { if (el) itemRefs.current[idx] = el; }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                        />
+                      type="text"
+                      list={`items-${idx}`}
+                      value={ri.item}
+                      onChange={(e) => updateItem(idx, 'item', e.target.value)}
+                      placeholder="Type or select item..."
+                      ref={(el) => { if (el) itemRefs.current[idx] = el; }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    />
                     <datalist id={`items-${idx}`}>
-                        {items.sort().map(item => (
+                      {items.sort().map(item => (
                         <option key={item} value={item} />
-                        ))}
+                      ))}
                     </datalist>
-                    </div>
+                  </div>
                   <div className="w-32">
                     <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                       <span className="text-gray-800 font-semibold mr-1">$</span>
@@ -188,15 +184,15 @@ export default function Receipts() {
                         value={ri.price}
                         onChange={(e) => updateItem(idx, 'price', e.target.value)}
                         onKeyPress={(e) => {
-                            if (e.key === 'Enter' && ri.item && ri.price) {
+                          if (e.key === 'Enter' && ri.item && ri.price) {
                             e.preventDefault();
                             if (idx === receiptItems.length - 1) {
-                                addRow();
+                              addRow();
                             }
-                            }
+                          }
                         }}
                         className="w-full text-right font-semibold text-gray-800 focus:outline-none"
-                        />
+                      />
                     </div>
                   </div>
                   {receiptItems.length > 1 && (

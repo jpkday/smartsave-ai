@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
+import { supabase } from '../lib/supabase';
 
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
@@ -21,20 +22,31 @@ export default function Items() {
   const [editingValue, setEditingValue] = useState('');
 
   useEffect(() => {
-    const savedItems = localStorage.getItem('smartsave-items');
-    if (savedItems) {
-      setItems(JSON.parse(savedItems));
-    } else {
-      setItems(DEFAULT_ITEMS);
-      localStorage.setItem('smartsave-items', JSON.stringify(DEFAULT_ITEMS));
-    }
+    loadItems();
   }, []);
-
-  useEffect(() => {
-    if (items.length > 0) {
-      localStorage.setItem('smartsave-items', JSON.stringify(items));
+  
+  const loadItems = async () => {
+    const { data, error } = await supabase
+      .from('items')
+      .select('name')
+      .order('name');
+    
+    if (error) {
+      console.error('Error loading items:', error);
+      return;
     }
-  }, [items]);
+    
+    if (data && data.length > 0) {
+      setItems(data.map(item => item.name));
+    } else {
+      // If no items exist, seed with defaults
+      const defaultItems = DEFAULT_ITEMS;
+      for (const item of defaultItems) {
+        await supabase.from('items').insert({ name: item, user_id: '00000000-0000-0000-0000-000000000000' });
+      }
+      setItems(defaultItems);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,31 +62,48 @@ export default function Items() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editingIndex]);
 
-  const addItem = () => {
+  const addItem = async () => {
     if (newItem.trim() && !items.includes(newItem.trim())) {
+      const { error } = await supabase
+        .from('items')
+        .insert({ name: newItem.trim(), user_id: '00000000-0000-0000-0000-000000000000' });
+      
+      if (error) {
+        console.error('Error adding item:', error);
+        alert('Failed to add item');
+        return;
+      }
+      
       setItems([...items, newItem.trim()]);
       setNewItem('');
     }
   };
 
-  const deleteItem = (itemToDelete: string) => {
-    if (confirm(`Delete "${itemToDelete}"? This will also remove all price data for this item.`)) {
-      setItems(items.filter(item => item !== itemToDelete));
-      
-      // Also remove prices for this item
-      const savedPrices = localStorage.getItem('smartsave-prices');
-      if (savedPrices) {
-        const prices = JSON.parse(savedPrices);
-        const updatedPrices: {[key: string]: string} = {};
-        Object.keys(prices).forEach(key => {
-          if (!key.includes(itemToDelete)) {
-            updatedPrices[key] = prices[key];
-          }
-        });
-        localStorage.setItem('smartsave-prices', JSON.stringify(updatedPrices));
-      }
+  const deleteItem = async (itemToDelete: string) => {
+    if (!confirm(`Delete "${itemToDelete}"? This will also remove all price data for this item.`)) {
+      return;
     }
+
+    const { error } = await supabase
+      .from('items')
+      .delete()
+      .eq('name', itemToDelete);
+    
+    if (error) {
+      console.error('Error deleting item:', error);
+      alert('Failed to delete item');
+      return;
+    }
+
+    // Also delete all prices for this item
+    await supabase
+      .from('prices')
+      .delete()
+      .eq('item_name', itemToDelete);
+
+    setItems(items.filter(item => item !== itemToDelete));
   };
+
   const startEdit = (index: number, item: string) => {
     setEditingIndex(index);
     setEditingValue(item);
@@ -85,7 +114,7 @@ export default function Items() {
     setEditingValue('');
   };
   
-  const saveEdit = (oldItem: string) => {
+  const saveEdit = async (oldItem: string) => {
     if (!editingValue.trim() || editingValue === oldItem) {
       cancelEdit();
       return;
@@ -96,35 +125,38 @@ export default function Items() {
       alert('An item with this name already exists');
       return;
     }
+
+    // Update item in database
+    const { error: itemError } = await supabase
+      .from('items')
+      .update({ name: editingValue.trim() })
+      .eq('name', oldItem);
+    
+    if (itemError) {
+      console.error('Error updating item:', itemError);
+      alert('Failed to update item');
+      return;
+    }
+
+    // Update all prices with new item name
+    await supabase
+      .from('prices')
+      .update({ item_name: editingValue.trim() })
+      .eq('item_name', oldItem);
   
-    // Update items list
+    // Update local state
     const updatedItems = items.map(item => item === oldItem ? editingValue.trim() : item);
     setItems(updatedItems);
   
-    // Update all prices with new item name
-    const savedPrices = localStorage.getItem('smartsave-prices');
-    if (savedPrices) {
-      const prices = JSON.parse(savedPrices);
-      const updatedPrices: {[key: string]: string} = {};
-      Object.keys(prices).forEach(key => {
-        if (key.includes(oldItem)) {
-          const newKey = key.replace(oldItem, editingValue.trim());
-          updatedPrices[newKey] = prices[key];
-        } else {
-          updatedPrices[key] = prices[key];
-        }
-      });
-      localStorage.setItem('smartsave-prices', JSON.stringify(updatedPrices));
-    }
-  
     cancelEdit();
   };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-3xl mx-auto">
-      <Header currentPage="Items" />
+        <Header currentPage="Items" />
 
-        {/* Add Items */}
+        {/* Add New Item */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Add New Item</h2>
           <div className="flex gap-3">
@@ -149,57 +181,57 @@ export default function Items() {
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Existing Items ({items.length})</h2>
           <div className="space-y-2">
-  {items.sort().map((item, idx) => (
-            <div
-            key={item}
-            className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-            >
-{editingIndex === idx ? (
-  <div className="editing-row flex items-center flex-1 justify-between w-full">
-    <div className="flex items-center flex-1">
-                    <span className="text-gray-500 mr-3">{idx + 1}.</span>
-                    <input
-                    type="text"
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && saveEdit(item)}
-                    className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
-                    autoFocus
-                    />
+            {items.sort().map((item, idx) => (
+              <div
+                key={item}
+                className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+              >
+                {editingIndex === idx ? (
+                  <div className="editing-row flex items-center flex-1 justify-between w-full">
+                    <div className="flex items-center flex-1">
+                      <span className="text-gray-500 mr-3">{idx + 1}.</span>
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit(item)}
+                        className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
+                        autoFocus
+                      />
                     </div>
-    <button
-      onClick={() => saveEdit(item)}
-      className="text-green-600 hover:text-green-800 font-semibold cursor-pointer px-3"
-    >
-      ✓
-    </button>
-  </div>
-            ) : (
-                <>
-  <span className="text-gray-800 font-medium flex-1 flex items-center">
-    <span className="text-gray-500 mr-3">{idx + 1}.</span>
-    {item}
-    <button
-  onClick={() => startEdit(idx, item)}
-  className="ml-3 text-gray-400 hover:text-blue-600 cursor-pointer"
-  title="Edit"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-  </svg>
-</button>
-  </span>
-  <button
-    onClick={() => deleteItem(item)}
-    className="text-red-600 hover:text-red-800 font-semibold cursor-pointer"
-  >
-    Delete
-  </button>
-</>
-            )}
-            </div>
-        ))}
-        </div>
+                    <button
+                      onClick={() => saveEdit(item)}
+                      className="text-green-600 hover:text-green-800 font-semibold cursor-pointer px-3"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-gray-800 font-medium flex-1 flex items-center">
+                      <span className="text-gray-500 mr-3">{idx + 1}.</span>
+                      {item}
+                      <button
+                        onClick={() => startEdit(idx, item)}
+                        className="ml-3 text-gray-400 hover:text-blue-600 cursor-pointer"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </span>
+                    <button
+                      onClick={() => deleteItem(item)}
+                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
