@@ -232,9 +232,10 @@ export default function Items() {
                     </span>
                     <button
                       onClick={() => deleteItem(item)}
-                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+                      className="text-red-600 hover:text-red-800 cursor-pointer"
+                      title="Delete item"
                     >
-                      Delete
+                      🗑️
                     </button>
                   </>
                 )}
