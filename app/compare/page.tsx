@@ -118,9 +118,9 @@ export default function Compare() {
       <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-start mb-6">
   <div>
-    <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
+    <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
     {lastUpdated && (
-      <p className="text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
+      <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
     )}
   </div>
   <Header currentPage="Compare" />

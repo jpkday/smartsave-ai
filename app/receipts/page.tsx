@@ -126,7 +126,7 @@ export default function Receipts() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-  <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
+  <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
   <Header currentPage="Receipts" />
 </div>
 
