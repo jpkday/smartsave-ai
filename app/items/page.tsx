@@ -156,25 +156,25 @@ export default function Items() {
       <div className="max-w-3xl mx-auto">
         <Header currentPage="Items" />
 
-        {/* Add New Item */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800">Add New Item</h2>
-          <div className="flex gap-3">
+       {/* Add New Item */}
+        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+        <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
+        <div className="flex gap-2">
             <input
-              type="text"
-              placeholder="e.g., Organic Bananas (lb)"
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addItem()}
+            type="text"
+            placeholder="e.g., Organic bananas"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && addItem()}
             />
             <button
-              onClick={addItem}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition"
+            onClick={addItem}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
             >
-              Add Item
+            Add
             </button>
-          </div>
+        </div>
         </div>
 
         {/* Items List */}

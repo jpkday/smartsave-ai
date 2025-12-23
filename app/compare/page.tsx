@@ -114,22 +114,24 @@ export default function Compare() {
     .filter(([, total]) => total > 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <Header currentPage="Compare" />
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800">Compare by Item</h1>
-          {lastUpdated && (
-            <p className="text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
-          )}
-        </div>
+      <div className="flex justify-between items-start mb-6">
+  <div>
+    <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
+    {lastUpdated && (
+      <p className="text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
+    )}
+  </div>
+  <Header currentPage="Compare" />
+</div>
 
         {/* Alphabet Filter */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-          <div className="flex flex-wrap gap-2 justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
-              className={`px-3 py-1 rounded font-semibold cursor-pointer transition ${
+              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                 filterLetter === 'All'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -143,7 +145,7 @@ export default function Compare() {
               <button
                 key={letter}
                 onClick={() => setFilterLetter(letter)}
-                className={`px-3 py-1 rounded font-semibold cursor-pointer transition ${
+                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                   filterLetter === letter
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -156,25 +158,25 @@ export default function Compare() {
         </div>
 
         {/* Shopping List */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Select Items</h2>
+        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
             <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={multiSelectMode}
                 onChange={(e) => setMultiSelectMode(e.target.checked)}
-                className="w-4 h-4 mr-2 cursor-pointer"
+                className="w-5 h-5 md:w-4 md:h-4 mr-2 cursor-pointer"
               />
-              <span className="text-gray-700 font-medium">Multi-select mode</span>
+              <span className="text-gray-700 font-medium text-base md:text-sm">Multi-select</span>
             </label>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
             {filteredItems.map(item => (
               <button
                 key={item}
                 onClick={() => toggleItem(item)}
-                className={`p-3 rounded-lg border-2 transition cursor-pointer font-semibold ${
+                className={`p-4 md:p-3 rounded-lg border-2 transition cursor-pointer font-semibold text-base ${
                   selectedItems.includes(item)
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
@@ -188,8 +190,8 @@ export default function Compare() {
 
         {/* Results */}
         {selectedItems.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Best Stores for Your List</h2>
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Stores</h2>
             
             {sortedStores.length > 0 ? (
               <div className="space-y-3">
@@ -202,28 +204,28 @@ export default function Compare() {
                         : 'bg-gray-50 border-gray-300'
                     }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <span className="font-bold text-xl text-gray-800">{store}</span>
+                    <div className="flex justify-between items-start md:items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-lg md:text-xl text-gray-800">{store}</span>
                           {idx === 0 && (
-                            <span className="ml-3 text-sm bg-green-500 text-white px-3 py-1 rounded-full">
+                            <span className="text-xs md:text-sm bg-green-500 text-white px-2 md:px-3 py-1 rounded-full whitespace-nowrap">
                               Best Deal!
                             </span>
                           )}
                         </div>
                         {selectedItems.length > 0 && (
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-xs md:text-sm text-gray-600 mt-1 break-words">
                             {selectedItems.join(', ')}
                           </p>
                         )}
                       </div>
-                      <span className="text-2xl font-bold text-gray-800">
+                      <span className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
                         ${total.toFixed(2)}
                       </span>
                     </div>
                     {idx === 0 && sortedStores.length > 1 && (
-                      <p className="text-sm text-green-700 mt-2">
+                      <p className="text-xs md:text-sm text-green-700 mt-2">
                         Save ${(sortedStores[1][1] - total).toFixed(2)} vs {sortedStores[1][0]}
                       </p>
                     )}
@@ -231,8 +233,8 @@ export default function Compare() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-                <p className="text-lg font-semibold text-yellow-800 mb-2">No price data available</p>
+              <div className="p-6 md:p-8 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <p className="text-base md:text-lg font-semibold text-yellow-800 mb-2">No price data available</p>
                 <p className="text-sm text-yellow-700">
                   Please add prices for {selectedItems.join(', ')} in the{' '}
                   <Link href="/prices" className="text-blue-600 hover:underline font-semibold">
@@ -245,8 +247,8 @@ export default function Compare() {
         )}
 
         {selectedItems.length === 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <p className="text-gray-500 text-lg">Select items above to compare prices</p>
+          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+            <p className="text-gray-500 text-base md:text-lg">Select items above to compare prices</p>
           </div>
         )}
       </div>

@@ -125,8 +125,10 @@ export default function Receipts() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <Header currentPage="Receipts" />
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Enter Receipt</h1>
+      <div className="flex justify-between items-center mb-6">
+  <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
+  <Header currentPage="Receipts" />
+</div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Store and Date Selection */}
@@ -138,7 +140,7 @@ export default function Receipts() {
                 onChange={(e) => setStore(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
               >
-                <option value="">Select a store...</option>
+                <option value="">Select</option>
                 {STORES.sort().map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -227,9 +229,9 @@ export default function Receipts() {
           {/* Save Button */}
           <button
             onClick={saveReceipt}
-            className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg text-xl font-semibold hover:bg-blue-700 transition cursor-pointer"
-          >
-            Save Receipt & Update Prices
+            className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition cursor-pointer"
+            >
+            Save Receipt
           </button>
         </div>
       </div>

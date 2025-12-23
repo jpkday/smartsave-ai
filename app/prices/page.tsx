@@ -236,13 +236,15 @@ export default function Prices() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Header currentPage="Prices" />
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Prices by Store</h1>
-          {lastSaved && (
-            <p className="text-sm text-gray-600 mt-2">Last updated: {lastSaved}</p>
-          )}
-        </div>
+      <div className="flex justify-between items-start mb-6">
+  <div>
+    <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Prices by Store</h1>
+    {lastSaved && (
+      <p className="text-sm text-gray-600 mt-2">Last updated: {lastSaved}</p>
+    )}
+  </div>
+  <Header currentPage="Prices" />
+</div>
 
         {/* Mobile Store Selector */}
         <div className="md:hidden mb-4">
@@ -252,8 +254,8 @@ export default function Prices() {
             onChange={(e) => setSelectedStore(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
           >
-            {STORES.map(store => (
-              <option key={store} value={store}>{store}</option>
+            {STORES.sort().map(store => (
+            <option key={store} value={store}>{store}</option>
             ))}
           </select>
         </div>
@@ -329,8 +331,8 @@ export default function Prices() {
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-4 text-left font-semibold">Item</th>
-                {STORES.map(store => (
-                  <th key={store} className="p-4 text-center font-semibold">{store}</th>
+                {STORES.sort().map(store => (
+                <th key={store} className="p-4 text-center font-semibold">{store}</th>
                 ))}
                 <th className="p-4 text-center font-semibold"></th>
               </tr>
@@ -374,7 +376,7 @@ export default function Prices() {
                     )}
                   </td>
 
-                  {STORES.map(store => (
+                  {STORES.sort().map(store => (
                     <td key={store} className="p-4">
                       <div className="flex items-center justify-center">
                         <span className="text-gray-800 font-semibold mr-1">$</span>
