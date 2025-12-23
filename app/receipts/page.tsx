@@ -138,7 +138,7 @@ export default function Receipts() {
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Store and Date Selection */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
               <select
