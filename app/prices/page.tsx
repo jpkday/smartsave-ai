@@ -250,12 +250,12 @@ export default function Prices() {
         </div>
 
         {/* Mobile Store Selector */}
-        <div className="md:hidden mb-4">
+        <div className="md:hidden mb-4 bg-white rounded-lg shadow-lg p-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
           <select
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
           >
             {STORES.sort().map(store => (
             <option key={store} value={store}>{store}</option>
@@ -312,13 +312,13 @@ export default function Prices() {
                     )}
                   </div>
                 </div>
-                <div className={`flex items-center p-3 rounded-lg ${getCellColor(selectedStore, item)}`}>
+                <div className="flex items-center p-3 rounded-lg bg-white">
                   <span className="text-gray-800 font-bold text-lg mr-2">$</span>
                   <input
                     type="text"
                     placeholder="0.00"
                     style={{ MozAppearance: 'textfield' }}
-                    className={`flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                    className={`flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                     value={prices[`${selectedStore}-${item}`] || ''}
                     onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
                   />
