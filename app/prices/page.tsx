@@ -15,6 +15,7 @@ export default function Prices() {
   const [items, setItems] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [selectedStore, setSelectedStore] = useState<string>(STORES[0]); // For mobile view
 
   // Load items and prices when page loads
   useEffect(() => {
@@ -38,12 +39,12 @@ export default function Prices() {
       .select('*')
       .eq('user_id', SHARED_USER_ID);
     
-      if (pricesData) {
-        const pricesObj: {[key: string]: string} = {};
-        pricesData.forEach(p => {
-          pricesObj[`${p.store}-${p.item_name}`] = parseFloat(p.price).toFixed(2);
-        });
-        setPrices(pricesObj);
+    if (pricesData) {
+      const pricesObj: {[key: string]: string} = {};
+      pricesData.forEach(p => {
+        pricesObj[`${p.store}-${p.item_name}`] = parseFloat(p.price).toFixed(2);
+      });
+      setPrices(pricesObj);
 
       // Get most recent update time
       if (pricesData.length > 0) {
@@ -219,17 +220,111 @@ export default function Prices() {
     return 'bg-white';
   };
 
+  const sortedItems = items.sort().sort((a, b) => {
+    // Check if items have any prices
+    const aHasPrices = STORES.some(store => parseFloat(prices[`${store}-${a}`] || '0') > 0);
+    const bHasPrices = STORES.some(store => parseFloat(prices[`${store}-${b}`] || '0') > 0);
+    
+    // Items with prices come first
+    if (aHasPrices && !bHasPrices) return -1;
+    if (!aHasPrices && bHasPrices) return 1;
+    
+    // Within each group, sort alphabetically
+    return 0;
+  });
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <Header currentPage="Prices" />
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800">Prices by Store</h1>
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Prices by Store</h1>
           {lastSaved && (
             <p className="text-sm text-gray-600 mt-2">Last updated: {lastSaved}</p>
           )}
         </div>
-        <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
+
+        {/* Mobile Store Selector */}
+        <div className="md:hidden mb-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
+          <select
+            value={selectedStore}
+            onChange={(e) => setSelectedStore(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+          >
+            {STORES.map(store => (
+              <option key={store} value={store}>{store}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Mobile View - Single Store */}
+        <div className="md:hidden bg-white rounded-lg shadow-lg">
+          <div className="divide-y">
+            {sortedItems.map((item, idx) => (
+              <div key={item} className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex-1">
+                    {editingItem === item ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && saveEdit(item)}
+                          className="flex-1 px-2 py-1 border border-blue-500 rounded text-base"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => saveEdit(item)}
+                          className="text-green-600 font-semibold cursor-pointer text-lg"
+                        >
+                          ✓
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800 text-base">
+                          {idx + 1}. {item}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEdit(item)}
+                            className="text-gray-400 hover:text-blue-600 cursor-pointer p-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item)}
+                            className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className={`flex items-center p-3 rounded-lg ${getCellColor(selectedStore, item)}`}>
+                  <span className="text-gray-800 font-bold text-lg mr-2">$</span>
+                  <input
+                    type="text"
+                    placeholder="0.00"
+                    style={{ MozAppearance: 'textfield' }}
+                    className={`flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                    value={prices[`${selectedStore}-${item}`] || ''}
+                    onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop View - Full Table */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg overflow-x-auto">
           <table className="w-full">
             <thead className="bg-blue-600 text-white">
               <tr>
@@ -241,18 +336,7 @@ export default function Prices() {
               </tr>
             </thead>
             <tbody>
-              {items.sort().sort((a, b) => {
-                // Check if items have any prices
-                const aHasPrices = STORES.some(store => parseFloat(prices[`${store}-${a}`] || '0') > 0);
-                const bHasPrices = STORES.some(store => parseFloat(prices[`${store}-${b}`] || '0') > 0);
-                
-                // Items with prices come first
-                if (aHasPrices && !bHasPrices) return -1;
-                if (!aHasPrices && bHasPrices) return 1;
-                
-                // Within each group, sort alphabetically
-                return 0;
-              }).map((item, idx) => (
+              {sortedItems.map((item, idx) => (
                 <tr key={item} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-4 font-medium text-gray-800">
                     {editingItem === item ? (
