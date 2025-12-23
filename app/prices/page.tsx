@@ -234,24 +234,8 @@ export default function Prices() {
     return 0;
   });
 
-  // Filter items based on selected item filter and whether they have any prices
+  // Filter items based on selected item filter
   const filteredItems = sortedItems.filter(item => {
-    // For mobile: check if item has price for the selected store
-    const mobileHasPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0') > 0;
-    
-    // For desktop: check if item has any prices entered (excluding 0.00)
-    const hasAnyPrice = STORES.some(store => {
-      const price = parseFloat(prices[`${store}-${item}`] || '0');
-      return price > 0;
-    });
-    
-    // On mobile (when selectedStore is used), filter by selected store's prices
-    // On desktop, filter by any store having prices
-    const shouldShow = window.innerWidth < 768 ? mobileHasPrice : hasAnyPrice;
-    
-    // If no valid prices, hide the item
-    if (!shouldShow) return false;
-    
     // Apply item filter
     if (selectedItemFilter === 'All') return true;
     return item === selectedItemFilter;
