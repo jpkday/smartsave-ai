@@ -152,29 +152,38 @@ export default function Items() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
-        <Header currentPage="Items" />
+        {/* White Header Box */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Items</h1>
+              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Add, edit, or delete items from your shopping list</p>
+            </div>
+            <Header currentPage="Items" />
+          </div>
+        </div>
 
-       {/* Add New Item */}
+        {/* Add New Item */}
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-        <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
-        <div className="flex gap-2">
+          <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
+          <div className="flex gap-2">
             <input
-            type="text"
-            placeholder="e.g., Organic bananas"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addItem()}
+              type="text"
+              placeholder="e.g., Organic bananas"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addItem()}
             />
             <button
-            onClick={addItem}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+              onClick={addItem}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
             >
-            Add
+              Add
             </button>
-        </div>
+          </div>
         </div>
 
         {/* Items List */}

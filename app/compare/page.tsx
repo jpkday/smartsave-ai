@@ -114,17 +114,19 @@ export default function Compare() {
     .filter(([, total]) => total > 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-start mb-6">
-  <div>
-    <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
-    {lastUpdated && (
-      <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
-    )}
-  </div>
-  <Header currentPage="Compare" />
-</div>
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
+              {lastUpdated && (
+                <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
+              )}
+            </div>
+            <Header currentPage="Compare" />
+          </div>
+        </div>
 
         {/* Alphabet Filter */}
         <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">

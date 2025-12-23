@@ -123,12 +123,18 @@ export default function Receipts() {
   }, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-  <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
-  <Header currentPage="Receipts" />
-</div>
+        {/* White Header Box */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
+              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Quickly update prices from your shopping receipts</p>
+            </div>
+            <Header currentPage="Receipts" />
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Store and Date Selection */}
@@ -230,7 +236,7 @@ export default function Receipts() {
           <button
             onClick={saveReceipt}
             className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition cursor-pointer"
-            >
+          >
             Save Receipt
           </button>
         </div>
