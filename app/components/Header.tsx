@@ -3,10 +3,11 @@ import Link from 'next/link';
 export default function Header({ currentPage }: { currentPage: string }) {
   const pages = [
     { name: 'Home', path: '/' },
-    { name: 'Items', path: '/items' },
     { name: 'Prices', path: '/prices' },
+    { name: 'Compare', path: '/compare' },    
+    { name: 'Items', path: '/items' },
     { name: 'Receipts', path: '/receipts' },
-    { name: 'Compare', path: '/compare' },
+
   ];
 
   return (
