@@ -6,10 +6,10 @@ interface HeaderProps {
 
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
-    { name: 'Prices', path: '/prices', letter: 'P', color: 'bg-blue-600 hover:bg-blue-700', icon: '💰' },
-    { name: 'Compare', path: '/compare', letter: 'C', color: 'bg-green-500 hover:bg-green-600', icon: '⚖️' },
-    { name: 'Items', path: '/items', letter: 'I', color: 'bg-purple-500 hover:bg-purple-600', icon: '📝' },
-    { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', icon: '🧾' }
+    { name: 'Prices', path: '/prices', letter: 'P', color: 'bg-blue-600 hover:bg-blue-700', dimColor: 'bg-blue-200', icon: '💰' },
+    { name: 'Compare', path: '/compare', letter: 'C', color: 'bg-green-500 hover:bg-green-600', dimColor: 'bg-green-200', icon: '⚖️' },
+    { name: 'Items', path: '/items', letter: 'I', color: 'bg-purple-500 hover:bg-purple-600', dimColor: 'bg-purple-200', icon: '📝' },
+    { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', dimColor: 'bg-orange-200', icon: '🧾' }
   ];
 
   return (
@@ -26,9 +26,7 @@ export default function Header({ currentPage }: HeaderProps) {
           <Link
             key={page.name}
             href={page.path}
-            className={`${page.color} text-white px-3 py-2 rounded-lg font-bold transition text-sm w-12 flex items-center justify-center gap-1 ${
-              currentPage === page.name ? 'ring-2 ring-white' : ''
-            }`}
+            className={`${currentPage === page.name ? page.color : page.dimColor} text-white px-3 py-2 rounded-lg font-bold transition text-sm w-12 flex items-center justify-center gap-1`}
           >
             <span className="text-xs">{page.icon}</span>
             <span>{page.letter}</span>
