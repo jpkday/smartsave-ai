@@ -22,13 +22,11 @@ export default function Header({ currentPage }: HeaderProps) {
         >
           🏠
         </Link>
-        {pages.map(page => (
+        {pages.filter(page => page.name !== currentPage).map(page => (
           <Link
             key={page.name}
             href={page.path}
-            className={`${page.color} text-white px-3 py-2 rounded-lg font-bold transition text-sm w-12 flex items-center justify-center gap-1 ${
-              currentPage === page.name ? 'ring-2 ring-white' : ''
-            }`}
+            className={`${page.color} text-white px-3 py-2 rounded-lg font-bold transition text-sm w-12 flex items-center justify-center gap-1`}
           >
             <span className="text-xs">{page.icon}</span>
             <span>{page.letter}</span>
