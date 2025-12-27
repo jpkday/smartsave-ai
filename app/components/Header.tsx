@@ -14,26 +14,60 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', dimColor: 'bg-orange-200', icon: '🧾' }
   ];
 
+  const desktopPages = [
+    ...pages,
+    { name: 'Stores', path: '/stores', letter: 'S', color: 'bg-pink-500 hover:bg-pink-600', dimColor: 'bg-pink-200', icon: '🏪' }
+  ];
+
   return (
     <nav>
-      {/* Mobile View - Colorful Letter Buttons */}
-      <div className="flex md:hidden gap-2 justify-center">
+      {/* Mobile View - Home Button + Page Dropdown */}
+      <div className="flex md:hidden items-center gap-3 w-full">
         <Link 
           href="/" 
-          className="bg-gray-300 text-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-gray-400 transition text-sm w-12 flex items-center justify-center"
+          className="bg-gray-600 text-white p-3 rounded-lg font-bold hover:bg-gray-700 transition flex items-center justify-center"
         >
-          🏠
+          <span className="text-xl">🏠</span>
         </Link>
-        {pages.map(page => (
-          <Link
-            key={page.name}
-            href={page.path}
-            className={`${currentPage === page.name ? page.color : page.dimColor} text-white px-3 py-2 rounded-lg font-bold transition text-sm w-12 flex items-center justify-center gap-1`}
+        <div className="flex-1 relative">
+          <div 
+            className={`px-4 py-3 rounded-lg font-bold text-white text-lg text-center flex items-center justify-center gap-2 ${
+              (() => {
+                const page = pages.find(p => p.name === currentPage);
+                return page ? page.color.split(' ')[0] : 'bg-gray-600';
+              })()
+            }`}
           >
-            <span className="text-xs">{page.icon}</span>
-            <span>{page.letter}</span>
-          </Link>
-        ))}
+            <span>
+              {(() => {
+                const page = pages.find(p => p.name === currentPage);
+                return page ? `${page.icon} ${page.name}` : currentPage;
+              })()}
+            </span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                const page = pages.find(p => p.name === e.target.value);
+                if (page) {
+                  window.location.href = page.path;
+                }
+              }
+            }}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          >
+            <option value="" disabled hidden></option>
+            {pages.filter(page => page.name !== currentPage).map(page => (
+              <option key={page.name} value={page.name}>
+                {page.icon} {page.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Desktop View - Full Text Links */}
@@ -41,7 +75,7 @@ export default function Header({ currentPage }: HeaderProps) {
         <Link href="/" className="text-gray-600 hover:text-blue-600 font-semibold">
           Home
         </Link>
-        {pages.map(page => (
+        {desktopPages.map(page => (
           <Link
             key={page.name}
             href={page.path}
