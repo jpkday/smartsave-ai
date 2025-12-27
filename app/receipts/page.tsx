@@ -4,9 +4,6 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
-const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
-// TODO: Replace with actual user_id from auth system
-// Currently all users share data (single household mode)
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ReceiptItem {
@@ -15,6 +12,7 @@ interface ReceiptItem {
 }
 
 export default function Receipts() {
+  const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [store, setStore] = useState('');
   const [date, setDate] = useState('');
@@ -22,20 +20,31 @@ export default function Receipts() {
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    loadItems();
+    loadData();
     // Set today's date as default
     const today = new Date().toISOString().split('T')[0];
     setDate(today);
   }, []);
 
-  const loadItems = async () => {
-    const { data } = await supabase
+  const loadData = async () => {
+    // Load stores
+    const { data: storesData } = await supabase
+      .from('stores')
+      .select('name')
+      .order('name');
+    
+    if (storesData) {
+      setStores(storesData.map(s => s.name));
+    }
+
+    // Load items
+    const { data: itemsData } = await supabase
       .from('items')
       .select('name')
       .order('name');
     
-    if (data) {
-      setItems(data.map(i => i.name));
+    if (itemsData) {
+      setItems(itemsData.map(i => i.name));
     }
   };
 
@@ -119,7 +128,7 @@ export default function Receipts() {
     setReceiptItems([{ item: '', price: '' }]);
     
     // Reload items in case new ones were added
-    loadItems();
+    loadData();
   };
 
   const total = receiptItems.reduce((sum, ri) => {
@@ -151,7 +160,7 @@ export default function Receipts() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
               >
                 <option value="">Select</option>
-                {STORES.sort().map(s => (
+                {stores.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>

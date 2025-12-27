@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
-const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
@@ -20,6 +19,7 @@ interface PriceData {
 }
 
 export default function ShoppingList() {
+  const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [listItems, setListItems] = useState<ListItem[]>([]);
@@ -31,6 +31,20 @@ export default function ShoppingList() {
   }, []);
 
   const loadData = async () => {
+    // Load stores
+    const { data: storesData, error: storesError } = await supabase
+      .from('stores')
+      .select('name')
+      .order('name');
+    
+    if (storesError) {
+      console.error('Error loading stores:', storesError);
+    }
+    
+    if (storesData) {
+      setStores(storesData.map(s => s.name));
+    }
+
     // Load all items and favorites
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
@@ -210,7 +224,7 @@ export default function ShoppingList() {
   const getPriceClassification = (itemName: string, currentPrice: number) => {
     // Get all prices for this item across all stores
     const itemPrices: number[] = [];
-    STORES.forEach(store => {
+    stores.forEach(store => {
       const priceData = prices[`${store}-${itemName}`];
       if (priceData) {
         itemPrices.push(parseFloat(priceData.price));
@@ -256,7 +270,7 @@ export default function ShoppingList() {
   const calculateBestStore = () => {
     const storeData: {[store: string]: {total: number, coverage: number, itemCount: number}} = {};
     
-    STORES.forEach(store => {
+    stores.forEach(store => {
       let total = 0;
       let coverage = 0;
       
@@ -406,7 +420,7 @@ export default function ShoppingList() {
                   })
                   .forEach(item => {
                     // Find best price for this item
-                    const itemPrices = STORES.map(store => ({
+                    const itemPrices = stores.map(store => ({
                       store,
                       price: parseFloat(prices[`${store}-${item.item_name}`]?.price || '0')
                     })).filter(p => p.price > 0);
@@ -601,7 +615,7 @@ export default function ShoppingList() {
                   <span className="text-2xl font-bold text-teal-600">
                     ${listItems.reduce((sum, item) => {
                       // Find best price for this item across all stores
-                      const itemPrices = STORES.map(store => {
+                      const itemPrices = stores.map(store => {
                         const priceData = prices[`${store}-${item.item_name}`];
                         return priceData ? parseFloat(priceData.price) : 0;
                       }).filter(p => p > 0);

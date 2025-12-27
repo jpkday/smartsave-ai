@@ -5,7 +5,6 @@
 // CONSTANTS
 // ============================================================================
 
-export const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
 export const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 // ============================================================================
@@ -58,7 +57,7 @@ export const getPriceClassification = (
   itemName: string, 
   currentPrice: number,
   prices: {[key: string]: PriceData | string},
-  stores: string[] = STORES
+  stores: string[]
 ): PriceClassificationType => {
   // Get all prices for this item across all stores
   const itemPrices: number[] = [];
@@ -125,7 +124,7 @@ export const formatPriceInput = (value: string): string => {
 export const calculateBestStores = (
   items: Array<{ item_name: string; quantity: number }>,
   prices: {[key: string]: PriceData},
-  stores: string[] = STORES
+  stores: string[]
 ): {[store: string]: StoreData} => {
   const storeData: {[store: string]: StoreData} = {};
   
