@@ -6,8 +6,8 @@ interface HeaderProps {
 
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
-    { name: 'Prices', path: '/prices', letter: 'P', color: 'bg-blue-600 hover:bg-blue-700', dimColor: 'bg-blue-200', icon: '💰' },
     { name: 'Shopping List', path: '/list', letter: 'L', color: 'bg-yellow-500 hover:bg-yellow-600', dimColor: 'bg-yellow-200', icon: '📝' },
+    { name: 'Prices', path: '/prices', letter: 'P', color: 'bg-blue-600 hover:bg-blue-700', dimColor: 'bg-blue-200', icon: '💰' },
     { name: 'Compare', path: '/compare', letter: 'C', color: 'bg-green-500 hover:bg-green-600', dimColor: 'bg-green-200', icon: '⚖️' },
     { name: 'Items', path: '/items', letter: 'I', color: 'bg-purple-500 hover:bg-purple-600', dimColor: 'bg-purple-200', icon: '📋' },
     { name: 'History', path: '/history', letter: 'H', color: 'bg-teal-500 hover:bg-teal-600', dimColor: 'bg-teal-200', icon: '📊' },
