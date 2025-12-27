@@ -140,12 +140,6 @@ export default function Items() {
       .delete()
       .eq('item_name', itemToDelete);
 
-    // Delete from prices table
-    await supabase
-      .from('prices')
-      .delete()
-      .eq('item_name', itemToDelete);
-
     // Delete from shopping list
     await supabase
       .from('shopping_list')
@@ -201,13 +195,6 @@ export default function Items() {
       alert('Failed to update price history');
       return;
     }
-
-    // Update prices table with new item name
-    await supabase
-      .from('prices')
-      .update({ item_name: editingValue.trim() })
-      .eq('item_name', oldItem)
-      .eq('user_id', SHARED_USER_ID);
 
     // Update shopping list with new item name
     await supabase

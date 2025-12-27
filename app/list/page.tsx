@@ -24,7 +24,9 @@ export default function ShoppingList() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{[key: string]: PriceData}>({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filterLetter, setFilterLetter] = useState<string>('All');
+  const [showFavorites, setShowFavorites] = useState(true);
+  const [showAddItems, setShowAddItems] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -132,24 +134,28 @@ export default function ShoppingList() {
     loadData();
   };
 
-  const addItem = async (itemName: string) => {
-    // Check if already in list
-    if (listItems.find(li => li.item_name === itemName)) {
-      alert('Item already in list');
-      return;
-    }
-
-    await supabase
-      .from('shopping_list')
-      .insert({
-        item_name: itemName,
-        quantity: 1,
-        user_id: SHARED_USER_ID,
-        checked: false,
-        added_at: new Date().toISOString()
-      });
+  const toggleItem = async (itemName: string) => {
+    const isInList = listItems.find(li => li.item_name === itemName);
     
-    setSearchTerm('');
+    if (isInList) {
+      // Remove from list
+      await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('id', isInList.id);
+    } else {
+      // Add to list
+      await supabase
+        .from('shopping_list')
+        .insert({
+          item_name: itemName,
+          quantity: 1,
+          user_id: SHARED_USER_ID,
+          checked: false,
+          added_at: new Date().toISOString()
+        });
+    }
+    
     loadData();
   };
 
@@ -305,18 +311,14 @@ export default function ShoppingList() {
       return a.total - b.total;
     });
 
-  const filteredItems = items.filter(item => 
-    item.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    !listItems.find(li => li.item_name === item)
-  ).sort((a, b) => {
-    // Favorites first
-    const aIsFav = favorites.includes(a);
-    const bIsFav = favorites.includes(b);
-    if (aIsFav && !bIsFav) return -1;
-    if (!aIsFav && bIsFav) return 1;
-    // Then alphabetically
-    return a.localeCompare(b);
-  });
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const filteredItems = filterLetter === 'All' 
+    ? items.sort() 
+    : items.sort().filter(item => item.toUpperCase().startsWith(filterLetter));
+
+  const allFavoritesSelected = favorites.length > 0 && favorites.every(fav => 
+    listItems.find(li => li.item_name === fav)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
@@ -332,50 +334,74 @@ export default function ShoppingList() {
           </div>
         </div>
 
-        {/* Add Items Section */}
-        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Add Items</h2>
-          
-          {/* Add All Favorites Button */}
-          {favorites.length > 0 && favorites.some(fav => !listItems.find(li => li.item_name === fav)) && (
+        {/* Alphabet Filter */}
+        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
-              onClick={addFavorites}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg font-semibold transition cursor-pointer mb-4 flex items-center justify-center gap-2"
+              onClick={() => setFilterLetter('All')}
+              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                filterLetter === 'All'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <span className="text-xl">⭐</span>
-              Add All Favorites ({favorites.filter(fav => !listItems.find(li => li.item_name === fav)).length} items)
+              All
             </button>
-          )}
+            {alphabet.filter(letter => 
+              items.some(item => item.toUpperCase().startsWith(letter))
+            ).map(letter => (
+              <button
+                key={letter}
+                onClick={() => setFilterLetter(letter)}
+                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                  filterLetter === letter
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Search and Add Individual Items */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setSearchTerm(searchTerm || ' ')}
-              onBlur={() => {
-                setTimeout(() => {
-                  if (searchTerm === ' ') setSearchTerm('');
-                }, 200);
-              }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-            />
-            {searchTerm && filteredItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredItems.slice(0, 10).map(item => {
-                  const isFavorite = favorites.includes(item);
+        {/* Favorites Widget - Collapsible */}
+        {favorites.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <button
+                onClick={() => setShowFavorites(!showFavorites)}
+                className="flex items-center gap-2 text-lg md:text-xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition"
+              >
+                <span className="text-gray-400">{showFavorites ? '▼' : '▶'}</span>
+                <span>⭐ Favorites</span>
+              </button>
+              <button
+                onClick={allFavoritesSelected ? () => {
+                  favorites.forEach(fav => {
+                    const item = listItems.find(li => li.item_name === fav);
+                    if (item) toggleItem(fav);
+                  });
+                } : addFavorites}
+                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer"
+              >
+                {allFavoritesSelected ? 'Deselect All' : 'Add All'}
+              </button>
+            </div>
+            {showFavorites && (
+              <div className="flex flex-wrap gap-2">
+                {favorites.map(item => {
+                  const isInList = listItems.find(li => li.item_name === item);
                   return (
                     <button
                       key={item}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        addItem(item);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-100 transition text-gray-800 border-b last:border-b-0 flex items-center gap-2"
+                      onClick={() => toggleItem(item)}
+                      className={`px-3 py-1.5 rounded-lg border-2 transition cursor-pointer text-sm font-semibold ${
+                        isInList
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
+                      }`}
                     >
-                      {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
                       {item}
                     </button>
                   );
@@ -383,6 +409,41 @@ export default function ShoppingList() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Add Items Section - Collapsible */}
+        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+          <button
+            onClick={() => setShowAddItems(!showAddItems)}
+            className="flex items-center gap-2 text-xl font-bold mb-4 text-gray-800 cursor-pointer hover:text-blue-600 transition"
+          >
+            <span className="text-gray-400">{showAddItems ? '▼' : '▶'}</span>
+            <span>Add Items</span>
+          </button>
+          {showAddItems && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto" style={{ maxHeight: '252px' }}>
+              {filteredItems.map(item => {
+                const isFavorite = favorites.includes(item);
+                const isInList = listItems.find(li => li.item_name === item);
+                return (
+                  <button
+                    key={item}
+                    onClick={() => toggleItem(item)}
+                    className={`p-4 md:p-3 rounded-lg border-2 transition cursor-pointer font-semibold text-base ${
+                      isInList
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : isFavorite
+                        ? 'border-yellow-400 hover:border-yellow-500 bg-yellow-50 text-gray-700 hover:bg-yellow-100'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isFavorite && !isInList && <span className="text-yellow-500 text-lg mr-1">⭐</span>}
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Shopping List */}

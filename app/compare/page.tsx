@@ -17,7 +17,6 @@ function CompareContent() {
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [filterLetter, setFilterLetter] = useState<string>('All');
-  const [multiSelectMode, setMultiSelectMode] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [showCopied, setShowCopied] = useState(false);
   
@@ -31,8 +30,13 @@ function CompareContent() {
     // Load from URL parameters
     const itemsParam = searchParams.get('items');
     if (itemsParam) {
-      setSelectedItems(itemsParam.split(','));
-      setMultiSelectMode(itemsParam.split(',').length > 1);
+      try {
+        const parsedItems = JSON.parse(itemsParam);
+        setSelectedItems(parsedItems);
+      } catch (e) {
+        // Fallback for old URL format (comma-separated)
+        setSelectedItems(itemsParam.split(','));
+      }
     }
   }, [searchParams]);
 
@@ -43,7 +47,8 @@ function CompareContent() {
     }
     
     const params = new URLSearchParams();
-    params.set('items', items.join(','));
+    // Use JSON encoding to handle commas in item names
+    params.set('items', JSON.stringify(items));
     
     router.push(`/compare?${params.toString()}`);
   };
@@ -127,30 +132,14 @@ function CompareContent() {
     }
   }, [filterLetter]);
 
-  // Clear selections when switching out of multi-select mode
-  useEffect(() => {
-    if (!multiSelectMode) {
-      setSelectedItems([]);
-    }
-  }, [multiSelectMode]);
-
   const toggleItem = (item: string) => {
     let newSelectedItems: string[];
     
-    if (multiSelectMode) {
-      // Multi-select mode: toggle on/off
-      if (selectedItems.includes(item)) {
-        newSelectedItems = selectedItems.filter(i => i !== item);
-      } else {
-        newSelectedItems = [...selectedItems, item];
-      }
+    // Always use multi-select behavior: toggle on/off
+    if (selectedItems.includes(item)) {
+      newSelectedItems = selectedItems.filter(i => i !== item);
     } else {
-      // Single-select mode: replace selection
-      if (selectedItems.includes(item) && selectedItems.length === 1) {
-        newSelectedItems = []; // Deselect if clicking same item
-      } else {
-        newSelectedItems = [item]; // Replace with new item
-      }
+      newSelectedItems = [...selectedItems, item];
     }
     
     setSelectedItems(newSelectedItems);
@@ -249,7 +238,6 @@ function CompareContent() {
   const selectAllFavorites = () => {
     const newSelectedItems = [...new Set([...selectedItems, ...favorites])];
     setSelectedItems(newSelectedItems);
-    setMultiSelectMode(true);
     updateURL(newSelectedItems);
   };
 
@@ -439,28 +427,17 @@ function CompareContent() {
         <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={multiSelectMode}
-                  onChange={(e) => setMultiSelectMode(e.target.checked)}
-                  className="w-5 h-5 md:w-4 md:h-4 mr-2 cursor-pointer"
-                />
-                <span className="text-gray-700 font-medium text-base md:text-sm">Multi-select</span>
-              </label>
-              {selectedItems.length > 0 && (
-                <button
-                  onClick={() => {
-                    setSelectedItems([]);
-                    updateURL([]);
-                  }}
-                  className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            {selectedItems.length > 0 && (
+              <button
+                onClick={() => {
+                  setSelectedItems([]);
+                  updateURL([]);
+                }}
+                className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+              >
+                Clear All
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
             {filteredItems.map(item => (

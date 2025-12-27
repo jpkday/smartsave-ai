@@ -36,12 +36,31 @@ function HistoryContent() {
     // Set today's date as default for new entries
     setNewDate(new Date().toISOString().split('T')[0]);
     
-    // Load from URL parameters
+    // Load from URL parameters with proper decoding
     const itemParam = searchParams.get('item');
     const storeParam = searchParams.get('store');
     
-    if (itemParam) setSelectedItem(itemParam);
-    if (storeParam) setSelectedStore(storeParam);
+    if (itemParam) {
+      try {
+        // Try to parse as JSON first (new format)
+        const decodedItem = JSON.parse(itemParam);
+        setSelectedItem(decodedItem);
+      } catch {
+        // Fallback to direct string (old format)
+        setSelectedItem(itemParam);
+      }
+    }
+    
+    if (storeParam) {
+      try {
+        // Try to parse as JSON first (new format)
+        const decodedStore = JSON.parse(storeParam);
+        setSelectedStore(decodedStore);
+      } catch {
+        // Fallback to direct string (old format)
+        setSelectedStore(storeParam);
+      }
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -74,8 +93,9 @@ function HistoryContent() {
 
   const updateURL = (item: string, store: string) => {
     const params = new URLSearchParams();
-    if (item) params.set('item', item);
-    if (store && store !== 'All') params.set('store', store);
+    // Use JSON encoding to handle commas in names
+    if (item) params.set('item', JSON.stringify(item));
+    if (store && store !== 'All') params.set('store', JSON.stringify(store));
     
     const newURL = params.toString() ? `/history?${params.toString()}` : '/history';
     router.push(newURL);
