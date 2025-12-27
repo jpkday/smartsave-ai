@@ -17,6 +17,7 @@ export default function Prices() {
   const [editingValue, setEditingValue] = useState('');
   const [selectedStore, setSelectedStore] = useState<string>(STORES[0]); // For mobile view
   const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All'); // For item filtering
+  const [pricesDates, setPricesDates] = useState<{[key: string]: string}>({}); // Track last updated dates
 
   // Load items and prices when page loads
   useEffect(() => {
@@ -34,25 +35,37 @@ export default function Prices() {
       setItems(itemsData.map(i => i.name));
     }
 
-    // Load prices
+    // Load latest prices from price_history
     const { data: pricesData } = await supabase
-      .from('prices')
+      .from('price_history')
       .select('*')
-      .eq('user_id', SHARED_USER_ID);
+      .eq('user_id', SHARED_USER_ID)
+      .order('recorded_date', { ascending: false });
     
     if (pricesData) {
       const pricesObj: {[key: string]: string} = {};
+      const datesObj: {[key: string]: string} = {};
+      const latestPrices: {[key: string]: any} = {};
+      
+      // Get the most recent price for each item/store combination
       pricesData.forEach(p => {
-        pricesObj[`${p.store}-${p.item_name}`] = parseFloat(p.price).toFixed(2);
+        const key = `${p.store}-${p.item_name}`;
+        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
+          latestPrices[key] = p;
+          pricesObj[key] = parseFloat(p.price).toFixed(2);
+          datesObj[key] = p.recorded_date;
+        }
       });
+      
       setPrices(pricesObj);
+      setPricesDates(datesObj);
 
-      // Get most recent update time
+      // Get most recent update time across all prices
       if (pricesData.length > 0) {
         const latest = pricesData.reduce((a, b) => 
-          new Date(a.updated_at) > new Date(b.updated_at) ? a : b
+          new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
         );
-        setLastSaved(new Date(latest.updated_at).toLocaleString());
+        setLastSaved(new Date(latest.recorded_date).toLocaleDateString());
       }
     }
   };
@@ -70,33 +83,31 @@ export default function Prices() {
     
     // Update local state immediately
     setPrices({...prices, [`${store}-${item}`]: priceValue});
+    
+    // Update dates
+    const today = new Date().toISOString().split('T')[0];
+    setPricesDates({...pricesDates, [`${store}-${item}`]: today});
 
     // Save to database
     if (priceValue === '') {
-      // Delete if empty
-      await supabase
-        .from('prices')
-        .delete()
-        .eq('item_name', item)
-        .eq('store', store)
-        .eq('user_id', SHARED_USER_ID);
+      // For empty values, we don't delete history, just don't add a new record
+      return;
     } else {
-      // Upsert (insert or update)
+      // Insert new price record (never update - always insert for history)
       await supabase
-        .from('prices')
-        .upsert({
+        .from('price_history')
+        .insert({
           item_name: item,
           store: store,
           price: priceValue,
           user_id: SHARED_USER_ID,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'item_name,store,user_id'
+          recorded_date: new Date().toISOString().split('T')[0], // Today's date
+          created_at: new Date().toISOString()
         });
     }
 
     // Update last saved time
-    const now = new Date().toLocaleString();
+    const now = new Date().toLocaleDateString();
     setLastSaved(now);
   };
 
@@ -104,6 +115,26 @@ export default function Prices() {
     const price = prices[`${store}-${item}`];
     const numPrice = parseFloat(price || '0');
     return numPrice > 0 ? 'text-gray-800' : 'text-gray-200';
+  };
+  
+  const getDaysAgo = (store: string, item: string) => {
+    const priceDate = pricesDates[`${store}-${item}`];
+    if (!priceDate) return '';
+    
+    const date = new Date(priceDate);
+    const today = new Date();
+    const diffTime = today.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return '1d ago';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks}w ago`;
+    }
+    const months = Math.floor(diffDays / 30);
+    return `${months}mo ago`;
   };
   
   const startEdit = (item: string) => {
@@ -180,9 +211,9 @@ export default function Prices() {
       return;
     }
 
-    // Delete all prices for this item
+    // Delete all price history for this item
     await supabase
-      .from('prices')
+      .from('price_history')
       .delete()
       .eq('item_name', itemToDelete);
 
@@ -347,6 +378,31 @@ export default function Prices() {
                 {/* Price Comparison Message */}
                 {(() => {
                   const currentPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0');
+                  const priceDate = pricesDates[`${selectedStore}-${item}`];
+                  
+                  // Calculate days ago
+                  let daysAgo = '';
+                  if (priceDate) {
+                    const date = new Date(priceDate);
+                    const today = new Date();
+                    const diffTime = today.getTime() - date.getTime();
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 0) {
+                      daysAgo = 'today';
+                    } else if (diffDays === 1) {
+                      daysAgo = 'yesterday';
+                    } else if (diffDays < 7) {
+                      daysAgo = `${diffDays} days ago`;
+                    } else if (diffDays < 30) {
+                      const weeks = Math.floor(diffDays / 7);
+                      daysAgo = weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+                    } else {
+                      const months = Math.floor(diffDays / 30);
+                      daysAgo = months === 1 ? '1 month ago' : `${months} months ago`;
+                    }
+                  }
+                  
                   if (currentPrice === 0) return null;
                   
                   // Get all prices for this item
@@ -375,9 +431,10 @@ export default function Prices() {
                       <div className="mt-3 p-4 rounded-lg border-2 bg-green-50 border-green-500">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">✅</span>
-                          <div>
+                          <div className="flex-1">
                             <p className="text-base font-bold text-green-800">Best Price!</p>
                             <p className="text-sm text-green-700">Buy now at {selectedStore}</p>
+                            {daysAgo && <p className="text-xs text-green-600 mt-1">Updated {daysAgo}</p>}
                           </div>
                         </div>
                       </div>
@@ -387,9 +444,10 @@ export default function Prices() {
                       <div className="mt-3 p-4 rounded-lg border-2 bg-yellow-50 border-yellow-300">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">⚠️</span>
-                          <div>
+                          <div className="flex-1">
                             <p className="text-base font-bold text-yellow-800">Close Enough</p>
                             <p className="text-sm text-yellow-700">{bestPrice.store} is only ${savings.toFixed(2)} cheaper</p>
+                            {daysAgo && <p className="text-xs text-yellow-600 mt-1">Updated {daysAgo}</p>}
                           </div>
                         </div>
                       </div>
@@ -399,9 +457,10 @@ export default function Prices() {
                       <div className="mt-3 p-4 rounded-lg border-2 bg-red-50 border-red-300">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">❌</span>
-                          <div>
+                          <div className="flex-1">
                             <p className="text-base font-bold text-red-800">Skip This One</p>
                             <p className="text-sm text-red-700">{bestPrice.store} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
+                            {daysAgo && <p className="text-xs text-red-600 mt-1">Updated {daysAgo}</p>}
                           </div>
                         </div>
                       </div>
@@ -481,16 +540,21 @@ export default function Prices() {
 
                   {STORES.sort().map(store => (
                     <td key={store} className="p-4">
-                      <div className="flex items-center justify-center">
-                        <span className="text-gray-800 font-semibold mr-1">$</span>
-                        <input
-                          type="text"
-                          placeholder=""
-                          style={{ MozAppearance: 'textfield' }}
-                          className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store, item)} ${getCellColor(store, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                          value={prices[`${store}-${item}`] || ''}
-                          onChange={(e) => handlePriceChange(store, item, e.target.value)}
-                        />
+                      <div className="flex flex-col items-end justify-center">
+                        <div className="flex items-center">
+                          <span className="text-gray-800 font-semibold mr-1">$</span>
+                          <input
+                            type="text"
+                            placeholder=""
+                            style={{ MozAppearance: 'textfield' }}
+                            className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store, item)} ${getCellColor(store, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                            value={prices[`${store}-${item}`] || ''}
+                            onChange={(e) => handlePriceChange(store, item, e.target.value)}
+                          />
+                        </div>
+                        {prices[`${store}-${item}`] && parseFloat(prices[`${store}-${item}`]) > 0 && (
+                          <span className="text-xs text-gray-500 mt-1">{getDaysAgo(store, item)}</span>
+                        )}
                       </div>
                     </td>
                   ))}

@@ -95,9 +95,9 @@ export default function Items() {
       return;
     }
 
-    // Also delete all prices for this item
+    // Also delete all price history for this item
     await supabase
-      .from('prices')
+      .from('price_history')
       .delete()
       .eq('item_name', itemToDelete);
 
@@ -138,9 +138,9 @@ export default function Items() {
       return;
     }
 
-    // Update all prices with new item name
+    // Update all price history with new item name
     await supabase
-      .from('prices')
+      .from('price_history')
       .update({ item_name: editingValue.trim() })
       .eq('item_name', oldItem);
   

@@ -32,25 +32,34 @@ export default function Compare() {
       setItems(itemsData.map(i => i.name));
     }
 
-    // Load prices
+    // Load latest prices from price_history
     const { data: pricesData } = await supabase
-      .from('prices')
+      .from('price_history')
       .select('*')
-      .eq('user_id', SHARED_USER_ID);
+      .eq('user_id', SHARED_USER_ID)
+      .order('recorded_date', { ascending: false });
     
     if (pricesData) {
       const pricesObj: {[key: string]: string} = {};
+      const latestPrices: {[key: string]: any} = {};
+      
+      // Get the most recent price for each item/store combination
       pricesData.forEach(p => {
-        pricesObj[`${p.store}-${p.item_name}`] = p.price;
+        const key = `${p.store}-${p.item_name}`;
+        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
+          latestPrices[key] = p;
+          pricesObj[key] = p.price;
+        }
       });
+      
       setPrices(pricesObj);
 
       // Get most recent update time
       if (pricesData.length > 0) {
         const latest = pricesData.reduce((a, b) => 
-          new Date(a.updated_at) > new Date(b.updated_at) ? a : b
+          new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
         );
-        setLastUpdated(new Date(latest.updated_at).toLocaleString());
+        setLastUpdated(new Date(latest.recorded_date).toLocaleDateString());
       }
     }
   };

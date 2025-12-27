@@ -74,6 +74,11 @@ export default function Receipts() {
       return;
     }
 
+    if (!date) {
+      alert('Please select a date');
+      return;
+    }
+
     // Filter out empty rows
     const validItems = receiptItems.filter(ri => ri.item && parseFloat(ri.price || '0') > 0);
     
@@ -92,22 +97,21 @@ export default function Receipts() {
       }
     }
 
-    // Update prices in the database
+    // Insert prices into price_history (never update - always insert)
     for (const ri of validItems) {
       await supabase
-        .from('prices')
-        .upsert({
+        .from('price_history')
+        .insert({
           item_name: ri.item,
           store: store,
           price: ri.price,
           user_id: SHARED_USER_ID,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'item_name,store,user_id'
+          recorded_date: date, // Use the receipt date
+          created_at: new Date().toISOString()
         });
     }
 
-    alert(`Receipt saved! Updated ${validItems.length} prices for ${store}`);
+    alert(`Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(date).toLocaleDateString()}`);
     
     // Reset form
     setStore('');
