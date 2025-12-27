@@ -13,7 +13,7 @@ export default function Home() {
           </Link>
           <Link href="/list" className="bg-yellow-500 text-white px-10 py-3 md:px-14 md:py-5 rounded-lg text-base md:text-xl font-semibold hover:bg-yellow-600 transition cursor-pointer text-center w-full md:w-56 relative flex items-center">
             <span className="absolute left-4 md:left-5 text-xl md:text-2xl">📝</span>
-            <span className="flex-1 ml-6 md:ml-8">List</span>
+            <span className="flex-1 ml-6 md:ml-8">Shopping List</span>
           </Link>
           <Link href="/compare" className="bg-green-500 text-white px-10 py-3 md:px-14 md:py-5 rounded-lg text-base md:text-xl font-semibold hover:bg-green-600 transition cursor-pointer text-center w-full md:w-56 relative flex items-center">
             <span className="absolute left-4 md:left-5 text-xl md:text-2xl">⚖️</span>
