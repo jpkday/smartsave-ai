@@ -1,17 +1,17 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
-const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
-export default function Compare() {
+function CompareContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
+  const [stores, setStores] = useState<string[]>([]);
   const [prices, setPrices] = useState<{[key: string]: {price: string, date: string}}>({});
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
@@ -34,7 +34,7 @@ export default function Compare() {
       setSelectedItems(itemsParam.split(','));
       setMultiSelectMode(itemsParam.split(',').length > 1);
     }
-  }, []);
+  }, [searchParams]);
 
   const updateURL = (items: string[]) => {
     if (items.length === 0) {
@@ -61,6 +61,16 @@ export default function Compare() {
   };
 
   const loadData = async () => {
+    // Load stores
+    const { data: storesData } = await supabase
+      .from('stores')
+      .select('name')
+      .order('name');
+    
+    if (storesData) {
+      setStores(storesData.map(s => s.name));
+    }
+
     // Load items
     const { data: itemsData } = await supabase
       .from('items')
@@ -150,7 +160,7 @@ export default function Compare() {
   const calculateBestStore = () => {
     const storeData: {[store: string]: {total: number, coverage: number, itemCount: number}} = {};
     
-    STORES.forEach(store => {
+    stores.forEach(store => {
       let total = 0;
       let coverage = 0;
       
@@ -275,7 +285,7 @@ export default function Compare() {
   const getPriceClassification = (itemName: string, currentPrice: number) => {
     // Get all prices for this item across all stores
     const itemPrices: number[] = [];
-    STORES.forEach(store => {
+    stores.forEach(store => {
       const priceData = prices[`${store}-${itemName}`];
       if (priceData) {
         itemPrices.push(parseFloat(priceData.price));
@@ -586,7 +596,7 @@ export default function Compare() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
                 >
                   <option value="">Select store...</option>
-                  {STORES.sort().map(store => (
+                  {stores.map(store => (
                     <option key={store} value={store}>{store}</option>
                   ))}
                 </select>
@@ -624,5 +634,21 @@ export default function Compare() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Compare() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <p className="text-gray-500 text-lg">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <CompareContent />
+    </Suspense>
   );
 }

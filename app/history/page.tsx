@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
@@ -17,7 +17,7 @@ interface PriceRecord {
   created_at: string;
 }
 
-export default function History() {
+function HistoryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -42,7 +42,7 @@ export default function History() {
     
     if (itemParam) setSelectedItem(itemParam);
     if (storeParam) setSelectedStore(storeParam);
-  }, []); // Empty array is fine - searchParams doesn't change after initial load
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedItem) {
@@ -367,7 +367,7 @@ export default function History() {
                       tickFormatter={(value) => `$${value.toFixed(2)}`}
                     />
                     <Tooltip 
-                      formatter={(value: number | undefined) => value !== undefined ? [`${value.toFixed(2)}`, 'Price'] : ['', '']}
+                      formatter={(value: number | undefined) => value !== undefined ? [`$${value.toFixed(2)}`, 'Price'] : ['', '']}
                       labelStyle={{ color: '#1f2937' }}
                     />
                     <Line 
@@ -469,5 +469,21 @@ export default function History() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function History() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <p className="text-gray-500 text-lg">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <HistoryContent />
+    </Suspense>
   );
 }
