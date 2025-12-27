@@ -365,14 +365,21 @@ export default function Prices() {
                 </div>
                 <div className="flex items-center p-3 rounded-lg bg-white">
                   <span className="text-gray-800 font-bold text-lg mr-2">$</span>
-                  <input
-                    type="text"
-                    placeholder="0.00"
-                    style={{ MozAppearance: 'textfield' }}
-                    className={`flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                    value={prices[`${selectedStore}-${item}`] || ''}
-                    onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
-                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="0.00"
+                      style={{ MozAppearance: 'textfield' }}
+                      className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                      value={prices[`${selectedStore}-${item}`] || ''}
+                      onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
+                    />
+                    {prices[`${selectedStore}-${item}`] && parseFloat(prices[`${selectedStore}-${item}`]) > 0 && (
+                      <div className="text-xs text-gray-500 text-right mt-1">
+                        Updated {getDaysAgo(selectedStore, item)}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Price Comparison Message */}
