@@ -1,3 +1,4 @@
+'use client';
 import Link from 'next/link';
 
 interface HeaderProps {
@@ -10,7 +11,7 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Compare', path: '/compare', letter: 'C', color: 'bg-green-500 hover:bg-green-600', dimColor: 'bg-green-200', icon: '⚖️' },    
     { name: 'Prices', path: '/prices', letter: 'P', color: 'bg-blue-600 hover:bg-blue-700', dimColor: 'bg-blue-200', icon: '💰' },
     { name: 'Items', path: '/items', letter: 'I', color: 'bg-purple-500 hover:bg-purple-600', dimColor: 'bg-purple-200', icon: '📋' },
-    { name: 'History', path: '/history', letter: 'H', color: 'bg-teal-500 hover:bg-teal-600', dimColor: 'bg-teal-200', icon: '📊' },
+    { name: 'History', path: '/history', letter: 'H', color: 'bg-amber-700 hover:bg-amber-800', dimColor: 'bg-amber-200', icon: '📊' },
     { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', dimColor: 'bg-orange-200', icon: '🧾' },
     { name: 'Stores', path: '/stores', letter: 'S', color: 'bg-pink-500 hover:bg-pink-600', dimColor: 'bg-pink-200', icon: '🛍️' }
   ];
