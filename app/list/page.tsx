@@ -328,7 +328,7 @@ export default function ShoppingList() {
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Shopping List</h1>
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Plan your shopping trip and save money</p>
             </div>
-            <Header currentPage="List" />
+            <Header currentPage="Shopping List" />
           </div>
         </div>
 
