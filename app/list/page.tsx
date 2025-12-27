@@ -365,6 +365,10 @@ export default function ShoppingList() {
   const filteredItems = filterLetter === 'All' 
     ? items.sort() 
     : items.sort().filter(item => item.toUpperCase().startsWith(filterLetter));
+  
+  const filteredFavorites = filterLetter === 'All'
+    ? favorites
+    : favorites.filter(item => item.toUpperCase().startsWith(filterLetter));
 
   const allFavoritesSelected = favorites.length > 0 && favorites.every(fav => 
     listItems.find(li => li.item_name === fav)
@@ -416,7 +420,7 @@ export default function ShoppingList() {
         </div>
 
         {/* Favorites Widget - Collapsible */}
-        {favorites.length > 0 && (
+        {filteredFavorites.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <button
@@ -440,7 +444,7 @@ export default function ShoppingList() {
             </div>
             {showFavorites && (
               <div className="flex flex-wrap gap-2">
-                {favorites.map(item => {
+                {filteredFavorites.map(item => {
                   const isInList = listItems.find(li => li.item_name === item);
                   return (
                     <button
