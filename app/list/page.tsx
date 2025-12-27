@@ -27,6 +27,7 @@ export default function ShoppingList() {
   const [filterLetter, setFilterLetter] = useState<string>('All');
   const [showFavorites, setShowFavorites] = useState(true);
   const [showAddItems, setShowAddItems] = useState(true);
+  const [newItem, setNewItem] = useState('');
 
   useEffect(() => {
     loadData();
@@ -107,6 +108,55 @@ export default function ShoppingList() {
       
       setPrices(pricesObj);
     }
+  };
+
+  const addNewItem = async () => {
+    if (!newItem.trim()) return;
+    
+    const itemName = newItem.trim();
+    
+    // Check if item already exists
+    if (!items.find(i => i === itemName)) {
+      // Create new item
+      const { error: itemError } = await supabase
+        .from('items')
+        .insert({ 
+          name: itemName, 
+          user_id: SHARED_USER_ID,
+          is_favorite: false
+        });
+      
+      if (itemError) {
+        console.error('Error adding item:', itemError);
+        alert('Failed to add item');
+        return;
+      }
+    }
+    
+    // Add to shopping list (whether it's a new item or existing)
+    const alreadyInList = listItems.find(li => li.item_name === itemName);
+    if (!alreadyInList) {
+      const { error: listError } = await supabase
+        .from('shopping_list')
+        .insert({
+          item_name: itemName,
+          quantity: 1,
+          user_id: SHARED_USER_ID,
+          checked: false,
+          added_at: new Date().toISOString()
+        });
+      
+      if (listError) {
+        console.error('Error adding to shopping list:', listError);
+        alert('Failed to add to shopping list');
+        return;
+      }
+    }
+    
+    setNewItem('');
+    
+    // Reload data to refresh everything
+    loadData();
   };
 
   const addFavorites = async () => {
@@ -374,7 +424,7 @@ export default function ShoppingList() {
                 className="flex items-center gap-2 text-lg md:text-xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition"
               >
                 <span className="text-gray-400">{showFavorites ? '▼' : '▶'}</span>
-                <span>⭐ Favorites</span>
+                <span>⭐ Select Favorites</span>
               </button>
               <button
                 onClick={allFavoritesSelected ? () => {
@@ -418,7 +468,7 @@ export default function ShoppingList() {
             className="flex items-center gap-2 text-xl font-bold mb-4 text-gray-800 cursor-pointer hover:text-blue-600 transition"
           >
             <span className="text-gray-400">{showAddItems ? '▼' : '▶'}</span>
-            <span>Add Items</span>
+            <span>Select Items</span>
           </button>
           {showAddItems && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto" style={{ maxHeight: '252px' }}>
@@ -444,6 +494,27 @@ export default function ShoppingList() {
               })}
             </div>
           )}
+        </div>
+
+        {/* Add New Item Widget */}
+        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+          <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="e.g., Organic bananas"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+            />
+            <button
+              onClick={addNewItem}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+            >
+              Add
+            </button>
+          </div>
         </div>
 
         {/* Shopping List */}
