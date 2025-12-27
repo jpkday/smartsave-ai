@@ -496,7 +496,7 @@ export default function ShoppingList() {
                                     </p>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="hidden md:flex items-center gap-2">
                                   <button
                                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                     className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
@@ -576,7 +576,7 @@ export default function ShoppingList() {
                                     No price data available
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="hidden md:flex items-center gap-2">
                                   <button
                                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                     className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
