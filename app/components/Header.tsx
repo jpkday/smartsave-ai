@@ -11,12 +11,8 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Compare', path: '/compare', letter: 'C', color: 'bg-green-500 hover:bg-green-600', dimColor: 'bg-green-200', icon: '⚖️' },
     { name: 'Items', path: '/items', letter: 'I', color: 'bg-purple-500 hover:bg-purple-600', dimColor: 'bg-purple-200', icon: '📋' },
     { name: 'History', path: '/history', letter: 'H', color: 'bg-teal-500 hover:bg-teal-600', dimColor: 'bg-teal-200', icon: '📊' },
-    { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', dimColor: 'bg-orange-200', icon: '🧾' }
-  ];
-
-  const desktopPages = [
-    ...pages,
-    { name: 'Stores', path: '/stores', letter: 'S', color: 'bg-pink-500 hover:bg-pink-600', dimColor: 'bg-pink-200', icon: '🏪' }
+    { name: 'Receipts', path: '/receipts', letter: 'R', color: 'bg-orange-500 hover:bg-orange-600', dimColor: 'bg-orange-200', icon: '🧾' },
+    { name: 'Stores', path: '/stores', letter: 'S', color: 'bg-pink-500 hover:bg-pink-600', dimColor: 'bg-pink-200', icon: '🛍️' }
   ];
 
   return (
@@ -75,7 +71,7 @@ export default function Header({ currentPage }: HeaderProps) {
         <Link href="/" className="text-gray-600 hover:text-blue-600 font-semibold">
           Home
         </Link>
-        {desktopPages.map(page => (
+        {pages.map(page => (
           <Link
             key={page.name}
             href={page.path}
