@@ -6,7 +6,6 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface PriceRecord {
@@ -22,6 +21,7 @@ export default function History() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
+  const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [selectedStore, setSelectedStore] = useState<string>('All');
@@ -32,7 +32,7 @@ export default function History() {
   const [showCopied, setShowCopied] = useState(false);
 
   useEffect(() => {
-    loadItems();
+    loadStoresAndItems();
     // Set today's date as default for new entries
     setNewDate(new Date().toISOString().split('T')[0]);
     
@@ -42,7 +42,7 @@ export default function History() {
     
     if (itemParam) setSelectedItem(itemParam);
     if (storeParam) setSelectedStore(storeParam);
-  }, []);
+  }, []); // Empty array is fine - searchParams doesn't change after initial load
 
   useEffect(() => {
     if (selectedItem) {
@@ -50,14 +50,25 @@ export default function History() {
     }
   }, [selectedItem, selectedStore]);
 
-  const loadItems = async () => {
-    const { data } = await supabase
+  const loadStoresAndItems = async () => {
+    // Load stores
+    const { data: storesData } = await supabase
+      .from('stores')
+      .select('name')
+      .order('name');
+    
+    if (storesData) {
+      setStores(storesData.map(s => s.name));
+    }
+
+    // Load items
+    const { data: itemsData } = await supabase
       .from('items')
       .select('name')
       .order('name');
     
-    if (data) {
-      setItems(data.map(i => i.name));
+    if (itemsData) {
+      setItems(itemsData.map(i => i.name));
     }
   };
 
@@ -266,7 +277,7 @@ export default function History() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
-                {STORES.sort().map(store => (
+                {stores.map(store => (
                   <option key={store} value={store}>{store}</option>
                 ))}
               </select>
@@ -356,7 +367,7 @@ export default function History() {
                       tickFormatter={(value) => `$${value.toFixed(2)}`}
                     />
                     <Tooltip 
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
+                      formatter={(value: number | undefined) => value !== undefined ? [`${value.toFixed(2)}`, 'Price'] : ['', '']}
                       labelStyle={{ color: '#1f2937' }}
                     />
                     <Line 
