@@ -15,6 +15,8 @@ const DEFAULT_ITEMS = [
   'Butter (lb)'
 ];
 
+const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 interface Item {
   name: string;
   is_favorite: boolean;
@@ -52,7 +54,7 @@ export default function Items() {
       for (const item of defaultItems) {
         await supabase.from('items').insert({ 
           name: item, 
-          user_id: '00000000-0000-0000-0000-000000000000',
+          user_id: SHARED_USER_ID,
           is_favorite: false 
         });
       }
@@ -80,7 +82,7 @@ export default function Items() {
         .from('items')
         .insert({ 
           name: newItem.trim(), 
-          user_id: '00000000-0000-0000-0000-000000000000',
+          user_id: SHARED_USER_ID,
           is_favorite: false
         });
       
@@ -132,9 +134,21 @@ export default function Items() {
       return;
     }
 
-    // Also delete all price history for this item
+    // Delete all price history for this item
     await supabase
       .from('price_history')
+      .delete()
+      .eq('item_name', itemToDelete);
+
+    // Delete from prices table
+    await supabase
+      .from('prices')
+      .delete()
+      .eq('item_name', itemToDelete);
+
+    // Delete from shopping list
+    await supabase
+      .from('shopping_list')
       .delete()
       .eq('item_name', itemToDelete);
 
@@ -176,17 +190,31 @@ export default function Items() {
     }
 
     // Update all price history with new item name
-    const { error: priceError } = await supabase
+    const { error: priceHistoryError } = await supabase
       .from('price_history')
       .update({ item_name: editingValue.trim() })
       .eq('item_name', oldItem)
-      .eq('user_id', '00000000-0000-0000-0000-000000000000');
+      .eq('user_id', SHARED_USER_ID);
     
-    if (priceError) {
-      console.error('Error updating price history:', priceError);
+    if (priceHistoryError) {
+      console.error('Error updating price history:', priceHistoryError);
       alert('Failed to update price history');
       return;
     }
+
+    // Update prices table with new item name
+    await supabase
+      .from('prices')
+      .update({ item_name: editingValue.trim() })
+      .eq('item_name', oldItem)
+      .eq('user_id', SHARED_USER_ID);
+
+    // Update shopping list with new item name
+    await supabase
+      .from('shopping_list')
+      .update({ item_name: editingValue.trim() })
+      .eq('item_name', oldItem)
+      .eq('user_id', SHARED_USER_ID);
   
     // Update local state
     setItems(items.map(item => 

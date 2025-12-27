@@ -229,6 +229,20 @@ function PricesContent() {
       .eq('item_name', oldItem)
       .eq('user_id', SHARED_USER_ID);
 
+    // Update prices table with new item name
+    await supabase
+      .from('prices')
+      .update({ item_name: editingValue.trim() })
+      .eq('item_name', oldItem)
+      .eq('user_id', SHARED_USER_ID);
+
+    // Update shopping list with new item name
+    await supabase
+      .from('shopping_list')
+      .update({ item_name: editingValue.trim() })
+      .eq('item_name', oldItem)
+      .eq('user_id', SHARED_USER_ID);
+
     // Update local state
     const updatedItems = items.map(i => i === oldItem ? editingValue.trim() : i);
     setItems(updatedItems);
@@ -267,6 +281,18 @@ function PricesContent() {
     // Delete all price history for this item
     await supabase
       .from('price_history')
+      .delete()
+      .eq('item_name', itemToDelete);
+
+    // Delete from prices table
+    await supabase
+      .from('prices')
+      .delete()
+      .eq('item_name', itemToDelete);
+
+    // Delete from shopping list
+    await supabase
+      .from('shopping_list')
       .delete()
       .eq('item_name', itemToDelete);
 
