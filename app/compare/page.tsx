@@ -1,35 +1,76 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
-// TODO: Replace with actual user_id from auth system
-// Currently all users share data (single household mode)
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function Compare() {
-  const [prices, setPrices] = useState<{[key: string]: string}>({});
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const [prices, setPrices] = useState<{[key: string]: {price: string, date: string}}>({});
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [filterLetter, setFilterLetter] = useState<string>('All');
   const [multiSelectMode, setMultiSelectMode] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [showCopied, setShowCopied] = useState(false);
+  
+  // Quick Add state
+  const [quickAddStore, setQuickAddStore] = useState<string>('');
+  const [quickAddPrice, setQuickAddPrice] = useState<string>('');
 
   useEffect(() => {
     loadData();
+    
+    // Load from URL parameters
+    const itemsParam = searchParams.get('items');
+    if (itemsParam) {
+      setSelectedItems(itemsParam.split(','));
+      setMultiSelectMode(itemsParam.split(',').length > 1);
+    }
   }, []);
+
+  const updateURL = (items: string[]) => {
+    if (items.length === 0) {
+      router.push('/compare');
+      return;
+    }
+    
+    const params = new URLSearchParams();
+    params.set('items', items.join(','));
+    
+    router.push(`/compare?${params.toString()}`);
+  };
+
+  const shareLink = async () => {
+    const url = window.location.href;
+    
+    try {
+      await navigator.clipboard.writeText(url);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    } catch (err) {
+      alert('Failed to copy link');
+    }
+  };
 
   const loadData = async () => {
     // Load items
     const { data: itemsData } = await supabase
       .from('items')
-      .select('name')
+      .select('name, is_favorite')
       .order('name');
     
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
+      const favs = itemsData.filter(i => i.is_favorite === true).map(i => i.name);
+      setFavorites(favs);
     }
 
     // Load latest prices from price_history
@@ -40,7 +81,7 @@ export default function Compare() {
       .order('recorded_date', { ascending: false });
     
     if (pricesData) {
-      const pricesObj: {[key: string]: string} = {};
+      const pricesObj: {[key: string]: {price: string, date: string}} = {};
       const latestPrices: {[key: string]: any} = {};
       
       // Get the most recent price for each item/store combination
@@ -48,7 +89,10 @@ export default function Compare() {
         const key = `${p.store}-${p.item_name}`;
         if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
           latestPrices[key] = p;
-          pricesObj[key] = p.price;
+          pricesObj[key] = {
+            price: p.price,
+            date: p.recorded_date
+          };
         }
       });
       
@@ -81,57 +125,240 @@ export default function Compare() {
   }, [multiSelectMode]);
 
   const toggleItem = (item: string) => {
+    let newSelectedItems: string[];
+    
     if (multiSelectMode) {
       // Multi-select mode: toggle on/off
       if (selectedItems.includes(item)) {
-        setSelectedItems(selectedItems.filter(i => i !== item));
+        newSelectedItems = selectedItems.filter(i => i !== item);
       } else {
-        setSelectedItems([...selectedItems, item]);
+        newSelectedItems = [...selectedItems, item];
       }
     } else {
       // Single-select mode: replace selection
       if (selectedItems.includes(item) && selectedItems.length === 1) {
-        setSelectedItems([]); // Deselect if clicking same item
+        newSelectedItems = []; // Deselect if clicking same item
       } else {
-        setSelectedItems([item]); // Replace with new item
+        newSelectedItems = [item]; // Replace with new item
       }
     }
+    
+    setSelectedItems(newSelectedItems);
+    updateURL(newSelectedItems);
   };
 
   const calculateBestStore = () => {
-    const storeTotals: {[store: string]: number} = {};
+    const storeData: {[store: string]: {total: number, coverage: number, itemCount: number}} = {};
     
     STORES.forEach(store => {
       let total = 0;
+      let coverage = 0;
+      
       selectedItems.forEach(item => {
-        const price = parseFloat(prices[`${store}-${item}`] || '0');
-        total += price;
+        const priceData = prices[`${store}-${item}`];
+        if (priceData) {
+          const price = parseFloat(priceData.price);
+          total += price;
+          coverage++;
+        }
       });
-      storeTotals[store] = total;
+      
+      storeData[store] = {
+        total,
+        coverage,
+        itemCount: selectedItems.length
+      };
     });
 
-    return storeTotals;
+    return storeData;
+  };
+
+  const handlePriceChange = (value: string) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    let priceValue = '';
+    if (digits !== '') {
+      // Convert to cents, then to dollars
+      const cents = parseInt(digits, 10);
+      priceValue = (cents / 100).toFixed(2);
+    }
+    
+    setQuickAddPrice(priceValue);
+  };
+
+  const handleQuickAddPrice = async () => {
+    if (selectedItems.length !== 1) {
+      alert('Please select exactly one item');
+      return;
+    }
+
+    if (!quickAddStore) {
+      alert('Please select a store');
+      return;
+    }
+
+    if (!quickAddPrice || parseFloat(quickAddPrice) === 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+
+    const item = selectedItems[0];
+    
+    const { error } = await supabase
+      .from('price_history')
+      .insert({
+        item_name: item,
+        store: quickAddStore,
+        price: quickAddPrice,
+        user_id: SHARED_USER_ID,
+        recorded_date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Error adding price:', error);
+      alert(`Failed to add price for ${item}`);
+      return;
+    }
+
+    // Clear form
+    setQuickAddStore('');
+    setQuickAddPrice('');
+
+    // Reload data to show updated prices
+    loadData();
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleQuickAddPrice();
+    }
+  };
+
+  const selectAllFavorites = () => {
+    const newSelectedItems = [...new Set([...selectedItems, ...favorites])];
+    setSelectedItems(newSelectedItems);
+    setMultiSelectMode(true);
+    updateURL(newSelectedItems);
+  };
+
+  const deselectAllFavorites = () => {
+    const newSelectedItems = selectedItems.filter(item => !favorites.includes(item));
+    setSelectedItems(newSelectedItems);
+    updateURL(newSelectedItems);
+  };
+
+  const allFavoritesSelected = favorites.length > 0 && favorites.every(fav => selectedItems.includes(fav));
+
+  const getDaysAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? '1 month ago' : `${months} months ago`;
+    }
+    const years = Math.floor(diffDays / 365);
+    return years === 1 ? '1 year ago' : `${years} years ago`;
+  };
+
+  const getPriceClassification = (itemName: string, currentPrice: number) => {
+    // Get all prices for this item across all stores
+    const itemPrices: number[] = [];
+    STORES.forEach(store => {
+      const priceData = prices[`${store}-${itemName}`];
+      if (priceData) {
+        itemPrices.push(parseFloat(priceData.price));
+      }
+    });
+
+    if (itemPrices.length === 0) return null;
+
+    const minPrice = Math.min(...itemPrices);
+    const maxPrice = Math.max(...itemPrices);
+    const range = maxPrice - minPrice;
+
+    // If all prices are the same, it's neutral
+    if (range === 0) return null;
+
+    const threshold = range * 0.33;
+
+    if (currentPrice <= minPrice + threshold) {
+      return { 
+        label: 'Best Price!', 
+        mobileLabel: 'Best Price!',
+        emoji: '✅', 
+        color: 'text-green-600' 
+      };
+    } else if (currentPrice >= maxPrice - threshold) {
+      return { 
+        label: 'Skip This One', 
+        mobileLabel: 'Skip',
+        emoji: '❌', 
+        color: 'text-red-600' 
+      };
+    } else {
+      return { 
+        label: 'Close Enough', 
+        mobileLabel: 'Close Enough',
+        emoji: '➖', 
+        color: 'text-yellow-600' 
+      };
+    }
   };
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   const filteredItems = filterLetter === 'All' 
     ? items.sort() 
     : items.sort().filter(item => item.toUpperCase().startsWith(filterLetter));
-  const storeTotals = calculateBestStore();
-  const sortedStores = Object.entries(storeTotals)
-    .sort(([,a], [,b]) => a - b)
-    .filter(([, total]) => total > 0);
+  const storeData = calculateBestStore();
+  const sortedStores = Object.entries(storeData)
+    .filter(([, data]) => data.coverage > 0) // Only show stores with at least 1 item
+    .sort(([, a], [, b]) => {
+      // Primary sort: coverage (descending)
+      if (b.coverage !== a.coverage) {
+        return b.coverage - a.coverage;
+      }
+      // Secondary sort: price (ascending)
+      return a.total - b.total;
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
-              {lastUpdated && (
-                <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Prices last updated: {lastUpdated}</p>
-              )}
+              <div className="hidden md:flex items-center gap-3 mt-2">
+                {lastUpdated && (
+                  <p className="text-xs md:text-sm text-gray-600">Prices last updated: {lastUpdated}</p>
+                )}
+                {selectedItems.length > 0 && (
+                  <button
+                    onClick={shareLink}
+                    className="relative text-teal-500 hover:text-teal-600 transition cursor-pointer"
+                    title="Share this comparison"
+                  >
+                    <span className="text-base">🔗</span>
+                    {showCopied && (
+                      <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                        Copied!
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
             <Header currentPage="Compare" />
           </div>
@@ -168,19 +395,62 @@ export default function Compare() {
           </div>
         </div>
 
+        {/* Favorites Widget */}
+        {favorites.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg md:text-xl font-bold text-gray-800">⭐ Favorites</h2>
+              <button
+                onClick={allFavoritesSelected ? deselectAllFavorites : selectAllFavorites}
+                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer"
+              >
+                {allFavoritesSelected ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {favorites.map(item => (
+                <button
+                  key={item}
+                  onClick={() => toggleItem(item)}
+                  className={`px-3 py-1.5 rounded-lg border-2 transition cursor-pointer text-sm font-semibold ${
+                    selectedItems.includes(item)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-yellow-400 hover:border-yellow-500'
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Shopping List */}
         <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={multiSelectMode}
-                onChange={(e) => setMultiSelectMode(e.target.checked)}
-                className="w-5 h-5 md:w-4 md:h-4 mr-2 cursor-pointer"
-              />
-              <span className="text-gray-700 font-medium text-base md:text-sm">Multi-select</span>
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={multiSelectMode}
+                  onChange={(e) => setMultiSelectMode(e.target.checked)}
+                  className="w-5 h-5 md:w-4 md:h-4 mr-2 cursor-pointer"
+                />
+                <span className="text-gray-700 font-medium text-base md:text-sm">Multi-select</span>
+              </label>
+              {selectedItems.length > 0 && (
+                <button
+                  onClick={() => {
+                    setSelectedItems([]);
+                    updateURL([]);
+                  }}
+                  className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
             {filteredItems.map(item => (
@@ -201,59 +471,149 @@ export default function Compare() {
 
         {/* Results */}
         {selectedItems.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Stores</h2>
             
             {sortedStores.length > 0 ? (
               <div className="space-y-3">
-                {sortedStores.map(([store, total], idx) => (
-                  <div
-                    key={store}
-                    className={`p-4 rounded-lg border-2 ${
-                      idx === 0
-                        ? 'bg-green-50 border-green-500'
-                        : 'bg-gray-50 border-gray-300'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start md:items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-lg md:text-xl text-gray-800">{store}</span>
-                          {idx === 0 && (
-                            <span className="text-xs md:text-sm bg-green-500 text-white px-2 md:px-3 py-1 rounded-full whitespace-nowrap">
-                              Best Deal!
+                {sortedStores.map(([store, data], idx) => {
+                  const coveragePercent = ((data.coverage / data.itemCount) * 100).toFixed(0);
+                  const isComplete = data.coverage === data.itemCount;
+                  
+                  return (
+                    <div
+                      key={store}
+                      className={`p-4 rounded-lg border-2 ${
+                        idx === 0
+                          ? 'bg-green-50 border-green-500'
+                          : 'bg-gray-50 border-gray-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-lg md:text-xl text-gray-800">{store}</span>
+                            {idx === 0 && (
+                              <span className="text-xs md:text-sm bg-green-500 text-white px-2 md:px-3 py-1 rounded-full whitespace-nowrap">
+                                Best Deal!
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
+                            isComplete ? 'text-green-600' : 'text-orange-600'
+                          }`}>
+                            <span>
+                              {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
+                              {!isComplete && ' ⚠️'}
                             </span>
+                            {isComplete && (
+                              <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
+                                ✓
+                              </span>
+                            )}
+                          </p>
+                          {selectedItems.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {selectedItems.map(item => {
+                                const priceData = prices[`${store}-${item}`];
+                                if (priceData) {
+                                  const price = parseFloat(priceData.price);
+                                  const classification = getPriceClassification(item, price);
+                                  return (
+                                    <p key={item} className="text-xs text-gray-600">
+                                      {item}: ${price.toFixed(2)} 
+                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                      {classification && (
+                                        <>
+                                          <span className={`hidden md:inline ml-1 font-semibold ${classification.color}`}>
+                                            {classification.emoji} {classification.label}
+                                          </span>
+                                          <span className={`md:hidden ml-1 font-semibold ${classification.color}`}>
+                                            {classification.emoji} {classification.mobileLabel}
+                                          </span>
+                                        </>
+                                      )}
+                                    </p>
+                                  );
+                                } else {
+                                  return (
+                                    <p key={item} className="text-xs text-gray-400">
+                                      {item}: no price
+                                    </p>
+                                  );
+                                }
+                              })}
+                            </div>
                           )}
                         </div>
-                        {selectedItems.length > 0 && (
-                          <p className="text-xs md:text-sm text-gray-600 mt-1 break-words">
-                            {selectedItems.join(', ')}
-                          </p>
-                        )}
+                        <span className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
+                          ${data.total.toFixed(2)}
+                        </span>
                       </div>
-                      <span className="text-xl md:text-2xl font-bold text-gray-800 whitespace-nowrap">
-                        ${total.toFixed(2)}
-                      </span>
+                      {idx === 0 && sortedStores.length > 1 && sortedStores[0][1].coverage === sortedStores[1][1].coverage && (
+                        <p className="text-xs md:text-sm text-green-700 mt-2">
+                          Save ${(sortedStores[1][1].total - data.total).toFixed(2)} vs {sortedStores[1][0]}
+                        </p>
+                      )}
                     </div>
-                    {idx === 0 && sortedStores.length > 1 && (
-                      <p className="text-xs md:text-sm text-green-700 mt-2">
-                        Save ${(sortedStores[1][1] - total).toFixed(2)} vs {sortedStores[1][0]}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-6 md:p-8 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg">
                 <p className="text-base md:text-lg font-semibold text-yellow-800 mb-2">No price data available</p>
                 <p className="text-sm text-yellow-700">
-                  Please add prices for {selectedItems.join(', ')} in the{' '}
-                  <Link href="/prices" className="text-blue-600 hover:underline font-semibold">
-                    Price Database
-                  </Link>
+                  Use the Quick Add box below to add prices for {selectedItems.join(', ')}
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Quick Add Price Entry Widget */}
+        {selectedItems.length === 1 && (
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Add Price</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Adding price for: <span className="font-semibold">{selectedItems[0]}</span>
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
+                <select
+                  value={quickAddStore}
+                  onChange={(e) => setQuickAddStore(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                >
+                  <option value="">Select store...</option>
+                  {STORES.sort().map(store => (
+                    <option key={store} value={store}>{store}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
+                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                  <span className="text-gray-800 font-semibold mr-1">$</span>
+                  <input
+                    type="text"
+                    placeholder="0.00"
+                    value={quickAddPrice}
+                    onChange={(e) => handlePriceChange(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={handleQuickAddPrice}
+                  className="w-full bg-teal-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-teal-600 transition cursor-pointer"
+                >
+                  Add Price
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

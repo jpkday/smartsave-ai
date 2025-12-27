@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
@@ -10,6 +11,9 @@ const STORES = ['Acme', 'Giant', 'Walmart', 'Costco', 'Aldi'];
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export default function Prices() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
   const [prices, setPrices] = useState<{[key: string]: string}>({});
   const [lastSaved, setLastSaved] = useState<string>('');
   const [items, setItems] = useState<string[]>([]);
@@ -18,10 +22,22 @@ export default function Prices() {
   const [selectedStore, setSelectedStore] = useState<string>(STORES[0]); // For mobile view
   const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All'); // For item filtering
   const [pricesDates, setPricesDates] = useState<{[key: string]: string}>({}); // Track last updated dates
+  const [showCopied, setShowCopied] = useState(false);
 
   // Load items and prices when page loads
   useEffect(() => {
     loadData();
+    
+    // Load from URL parameters
+    const storeParam = searchParams.get('store');
+    const itemParam = searchParams.get('item');
+    
+    if (storeParam && STORES.includes(storeParam)) {
+      setSelectedStore(storeParam);
+    }
+    if (itemParam) {
+      setSelectedItemFilter(itemParam);
+    }
   }, []);
 
   const loadData = async () => {
@@ -70,7 +86,28 @@ export default function Prices() {
     }
   };
 
-  const handlePriceChange = async (store: string, item: string, value: string) => {
+  const updateURL = (store: string, item: string) => {
+    const params = new URLSearchParams();
+    if (store) params.set('store', store);
+    if (item && item !== 'All') params.set('item', item);
+    
+    const newURL = params.toString() ? `/prices?${params.toString()}` : '/prices';
+    router.push(newURL);
+  };
+
+  const shareLink = async () => {
+    const url = window.location.href;
+    
+    try {
+      await navigator.clipboard.writeText(url);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    } catch (err) {
+      alert('Failed to copy link');
+    }
+  };
+
+  const handlePriceChange = (store: string, item: string, value: string) => {
     // Remove all non-digit characters
     const digits = value.replace(/\D/g, '');
     
@@ -81,30 +118,33 @@ export default function Prices() {
       priceValue = (cents / 100).toFixed(2);
     }
     
-    // Update local state immediately
+    // Update local state immediately (visual feedback)
     setPrices({...prices, [`${store}-${item}`]: priceValue});
+  };
+
+  const handlePriceSave = async (store: string, item: string) => {
+    const priceValue = prices[`${store}-${item}`];
     
+    // Don't save if empty or 0.00
+    if (!priceValue || parseFloat(priceValue) === 0) {
+      return;
+    }
+
+    // Insert new price record (never update - always insert for history)
+    await supabase
+      .from('price_history')
+      .insert({
+        item_name: item,
+        store: store,
+        price: priceValue,
+        user_id: SHARED_USER_ID,
+        recorded_date: new Date().toISOString().split('T')[0], // Today's date
+        created_at: new Date().toISOString()
+      });
+
     // Update dates
     const today = new Date().toISOString().split('T')[0];
     setPricesDates({...pricesDates, [`${store}-${item}`]: today});
-
-    // Save to database
-    if (priceValue === '') {
-      // For empty values, we don't delete history, just don't add a new record
-      return;
-    } else {
-      // Insert new price record (never update - always insert for history)
-      await supabase
-        .from('price_history')
-        .insert({
-          item_name: item,
-          store: store,
-          price: priceValue,
-          user_id: SHARED_USER_ID,
-          recorded_date: new Date().toISOString().split('T')[0], // Today's date
-          created_at: new Date().toISOString()
-        });
-    }
 
     // Update last saved time
     const now = new Date().toLocaleDateString();
@@ -278,11 +318,25 @@ export default function Prices() {
         {/* White Header Box */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Prices by Store</h1>
-              {lastSaved && (
-                <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Last updated: {lastSaved}</p>
-              )}
+              <div className="hidden md:flex items-center gap-3 mt-2">
+                {lastSaved && (
+                  <p className="text-xs md:text-sm text-gray-600">Last updated: {lastSaved}</p>
+                )}
+                <button
+                  onClick={shareLink}
+                  className="relative text-blue-500 hover:text-blue-600 transition cursor-pointer"
+                  title="Share this page"
+                >
+                  <span className="text-base">🔗</span>
+                  {showCopied && (
+                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                      Copied!
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
             <Header currentPage="Prices" />
           </div>
@@ -293,7 +347,10 @@ export default function Prices() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
           <select
             value={selectedStore}
-            onChange={(e) => setSelectedStore(e.target.value)}
+            onChange={(e) => {
+              setSelectedStore(e.target.value);
+              updateURL(e.target.value, selectedItemFilter);
+            }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
             {STORES.sort().map(store => (
@@ -304,7 +361,10 @@ export default function Prices() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Item:</label>
           <select
             value={selectedItemFilter}
-            onChange={(e) => setSelectedItemFilter(e.target.value)}
+            onChange={(e) => {
+              setSelectedItemFilter(e.target.value);
+              updateURL(selectedStore, e.target.value);
+            }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
           >
             <option value="All">All Items</option>
@@ -373,6 +433,13 @@ export default function Prices() {
                       className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                       value={prices[`${selectedStore}-${item}`] || ''}
                       onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
+                      onBlur={() => handlePriceSave(selectedStore, item)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handlePriceSave(selectedStore, item);
+                          e.currentTarget.blur();
+                        }
+                      }}
                     />
                     {prices[`${selectedStore}-${item}`] && parseFloat(prices[`${selectedStore}-${item}`]) > 0 && (
                       <div className="text-xs text-gray-500 text-right mt-1">
@@ -486,7 +553,10 @@ export default function Prices() {
             <label className="inline-block text-sm font-semibold text-gray-700 mr-3">Filter Item:</label>
             <select
               value={selectedItemFilter}
-              onChange={(e) => setSelectedItemFilter(e.target.value)}
+              onChange={(e) => {
+                setSelectedItemFilter(e.target.value);
+                updateURL(selectedStore, e.target.value);
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
             >
               <option value="All">All Items</option>
@@ -557,6 +627,13 @@ export default function Prices() {
                             className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store, item)} ${getCellColor(store, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                             value={prices[`${store}-${item}`] || ''}
                             onChange={(e) => handlePriceChange(store, item, e.target.value)}
+                            onBlur={() => handlePriceSave(store, item)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handlePriceSave(store, item);
+                                e.currentTarget.blur();
+                              }
+                            }}
                           />
                         </div>
                         {prices[`${store}-${item}`] && parseFloat(prices[`${store}-${item}`]) > 0 && (
