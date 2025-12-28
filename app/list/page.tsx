@@ -54,6 +54,7 @@ export default function ShoppingList() {
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
       .select('name, is_favorite')
+      .eq('user_id', SHARED_USER_ID)
       .order('name');
     
     if (itemsError) {
@@ -63,7 +64,6 @@ export default function ShoppingList() {
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
       const favs = itemsData.filter(i => i.is_favorite === true).map(i => i.name);
-      console.log('Loaded favorites:', favs);
       setFavorites(favs);
     }
 
@@ -75,7 +75,6 @@ export default function ShoppingList() {
     
     if (listError) {
       console.error('Error loading shopping list:', listError);
-      alert(`Shopping List Error: ${listError.message} - ${JSON.stringify(listError)}`);
     }
     
     if (listData) {
@@ -117,145 +116,206 @@ export default function ShoppingList() {
     
     const itemName = newItem.trim();
     
-    // Check if item already exists
-    if (!items.find(i => i === itemName)) {
-      // Create new item
-      const { error: itemError } = await supabase
-        .from('items')
-        .insert({ 
-          name: itemName, 
-          user_id: SHARED_USER_ID,
-          is_favorite: false
-        });
-      
-      if (itemError) {
-        console.error('Error adding item:', itemError);
-        alert('Failed to add item');
-        return;
+    try {
+      // Check if item already exists
+      if (!items.find(i => i === itemName)) {
+        // Create new item
+        const { error: itemError } = await supabase
+          .from('items')
+          .insert({ 
+            name: itemName, 
+            user_id: SHARED_USER_ID,
+            is_favorite: false
+          });
+        
+        if (itemError) {
+          throw new Error(`Failed to create item: ${itemError.message}`);
+        }
       }
-    }
-    
-    // Add to shopping list (whether it's a new item or existing)
-    const alreadyInList = listItems.find(li => li.item_name === itemName);
-    if (!alreadyInList) {
-      const { error: listError } = await supabase
-        .from('shopping_list')
-        .insert({
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          checked: false,
-          added_at: new Date().toISOString()
-        });
       
-      if (listError) {
-        console.error('Error adding to shopping list:', listError);
-        alert('Failed to add to shopping list');
-        return;
+      // Add to shopping list (whether it's a new item or existing)
+      const alreadyInList = listItems.find(li => li.item_name === itemName);
+      if (!alreadyInList) {
+        const { error: listError } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_name: itemName,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            checked: false,
+            added_at: new Date().toISOString()
+          });
+        
+        if (listError) {
+          throw new Error(`Failed to add to shopping list: ${listError.message}`);
+        }
       }
+      
+      setNewItem('');
+      
+      // Reload data to refresh everything
+      loadData();
+    } catch (error) {
+      console.error('Error adding item:', error);
+      alert('Failed to add item. Check your connection and try again.');
     }
-    
-    setNewItem('');
-    
-    // Reload data to refresh everything
-    loadData();
   };
 
   const addFavorites = async () => {
-    for (const item of favorites) {
-      // Check if already in list
-      if (listItems.find(li => li.item_name === item)) continue;
-      
-      const { error } = await supabase
-        .from('shopping_list')
-        .insert({
-          item_name: item,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          checked: false,
-          added_at: new Date().toISOString()
-        });
-      
-      if (error) {
-        console.error('Error adding favorite:', item, error);
-        alert(`Error adding ${item}: ${error.message}`);
-        return;
+    try {
+      for (const item of favorites) {
+        // Check if already in list
+        if (listItems.find(li => li.item_name === item)) continue;
+        
+        const { error } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_name: item,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            checked: false,
+            added_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          throw new Error(`Failed to add ${item}: ${error.message}`);
+        }
       }
+      
+      loadData();
+    } catch (error) {
+      console.error('Error adding favorites:', error);
+      alert('Failed to add favorites. Check your connection and try again.');
     }
-    
-    loadData();
   };
 
   const toggleItem = async (itemName: string) => {
     const isInList = listItems.find(li => li.item_name === itemName);
     
-    if (isInList) {
-      // Remove from list
-      await supabase
-        .from('shopping_list')
-        .delete()
-        .eq('id', isInList.id);
-    } else {
-      // Add to list
-      await supabase
-        .from('shopping_list')
-        .insert({
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          checked: false,
-          added_at: new Date().toISOString()
-        });
+    try {
+      if (isInList) {
+        // Remove from list
+        const { error } = await supabase
+          .from('shopping_list')
+          .delete()
+          .eq('id', isInList.id)
+          .eq('user_id', SHARED_USER_ID);
+        
+        if (error) {
+          throw new Error(`Failed to remove item: ${error.message}`);
+        }
+      } else {
+        // Add to list
+        const { error } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_name: itemName,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            checked: false,
+            added_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          throw new Error(`Failed to add item: ${error.message}`);
+        }
+      }
+      
+      loadData();
+    } catch (error) {
+      console.error('Error toggling item:', error);
+      alert('Failed to update list. Check your connection and try again.');
     }
-    
-    loadData();
   };
 
   const updateQuantity = async (id: string, quantity: number) => {
     if (quantity < 1) return;
     
-    await supabase
-      .from('shopping_list')
-      .update({ quantity })
-      .eq('id', id);
-    
-    setListItems(listItems.map(item => 
-      item.id === id ? {...item, quantity} : item
-    ));
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .update({ quantity })
+        .eq('id', id)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (error) {
+        throw new Error(`Failed to update quantity: ${error.message}`);
+      }
+      
+      // Only update local state if database succeeded
+      setListItems(listItems.map(item => 
+        item.id === id ? {...item, quantity} : item
+      ));
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      alert('Failed to update quantity. Check your connection and try again.');
+    }
   };
 
   const toggleChecked = async (id: string) => {
     const item = listItems.find(li => li.id === id);
     if (!item) return;
     
-    await supabase
-      .from('shopping_list')
-      .update({ checked: !item.checked })
-      .eq('id', id);
-    
-    setListItems(listItems.map(li => 
-      li.id === id ? {...li, checked: !li.checked} : li
-    ));
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .update({ checked: !item.checked })
+        .eq('id', id)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (error) {
+        throw new Error(`Failed to check item: ${error.message}`);
+      }
+      
+      // Only update local state if database succeeded
+      setListItems(listItems.map(li => 
+        li.id === id ? {...li, checked: !li.checked} : li
+      ));
+    } catch (error) {
+      console.error('Error checking item:', error);
+      alert('Failed to check item. Check your connection and try again.');
+    }
   };
 
   const removeItem = async (id: string) => {
-    await supabase
-      .from('shopping_list')
-      .delete()
-      .eq('id', id);
-    
-    setListItems(listItems.filter(li => li.id !== id));
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (error) {
+        throw new Error(`Failed to remove item: ${error.message}`);
+      }
+      
+      // Only update local state if database succeeded
+      setListItems(listItems.filter(li => li.id !== id));
+    } catch (error) {
+      console.error('Error removing item:', error);
+      alert('Failed to remove item. Check your connection and try again.');
+    }
   };
 
   const clearList = async () => {
     if (!confirm('Clear entire shopping list?')) return;
     
-    await supabase
-      .from('shopping_list')
-      .delete()
-      .eq('user_id', SHARED_USER_ID);
-    
-    setListItems([]);
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (error) {
+        throw new Error(`Failed to clear list: ${error.message}`);
+      }
+      
+      // Only update local state if database succeeded
+      setListItems([]);
+    } catch (error) {
+      console.error('Error clearing list:', error);
+      alert('Failed to clear list. Check your connection and try again.');
+    }
   };
 
   const getDaysAgo = (dateString: string) => {
@@ -292,36 +352,36 @@ export default function ShoppingList() {
     if (itemPrices.length === 0) return null;
 
     const minPrice = Math.min(...itemPrices);
-    const maxPrice = Math.max(...itemPrices);
-    const range = maxPrice - minPrice;
+    const percentAboveMin = ((currentPrice - minPrice) / minPrice) * 100;
+    const percentInt = Math.round(percentAboveMin);
 
-    // If all prices are the same, it's neutral
-    if (range === 0) return null;
-
-    const threshold = range * 0.33;
-
-    if (currentPrice <= minPrice + threshold) {
+    // Best price
+    if (currentPrice === minPrice) {
       return { 
-        label: 'Best Price!', 
-        mobileLabel: 'Best Price!',
+        label: 'Best Price', 
+        mobileLabel: 'Best Price',
         emoji: '✅', 
         color: 'text-green-600' 
       };
-    } else if (currentPrice >= maxPrice - threshold) {
+    }
+    
+    // 1-10% above minimum = "Close Enough"
+    if (percentAboveMin <= 10) {
       return { 
-        label: 'Skip This One', 
-        mobileLabel: 'Skip',
-        emoji: '❌', 
-        color: 'text-red-600' 
-      };
-    } else {
-      return { 
-        label: 'Close Enough', 
-        mobileLabel: 'Close Enough',
+        label: `Close Enough (${percentInt}% more)`, 
+        mobileLabel: `Close Enough (${percentInt}% more)`,
         emoji: '➖', 
-        color: 'text-yellow-600' 
+        color: 'text-yellow-600'
       };
     }
+    
+    // More than 10% above minimum = "Skip"
+    return { 
+      label: `Skip This One (${percentInt}% more)`, 
+      mobileLabel: `Skip (${percentInt}% more)`,
+      emoji: '❌', 
+      color: 'text-red-600'
+    };
   };
 
   // Calculate best store with coverage-first sorting
@@ -662,7 +722,7 @@ export default function ShoppingList() {
                                   <div className="flex items-center gap-1">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
                                     <Link 
-                                      href={`/history?item=${encodeURIComponent(item.item_name)}&store=${encodeURIComponent(store)}`}
+                                      href={`/history?item=${encodeURIComponent(JSON.stringify(item.item_name))}&store=${encodeURIComponent(JSON.stringify(store))}`}
                                       className={`font-medium hover:text-teal-600 hover:underline transition ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
                                     >
                                       {item.item_name}
@@ -744,7 +804,7 @@ export default function ShoppingList() {
                                   <div className="flex items-center gap-1">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
                                     <Link 
-                                      href={`/history?item=${encodeURIComponent(item.item_name)}`}
+                                      href={`/history?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
                                       className={`font-medium hover:text-teal-600 hover:underline transition ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
                                     >
                                       {item.item_name}
@@ -857,19 +917,21 @@ export default function ShoppingList() {
                                 </span>
                               )}
                             </div>
-                            <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
-                              isComplete ? 'text-green-600' : 'text-orange-600'
-                            }`}>
-                              <span>
-                                {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
-                                {!isComplete && ' ⚠️'}
-                              </span>
-                              {isComplete && (
-                                <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
-                                  ✓
+                            {listItems.length > 1 && (
+                              <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
+                                isComplete ? 'text-green-600' : 'text-orange-600'
+                              }`}>
+                                <span>
+                                  {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
+                                  {!isComplete && ' ⚠️'}
                                 </span>
-                              )}
-                            </p>
+                                {isComplete && listItems.length > 1 && (
+                                  <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
+                                    ✓
+                                  </span>
+                                )}
+                              </p>
+                            )}
                             {listItems.length > 0 && (
                               <div className="mt-1 space-y-0.5">
                                 {listItems.map(item => {

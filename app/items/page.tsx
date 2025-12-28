@@ -36,6 +36,7 @@ export default function Items() {
     const { data, error } = await supabase
       .from('items')
       .select('name, is_favorite')
+      .eq('user_id', SHARED_USER_ID)
       .order('name');
     
     if (error) {
@@ -88,7 +89,7 @@ export default function Items() {
       
       if (error) {
         console.error('Error adding item:', error);
-        alert('Failed to add item');
+        alert('Failed to add item. Check your connection and try again.');
         return;
       }
       
@@ -106,10 +107,12 @@ export default function Items() {
     const { error } = await supabase
       .from('items')
       .update({ is_favorite: newFavoriteStatus })
-      .eq('name', itemName);
+      .eq('name', itemName)
+      .eq('user_id', SHARED_USER_ID);
     
     if (error) {
       console.error('Error updating favorite:', error);
+      alert('Failed to update favorite. Check your connection and try again.');
       return;
     }
     
@@ -126,11 +129,12 @@ export default function Items() {
     const { error } = await supabase
       .from('items')
       .delete()
-      .eq('name', itemToDelete);
+      .eq('name', itemToDelete)
+      .eq('user_id', SHARED_USER_ID);
     
     if (error) {
       console.error('Error deleting item:', error);
-      alert('Failed to delete item');
+      alert('Failed to delete item. Check your connection and try again.');
       return;
     }
 
@@ -138,13 +142,15 @@ export default function Items() {
     await supabase
       .from('price_history')
       .delete()
-      .eq('item_name', itemToDelete);
+      .eq('item_name', itemToDelete)
+      .eq('user_id', SHARED_USER_ID);
 
     // Delete from shopping list
     await supabase
       .from('shopping_list')
       .delete()
-      .eq('item_name', itemToDelete);
+      .eq('item_name', itemToDelete)
+      .eq('user_id', SHARED_USER_ID);
 
     setItems(items.filter(item => item.name !== itemToDelete));
   };
@@ -160,7 +166,7 @@ export default function Items() {
   };
   
   const saveEdit = async (oldItem: string) => {
-    if (!editingValue.trim() || editingValue === oldItem) {
+    if (!editingValue.trim() || editingValue.trim() === oldItem) {
       cancelEdit();
       return;
     }
@@ -171,44 +177,51 @@ export default function Items() {
       return;
     }
 
-    // Update item in database
-    const { error: itemError } = await supabase
-      .from('items')
-      .update({ name: editingValue.trim() })
-      .eq('name', oldItem);
-    
-    if (itemError) {
-      console.error('Error updating item:', itemError);
-      alert('Failed to update item');
-      return;
-    }
+    try {
+      // Update item in database
+      const { error: itemError, status: itemStatus } = await supabase
+        .from('items')
+        .update({ name: editingValue.trim() })
+        .eq('name', oldItem)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (itemError) {
+        throw new Error(`Item update failed: ${itemError.message}`);
+      }
 
-    // Update all price history with new item name
-    const { error: priceHistoryError } = await supabase
-      .from('price_history')
-      .update({ item_name: editingValue.trim() })
-      .eq('item_name', oldItem)
-      .eq('user_id', SHARED_USER_ID);
-    
-    if (priceHistoryError) {
-      console.error('Error updating price history:', priceHistoryError);
-      alert('Failed to update price history');
-      return;
-    }
+      // Update all price history with new item name
+      const { error: priceHistoryError } = await supabase
+        .from('price_history')
+        .update({ item_name: editingValue.trim() })
+        .eq('item_name', oldItem)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (priceHistoryError) {
+        throw new Error(`Price history update failed: ${priceHistoryError.message}`);
+      }
 
-    // Update shopping list with new item name
-    await supabase
-      .from('shopping_list')
-      .update({ item_name: editingValue.trim() })
-      .eq('item_name', oldItem)
-      .eq('user_id', SHARED_USER_ID);
-  
-    // Update local state
-    setItems(items.map(item => 
-      item.name === oldItem ? { ...item, name: editingValue.trim() } : item
-    ));
-  
-    cancelEdit();
+      // Update shopping list with new item name
+      const { error: shoppingListError } = await supabase
+        .from('shopping_list')
+        .update({ item_name: editingValue.trim() })
+        .eq('item_name', oldItem)
+        .eq('user_id', SHARED_USER_ID);
+      
+      if (shoppingListError) {
+        throw new Error(`Shopping list update failed: ${shoppingListError.message}`);
+      }
+    
+      // Only update local state if ALL database updates succeeded
+      setItems(items.map(item => 
+        item.name === oldItem ? { ...item, name: editingValue.trim() } : item
+      ));
+    
+      cancelEdit();
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('Failed to save changes. Check your internet connection and try again.');
+      // Keep edit mode open so user can try again
+    }
   };
 
   const favoriteItems = items.filter(i => i.is_favorite).sort((a, b) => a.name.localeCompare(b.name));
