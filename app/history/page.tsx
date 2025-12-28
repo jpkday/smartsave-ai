@@ -203,7 +203,7 @@ function HistoryContent() {
   };
 
   const deletePriceEntry = async (recordId: string, recordDate: string, recordPrice: string) => {
-    if (!confirm(`Delete price entry: ${parseFloat(recordPrice).toFixed(2)} from ${parseLocalDate(recordDate).toLocaleDateString()}?`)) {
+    if (!confirm(`Delete price entry: $${parseFloat(recordPrice).toFixed(2)} from ${parseLocalDate(recordDate).toLocaleDateString()}?`)) {
       return;
     }
 
@@ -220,6 +220,35 @@ function HistoryContent() {
 
     // Reload history to show updated list
     loadPriceHistory();
+  };
+
+  const confirmPrice = async (priceToConfirm: string, storeOverride?: string) => {
+    try {
+      // Use override store if provided (for "All Stores" view), otherwise use selectedStore
+      const storeToUse = storeOverride || selectedStore;
+      
+      // Insert new price record with today's date
+      const { error } = await supabase
+        .from('price_history')
+        .insert({
+          item_name: selectedItem,
+          store: storeToUse,
+          price: priceToConfirm,
+          user_id: SHARED_USER_ID,
+          recorded_date: getLocalDateString(),
+          created_at: new Date().toISOString()
+        });
+
+      if (error) {
+        throw new Error(`Failed to confirm price: ${error.message}`);
+      }
+
+      // Reload history to show new entry
+      loadPriceHistory();
+    } catch (error) {
+      console.error('Error confirming price:', error);
+      alert('Failed to confirm price. Check your connection and try again.');
+    }
   };
 
   const getPriceChange = (currentPrice: string, previousPrice: string) => {
@@ -345,33 +374,47 @@ function HistoryContent() {
                     {records.map((record, idx) => {
                       const prevRecord = records[idx + 1];
                       const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
+                      const isLatest = idx === 0;
                       
                       return (
-                        <div key={record.id} className="flex justify-between items-center gap-3">
-                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-semibold text-gray-800">
-                                {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric', 
-                                  year: 'numeric' 
-                                })}
-                              </p>
-                              {change && (
-                                <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
-                                  {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                        <div key={record.id}>
+                          <div className="flex justify-between items-center gap-3">
+                            <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div>
+                                <p className="font-semibold text-gray-800">
+                                  {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric' 
+                                  })}
                                 </p>
-                              )}
+                                {change && (
+                                  <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                    {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
                             </div>
-                            <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                            <button
+                              onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
+                              className="text-red-600 hover:text-red-800 cursor-pointer"
+                              title="Delete entry"
+                            >
+                              🗑️
+                            </button>
                           </div>
-                          <button
-                            onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                            className="text-red-600 hover:text-red-800 cursor-pointer"
-                            title="Delete entry"
-                          >
-                            🗑️
-                          </button>
+                          {isLatest && (
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                onClick={() => confirmPrice(record.price)}
+                                className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-lg font-semibold text-sm transition cursor-pointer flex items-center gap-1"
+                                title="Confirm this price for today"
+                              >
+                                Confirm Price
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -383,8 +426,8 @@ function HistoryContent() {
         ) : (
           // Show single store view with add entry widget
           <div className="space-y-6">
-            {/* Price Graph - Only shows if there's data */}
-            {priceHistory.length > 1 && (
+            {/* Price Graph - Shows if there's any data */}
+            {priceHistory.length > 0 && (
               <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
                   Price Over Time
@@ -432,33 +475,47 @@ function HistoryContent() {
                   {priceHistory.map((record, idx) => {
                     const prevRecord = priceHistory[idx + 1];
                     const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
+                    const isLatest = idx === 0;
                     
                     return (
-                      <div key={record.id} className="flex justify-between items-center gap-3">
-                        <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-semibold text-gray-800">
-                              {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </p>
-                            {change && (
-                              <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
-                                {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                      <div key={record.id}>
+                        <div className="flex justify-between items-center gap-3">
+                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-gray-800">
+                                {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  year: 'numeric' 
+                                })}
                               </p>
-                            )}
+                              {change && (
+                                <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                  {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
                           </div>
-                          <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                          <button
+                            onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
+                            className="text-red-600 hover:text-red-800 cursor-pointer"
+                            title="Delete entry"
+                          >
+                            🗑️
+                          </button>
                         </div>
-                        <button
-                          onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                          className="text-red-600 hover:text-red-800 cursor-pointer"
-                          title="Delete entry"
-                        >
-                          🗑️
-                        </button>
+                        {isLatest && (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              onClick={() => confirmPrice(record.price)}
+                              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-lg font-semibold transition cursor-pointer"
+                              title="Confirm this price for today"
+                            >
+                              Confirm Price
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
