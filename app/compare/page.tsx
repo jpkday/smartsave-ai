@@ -235,19 +235,28 @@ function CompareContent() {
     }
   };
 
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const filteredItems = filterLetter === 'All' 
+    ? items.sort() 
+    : items.sort().filter(item => item.toUpperCase().startsWith(filterLetter));
+  
+  const filteredFavorites = filterLetter === 'All'
+    ? favorites
+    : favorites.filter(fav => fav.toUpperCase().startsWith(filterLetter));
+
   const selectAllFavorites = () => {
-    const newSelectedItems = [...new Set([...selectedItems, ...favorites])];
+    const newSelectedItems = [...new Set([...selectedItems, ...filteredFavorites])];
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
   };
 
   const deselectAllFavorites = () => {
-    const newSelectedItems = selectedItems.filter(item => !favorites.includes(item));
+    const newSelectedItems = selectedItems.filter(item => !filteredFavorites.includes(item));
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
   };
 
-  const allFavoritesSelected = favorites.length > 0 && favorites.every(fav => selectedItems.includes(fav));
+  const allFavoritesSelected = filteredFavorites.length > 0 && filteredFavorites.every(fav => selectedItems.includes(fav));
 
   const getDaysAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -283,42 +292,43 @@ function CompareContent() {
     if (itemPrices.length === 0) return null;
 
     const minPrice = Math.min(...itemPrices);
-    const maxPrice = Math.max(...itemPrices);
-    const range = maxPrice - minPrice;
+    
+    // Calculate percentage above minimum
+    const percentAboveMin = ((currentPrice - minPrice) / minPrice) * 100;
+    const percentInt = Math.round(percentAboveMin);
 
-    // If all prices are the same, it's neutral
-    if (range === 0) return null;
-
-    const threshold = range * 0.33;
-
-    if (currentPrice <= minPrice + threshold) {
+    // Best price = show "Best Price"
+    if (currentPrice === minPrice) {
       return { 
-        label: 'Best Price!', 
-        mobileLabel: 'Best Price!',
+        label: 'Best Price', 
+        mobileLabel: 'Best Price',
         emoji: '✅', 
-        color: 'text-green-600' 
-      };
-    } else if (currentPrice >= maxPrice - threshold) {
-      return { 
-        label: 'Skip This One', 
-        mobileLabel: 'Skip',
-        emoji: '❌', 
-        color: 'text-red-600' 
-      };
-    } else {
-      return { 
-        label: 'Close Enough', 
-        mobileLabel: 'Close Enough',
-        emoji: '➖', 
-        color: 'text-yellow-600' 
+        color: 'text-green-600',
+        bgColor: 'bg-green-50'
       };
     }
+    
+    // 1-10% above minimum = "Close Enough"
+    if (percentAboveMin <= 10) {
+      return { 
+        label: `Close Enough (${percentInt}% more)`, 
+        mobileLabel: `Close Enough (${percentInt}% more)`,
+        emoji: '➖', 
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50'
+      };
+    }
+    
+    // More than 10% above minimum = "Skip" with percentage
+    return { 
+      label: `Skip This One (${percentInt}% more)`, 
+      mobileLabel: `Skip (${percentInt}% more)`,
+      emoji: '❌', 
+      color: 'text-red-600',
+      bgColor: 'bg-red-50'
+    };
   };
 
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const filteredItems = filterLetter === 'All' 
-    ? items.sort() 
-    : items.sort().filter(item => item.toUpperCase().startsWith(filterLetter));
   const storeData = calculateBestStore();
   const sortedStores = Object.entries(storeData)
     .filter(([, data]) => data.coverage > 0) // Only show stores with at least 1 item
@@ -362,8 +372,8 @@ function CompareContent() {
           </div>
         </div>
 
-        {/* Alphabet Filter */}
-        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        {/* Alphabet Filter - Desktop Only */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
@@ -393,9 +403,32 @@ function CompareContent() {
           </div>
         </div>
 
-        {/* Favorites Widget */}
-        {favorites.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+        {/* Mobile Item Selector */}
+        <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item to Compare</label>
+          <select
+            value={selectedItems.length === 1 ? selectedItems[0] : ''}
+            onChange={(e) => {
+              if (e.target.value) {
+                setSelectedItems([e.target.value]);
+                updateURL([e.target.value]);
+              } else {
+                setSelectedItems([]);
+                updateURL([]);
+              }
+            }}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+          >
+            <option value="">Choose an item...</option>
+            {items.map(item => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Favorites Widget - Desktop Only */}
+        {filteredFavorites.length > 0 && (
+          <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg md:text-xl font-bold text-gray-800">⭐ Favorites</h2>
               <button
@@ -406,7 +439,7 @@ function CompareContent() {
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {favorites.map(item => (
+              {filteredFavorites.map(item => (
                 <button
                   key={item}
                   onClick={() => toggleItem(item)}
@@ -423,8 +456,8 @@ function CompareContent() {
           </div>
         )}
 
-        {/* Shopping List */}
-        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+        {/* Shopping List - Desktop Only */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
             {selectedItems.length > 0 && (
@@ -457,7 +490,7 @@ function CompareContent() {
         </div>
 
         {/* Results */}
-        {selectedItems.length > 0 && (
+        {selectedItems.length > 0 ? (
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Stores</h2>
             
@@ -486,19 +519,21 @@ function CompareContent() {
                               </span>
                             )}
                           </div>
-                          <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
-                            isComplete ? 'text-green-600' : 'text-orange-600'
-                          }`}>
-                            <span>
-                              {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
-                              {!isComplete && ' ⚠️'}
-                            </span>
-                            {isComplete && (
-                              <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
-                                ✓
+                          {selectedItems.length > 1 && (
+                            <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
+                              isComplete ? 'text-green-600' : 'text-orange-600'
+                            }`}>
+                              <span>
+                                {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
+                                {!isComplete && ' ⚠️'}
                               </span>
-                            )}
-                          </p>
+                              {isComplete && selectedItems.length > 1 && (
+                                <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
+                                  ✓
+                                </span>
+                              )}
+                            </p>
+                          )}
                           {selectedItems.length > 0 && (
                             <div className="mt-1 space-y-0.5">
                               {selectedItems.map(item => {
@@ -555,6 +590,10 @@ function CompareContent() {
               </div>
             )}
           </div>
+        ) : (
+          <div className="md:hidden bg-white rounded-lg shadow-lg p-8 text-center">
+            <p className="text-gray-500 text-lg">Select an item above to compare prices</p>
+          </div>
         )}
 
         {/* Quick Add Price Entry Widget */}
@@ -606,7 +645,7 @@ function CompareContent() {
         )}
 
         {selectedItems.length === 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+          <div className="hidden md:block bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Select items above to compare prices</p>
           </div>
         )}
