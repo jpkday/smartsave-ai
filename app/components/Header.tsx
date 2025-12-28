@@ -59,7 +59,7 @@ export default function Header({ currentPage }: HeaderProps) {
           >
             {pages.map(page => (
               <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                {page.icon} {page.name}{page.name === currentPage ? ' (current)' : ''}
+                {page.icon} {page.name}
               </option>
             ))}
           </select>
