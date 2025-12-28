@@ -12,11 +12,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "SmartSaveAI",
-  description: "Stop overpaying for groceries",
-};
-
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -24,6 +19,18 @@ export const viewport = {
   userScalable: true,
 };
 
+export const metadata = {
+  title: 'SmartSaveAI',
+  description: 'Stop overpaying for groceries. Shop smart and save.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SmartSaveAI',
+  },
+  other: {
+    'apple-mobile-web-app-title': 'SmartSaveAI',
+  }
+}
 export default function RootLayout({
   children,
 }: Readonly<{
