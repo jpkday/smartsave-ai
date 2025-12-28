@@ -314,59 +314,62 @@ function HistoryContent() {
           <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Loading...</p>
           </div>
-        ) : priceHistory.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
-            <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItem}</p>
-          </div>
         ) : selectedStore === 'All' ? (
-          // Show grouped by store
-          <div className="space-y-4">
-            {Object.entries(groupedHistory).sort(([a], [b]) => a.localeCompare(b)).map(([store, records]) => (
-              <div key={store} className="bg-white rounded-lg shadow-lg p-4 md:p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">{store}</h2>
-                <div className="space-y-3">
-                  {records.map((record, idx) => {
-                    const prevRecord = records[idx + 1];
-                    const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
-                    
-                    return (
-                      <div key={record.id} className="flex justify-between items-center gap-3">
-                        <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-semibold text-gray-800">
-                              {new Date(record.recorded_date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </p>
-                            {change && (
-                              <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
-                                {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+          // Show grouped by store (All Stores view)
+          priceHistory.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+              <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItem}</p>
+              <p className="text-gray-400 text-sm mt-2">Select a specific store to add your first price entry</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedHistory).sort(([a], [b]) => a.localeCompare(b)).map(([store, records]) => (
+                <div key={store} className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">{store}</h2>
+                  <div className="space-y-3">
+                    {records.map((record, idx) => {
+                      const prevRecord = records[idx + 1];
+                      const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
+                      
+                      return (
+                        <div key={record.id} className="flex justify-between items-center gap-3">
+                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-gray-800">
+                                {new Date(record.recorded_date).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  year: 'numeric' 
+                                })}
                               </p>
-                            )}
+                              {change && (
+                                <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                  {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
                           </div>
-                          <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                          <button
+                            onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
+                            className="text-red-600 hover:text-red-800 cursor-pointer"
+                            title="Delete entry"
+                          >
+                            🗑️
+                          </button>
                         </div>
-                        <button
-                          onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                          className="text-red-600 hover:text-red-800 cursor-pointer"
-                          title="Delete entry"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         ) : (
-          // Show single store with graph and timeline
+          // Show single store view with add entry widget
           <div className="space-y-6">
-            {/* Price Graph */}
-            {chartData.length > 1 && (
+            {/* Price Graph - Only shows if there's data */}
+            {priceHistory.length > 1 && (
               <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
                   Price Over Time
@@ -404,49 +407,56 @@ function HistoryContent() {
               </div>
             )}
             
-            {/* Timeline List */}
-            <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
-                {selectedItem} at {selectedStore}
-              </h2>
-              <div className="space-y-3">
-                {priceHistory.map((record, idx) => {
-                  const prevRecord = priceHistory[idx + 1];
-                  const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
-                  
-                  return (
-                    <div key={record.id} className="flex justify-between items-center gap-3">
-                      <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-semibold text-gray-800">
-                            {new Date(record.recorded_date).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              year: 'numeric' 
-                            })}
-                          </p>
-                          {change && (
-                            <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
-                              {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+            {/* Timeline List - Shows existing data or helpful message */}
+            {priceHistory.length > 0 ? (
+              <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+                  {selectedItem} at {selectedStore}
+                </h2>
+                <div className="space-y-3">
+                  {priceHistory.map((record, idx) => {
+                    const prevRecord = priceHistory[idx + 1];
+                    const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
+                    
+                    return (
+                      <div key={record.id} className="flex justify-between items-center gap-3">
+                        <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-semibold text-gray-800">
+                              {new Date(record.recorded_date).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              })}
                             </p>
-                          )}
+                            {change && (
+                              <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
                         </div>
-                        <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                        <button
+                          onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
+                          className="text-red-600 hover:text-red-800 cursor-pointer"
+                          title="Delete entry"
+                        >
+                          🗑️
+                        </button>
                       </div>
-                      <button
-                        onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                        className="text-red-600 hover:text-red-800 cursor-pointer"
-                        title="Delete entry"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItem} at {selectedStore}</p>
+                <p className="text-gray-400 text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
+              </div>
+            )}
 
-            {/* Add Price Entry Widget */}
+            {/* Add Price Entry Widget - At bottom */}
             <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Add Price Entry</h2>
               <p className="text-sm text-gray-600 mb-4">
