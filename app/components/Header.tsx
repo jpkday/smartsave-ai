@@ -17,18 +17,18 @@ export default function Header({ currentPage }: HeaderProps) {
   ];
 
   return (
-    <nav>
+    <nav className="w-full">
       {/* Mobile View - Home Button + Page Dropdown */}
-      <div className="flex md:hidden items-center gap-3 w-full">
+      <div className="flex md:hidden items-center gap-3">
         <Link 
           href="/" 
-          className="bg-gray-600 text-white p-3 rounded-lg font-bold hover:bg-gray-700 transition flex items-center justify-center"
+          className="bg-gray-600 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
         >
           <span className="text-xl">🏠</span>
         </Link>
         <div className="flex-1 relative">
           <div 
-            className={`px-4 py-3 rounded-lg font-bold text-white text-lg text-center flex items-center justify-center gap-2 ${
+            className={`w-full px-4 py-4 rounded-lg font-bold text-white text-base text-center flex items-center justify-center gap-2 ${
               (() => {
                 const page = pages.find(p => p.name === currentPage);
                 return page ? page.color.split(' ')[0] : 'bg-gray-600';
