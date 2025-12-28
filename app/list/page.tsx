@@ -28,6 +28,8 @@ export default function ShoppingList() {
   const [showFavorites, setShowFavorites] = useState(true);
   const [showAddItems, setShowAddItems] = useState(true);
   const [newItem, setNewItem] = useState('');
+  const [storeMode, setStoreMode] = useState(false);
+  const [showCheckedItems, setShowCheckedItems] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -380,16 +382,31 @@ export default function ShoppingList() {
         {/* White Header Box */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Shopping List</h1>
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Plan your shopping trip and save money</p>
+              
+              {/* Mobile Store Mode Toggle */}
+              <div className="md:hidden mt-2">
+                <button
+                  onClick={() => setStoreMode(!storeMode)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
+                    storeMode
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {storeMode ? '🛒 Store Mode ON' : '📝 Store Mode OFF'}
+                </button>
+              </div>
             </div>
             <Header currentPage="Shopping List" />
           </div>
         </div>
 
-        {/* Alphabet Filter */}
-        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        {/* Alphabet Filter - Hidden in Store Mode on Mobile */}
+        {!storeMode && (
+          <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
@@ -418,9 +435,10 @@ export default function ShoppingList() {
             ))}
           </div>
         </div>
+        )}
 
-        {/* Favorites Widget - Collapsible */}
-        {filteredFavorites.length > 0 && (
+        {/* Favorites Widget - Hidden in Store Mode on Mobile */}
+        {!storeMode && filteredFavorites.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <button
@@ -465,7 +483,8 @@ export default function ShoppingList() {
           </div>
         )}
 
-        {/* Add Items Section - Collapsible */}
+        {/* Add Items Section - Hidden in Store Mode on Mobile */}
+        {!storeMode && (
         <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
           <button
             onClick={() => setShowAddItems(!showAddItems)}
@@ -499,8 +518,10 @@ export default function ShoppingList() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Add New Item Widget */}
+        {/* Add New Item Widget - Position based on Store Mode */}
+        {!storeMode && (
         <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
           <div className="flex gap-2">
@@ -520,6 +541,7 @@ export default function ShoppingList() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Shopping List */}
         {listItems.length > 0 ? (
@@ -530,12 +552,23 @@ export default function ShoppingList() {
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800">
                   Your List ({listItems.filter(i => !i.checked).length} items)
                 </h2>
-                <button
-                  onClick={clearList}
-                  className="text-red-600 hover:text-red-800 font-semibold cursor-pointer text-sm"
-                >
-                  Clear All
-                </button>
+                <div className="flex gap-2">
+                  {/* Show/Hide Checked Items (Store Mode Only on Mobile) */}
+                  {storeMode && listItems.some(i => i.checked) && (
+                    <button
+                      onClick={() => setShowCheckedItems(!showCheckedItems)}
+                      className="text-xs md:text-sm text-gray-600 hover:text-gray-800 font-semibold cursor-pointer md:hidden"
+                    >
+                      {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
+                    </button>
+                  )}
+                  <button
+                    onClick={clearList}
+                    className="text-red-600 hover:text-red-800 font-semibold cursor-pointer text-sm"
+                  >
+                    Clear All
+                  </button>
+                </div>
               </div>
               
               {/* Group items by best store */}
@@ -544,7 +577,12 @@ export default function ShoppingList() {
                 const itemsByStore: {[store: string]: ListItem[]} = {};
                 const itemsWithoutPrice: ListItem[] = [];
                 
-                listItems
+                // Filter items based on store mode
+                const displayItems = storeMode && !showCheckedItems 
+                  ? listItems.filter(item => !item.checked)
+                  : listItems;
+                
+                displayItems
                   .sort((a, b) => {
                     // First sort by favorite status
                     const aIsFav = favorites.includes(a.item_name);
@@ -764,8 +802,31 @@ export default function ShoppingList() {
               </div>
             </div>
 
-            {/* Best Store Recommendation */}
-            {sortedStores.length > 0 && (
+            {/* Add New Item Widget - In Store Mode, show below list */}
+            {storeMode && (
+              <div className="bg-white rounded-lg shadow-lg p-4 mt-6">
+                <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g., Organic bananas"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    value={newItem}
+                    onChange={(e) => setNewItem(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                  />
+                  <button
+                    onClick={addNewItem}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Best Store Recommendation - Hidden in Store Mode on Mobile */}
+            {!storeMode && sortedStores.length > 0 && (
               <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Single Store</h2>
                 <div className="space-y-3">
@@ -857,7 +918,7 @@ export default function ShoppingList() {
         ) : (
           <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-lg mb-4">Your shopping list is empty</p>
-            {favorites.length > 0 && (
+            {favorites.length > 0 && !storeMode && (
               <button
                 onClick={addFavorites}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer inline-flex items-center gap-2"
@@ -865,6 +926,29 @@ export default function ShoppingList() {
                 <span className="text-xl">⭐</span>
                 Add Favorites to Get Started
               </button>
+            )}
+            
+            {/* Add New Item in Store Mode when list is empty */}
+            {storeMode && (
+              <div className="bg-white rounded-lg shadow-lg p-4 mt-6 max-w-md mx-auto">
+                <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g., Organic bananas"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    value={newItem}
+                    onChange={(e) => setNewItem(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                  />
+                  <button
+                    onClick={addNewItem}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
