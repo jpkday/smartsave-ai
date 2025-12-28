@@ -28,8 +28,19 @@ export default function ShoppingList() {
   const [showFavorites, setShowFavorites] = useState(true);
   const [showAddItems, setShowAddItems] = useState(true);
   const [newItem, setNewItem] = useState('');
-  const [storeMode, setStoreMode] = useState(false);
   const [showCheckedItems, setShowCheckedItems] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // 768px is Tailwind's md breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -450,27 +461,14 @@ export default function ShoppingList() {
             <Header currentPage="Shopping List" />
           </div>
           
-          {/* Mobile: Header Nav and Store Mode Toggle on same row */}
-          <div className="md:hidden flex items-center gap-3">
-            <button
-              onClick={() => setStoreMode(!storeMode)}
-              className={`px-4 py-3 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
-                storeMode
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {storeMode ? '🛒 Store Mode ON' : '📝 Store Mode OFF'}
-            </button>
-            <div className="flex-1">
-              <Header currentPage="Shopping List" />
-            </div>
+          {/* Mobile: Just Header Nav */}
+          <div className="md:hidden">
+            <Header currentPage="Shopping List" />
           </div>
         </div>
 
-        {/* Alphabet Filter - Hidden in Store Mode on Mobile */}
-        {!storeMode && (
-          <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        {/* Alphabet Filter - Hidden on Mobile */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
@@ -499,11 +497,10 @@ export default function ShoppingList() {
             ))}
           </div>
         </div>
-        )}
 
-        {/* Favorites Widget - Hidden in Store Mode on Mobile */}
-        {!storeMode && filteredFavorites.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+        {/* Favorites Widget - Hidden on Mobile */}
+        {filteredFavorites.length > 0 && (
+          <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <button
                 onClick={() => setShowFavorites(!showFavorites)}
@@ -547,9 +544,8 @@ export default function ShoppingList() {
           </div>
         )}
 
-        {/* Add Items Section - Hidden in Store Mode on Mobile */}
-        {!storeMode && (
-        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+        {/* Add Items Section - Hidden on Mobile */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
           <button
             onClick={() => setShowAddItems(!showAddItems)}
             className="flex items-center gap-2 text-xl font-bold mb-4 text-gray-800 cursor-pointer hover:text-blue-600 transition"
@@ -582,11 +578,9 @@ export default function ShoppingList() {
             </div>
           )}
         </div>
-        )}
 
-        {/* Add New Item Widget - Position based on Store Mode */}
-        {!storeMode && (
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+        {/* Add New Item Widget - Hidden on Mobile (shows below list on mobile) */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 mb-6">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
           <div className="flex gap-2">
             <input
@@ -605,7 +599,6 @@ export default function ShoppingList() {
             </button>
           </div>
         </div>
-        )}
 
         {/* Shopping List */}
         {listItems.length > 0 ? (
@@ -617,11 +610,11 @@ export default function ShoppingList() {
                   Your List ({listItems.filter(i => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
-                  {/* Show/Hide Checked Items (Store Mode Only on Mobile) */}
-                  {storeMode && listItems.some(i => i.checked) && (
+                  {/* Show/Hide Checked Items - Mobile Only */}
+                  {isMobile && listItems.some(i => i.checked) && (
                     <button
                       onClick={() => setShowCheckedItems(!showCheckedItems)}
-                      className="text-xs md:text-sm text-gray-600 hover:text-gray-800 font-semibold cursor-pointer md:hidden"
+                      className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
                     >
                       {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
                     </button>
@@ -641,8 +634,8 @@ export default function ShoppingList() {
                 const itemsByStore: {[store: string]: ListItem[]} = {};
                 const itemsWithoutPrice: ListItem[] = [];
                 
-                // Filter items based on store mode
-                const displayItems = storeMode && !showCheckedItems 
+                // Filter items: on mobile hide checked items (unless showCheckedItems is true)
+                const displayItems = isMobile && !showCheckedItems 
                   ? listItems.filter(item => !item.checked)
                   : listItems;
                 
@@ -866,32 +859,30 @@ export default function ShoppingList() {
               </div>
             </div>
 
-            {/* Add New Item Widget - In Store Mode, show below list */}
-            {storeMode && (
-              <div className="bg-white rounded-lg shadow-lg p-4 mt-6">
-                <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g., Organic bananas"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                  />
-                  <button
-                    onClick={addNewItem}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-                  >
-                    Add
-                  </button>
-                </div>
+            {/* Add New Item Widget - Mobile Only, shown below list */}
+            <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mt-6">
+              <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g., Organic bananas"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                />
+                <button
+                  onClick={addNewItem}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                >
+                  Add
+                </button>
               </div>
-            )}
+            </div>
 
-            {/* Best Store Recommendation - Hidden in Store Mode on Mobile */}
-            {!storeMode && sortedStores.length > 0 && (
-              <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+            {/* Best Store Recommendation - Desktop Only */}
+            {sortedStores.length > 0 && (
+              <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Single Store</h2>
                 <div className="space-y-3">
                   {sortedStores.map(([store, data], idx) => {
@@ -945,14 +936,9 @@ export default function ShoppingList() {
                                         {item.quantity > 1 && ` × ${item.quantity}`}
                                         <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
                                         {classification && (
-                                          <>
-                                            <span className={`hidden md:inline ml-1 font-semibold ${classification.color}`}>
-                                              {classification.emoji} {classification.label}
-                                            </span>
-                                            <span className={`md:hidden ml-1 font-semibold ${classification.color}`}>
-                                              {classification.emoji} {classification.mobileLabel}
-                                            </span>
-                                          </>
+                                          <span className={`ml-1 font-semibold ${classification.color}`}>
+                                            {classification.emoji} {classification.label}
+                                          </span>
                                         )}
                                       </p>
                                     );
@@ -984,38 +970,36 @@ export default function ShoppingList() {
         ) : (
           <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-lg mb-4">Your shopping list is empty</p>
-            {favorites.length > 0 && !storeMode && (
+            {favorites.length > 0 && (
               <button
                 onClick={addFavorites}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer inline-flex items-center gap-2"
+                className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer items-center gap-2"
               >
                 <span className="text-xl">⭐</span>
                 Add Favorites to Get Started
               </button>
             )}
             
-            {/* Add New Item in Store Mode when list is empty */}
-            {storeMode && (
-              <div className="bg-white rounded-lg shadow-lg p-4 mt-6 max-w-md mx-auto">
-                <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g., Organic bananas"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                  />
-                  <button
-                    onClick={addNewItem}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-                  >
-                    Add
-                  </button>
-                </div>
+            {/* Add New Item when list is empty - Always visible */}
+            <div className="bg-white rounded-lg shadow-lg p-4 mt-6 max-w-md mx-auto">
+              <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g., Organic bananas"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                />
+                <button
+                  onClick={addNewItem}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                >
+                  Add
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
