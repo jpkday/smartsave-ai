@@ -269,7 +269,7 @@ function CompareContent() {
     const years = Math.floor(diffDays / 365);
     return years === 1 ? '1 year ago' : `${years} years ago`;
   };
-
+  
   const getPriceClassification = (itemName: string, currentPrice: number) => {
     // Get all prices for this item across all stores
     const itemPrices: number[] = [];
@@ -584,6 +584,7 @@ function CompareContent() {
                   <span className="text-gray-800 font-semibold mr-1">$</span>
                   <input
                     type="text"
+                    inputMode="decimal"
                     placeholder="0.00"
                     value={quickAddPrice}
                     onChange={(e) => handlePriceChange(e.target.value)}

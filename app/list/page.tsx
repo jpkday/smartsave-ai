@@ -381,26 +381,30 @@ export default function ShoppingList() {
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Shopping List</h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Plan your shopping trip and save money</p>
-              
-              {/* Mobile Store Mode Toggle */}
-              <div className="md:hidden mt-2">
-                <button
-                  onClick={() => setStoreMode(!storeMode)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
-                    storeMode
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {storeMode ? '🛒 Store Mode ON' : '📝 Store Mode OFF'}
-                </button>
-              </div>
+          {/* Desktop: Title/Subtitle on left, Nav on right */}
+          <div className="hidden md:flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Shopping List</h1>
+              <p className="text-xs md:text-sm text-gray-600 mt-2">Plan your shopping trip and save money</p>
             </div>
             <Header currentPage="Shopping List" />
+          </div>
+          
+          {/* Mobile: Header Nav and Store Mode Toggle on same row */}
+          <div className="md:hidden flex items-center gap-3">
+            <button
+              onClick={() => setStoreMode(!storeMode)}
+              className={`px-4 py-3 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
+                storeMode
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {storeMode ? '🛒 Store Mode ON' : '📝 Store Mode OFF'}
+            </button>
+            <div className="flex-1">
+              <Header currentPage="Shopping List" />
+            </div>
           </div>
         </div>
 
