@@ -1,6 +1,6 @@
 {
   "name": "SmartSaveAI",
-  "short_name": "$Save",
+  "short_name": "SmartSaveAI",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
