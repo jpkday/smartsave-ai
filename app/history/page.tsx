@@ -17,6 +17,21 @@ interface PriceRecord {
   created_at: string;
 }
 
+// Helper function to get local date in YYYY-MM-DD format
+const getLocalDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to parse date string as local date (not UTC)
+const parseLocalDate = (dateString: string) => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+};
+
 function HistoryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -33,8 +48,8 @@ function HistoryContent() {
 
   useEffect(() => {
     loadStoresAndItems();
-    // Set today's date as default for new entries
-    setNewDate(new Date().toISOString().split('T')[0]);
+    // Set today's date as default for new entries (using local time)
+    setNewDate(getLocalDateString());
     
     // Load from URL parameters with proper decoding
     const itemParam = searchParams.get('item');
@@ -179,16 +194,16 @@ function HistoryContent() {
       return;
     }
 
-    // Clear form
+    // Clear form (using local date)
     setNewPrice('');
-    setNewDate(new Date().toISOString().split('T')[0]);
+    setNewDate(getLocalDateString());
 
     // Reload history to show new entry
     loadPriceHistory();
   };
 
   const deletePriceEntry = async (recordId: string, recordDate: string, recordPrice: string) => {
-    if (!confirm(`Delete price entry: $${parseFloat(recordPrice).toFixed(2)} from ${new Date(recordDate).toLocaleDateString()}?`)) {
+    if (!confirm(`Delete price entry: ${parseFloat(recordPrice).toFixed(2)} from ${parseLocalDate(recordDate).toLocaleDateString()}?`)) {
       return;
     }
 
@@ -234,7 +249,7 @@ function HistoryContent() {
 
   // Prepare data for chart (reverse order for chronological display)
   const chartData = priceHistory.slice().reverse().map(record => ({
-    date: new Date(record.recorded_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     price: parseFloat(record.price),
     fullDate: record.recorded_date
   }));
@@ -336,7 +351,7 @@ function HistoryContent() {
                           <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                             <div>
                               <p className="font-semibold text-gray-800">
-                                {new Date(record.recorded_date).toLocaleDateString('en-US', { 
+                                {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
                                   month: 'short', 
                                   day: 'numeric', 
                                   year: 'numeric' 
@@ -423,7 +438,7 @@ function HistoryContent() {
                         <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                           <div>
                             <p className="font-semibold text-gray-800">
-                              {new Date(record.recorded_date).toLocaleDateString('en-US', { 
+                              {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
                                 month: 'short', 
                                 day: 'numeric', 
                                 year: 'numeric' 
