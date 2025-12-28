@@ -318,18 +318,7 @@ function PricesContent() {
     return 'bg-white';
   };
 
-  const sortedItems = items.sort().sort((a, b) => {
-    // Check if items have any prices
-    const aHasPrices = stores.some(store => parseFloat(prices[`${store}-${a}`] || '0') > 0);
-    const bHasPrices = stores.some(store => parseFloat(prices[`${store}-${b}`] || '0') > 0);
-    
-    // Items with prices come first
-    if (aHasPrices && !bHasPrices) return -1;
-    if (!aHasPrices && bHasPrices) return 1;
-    
-    // Within each group, sort alphabetically
-    return 0;
-  });
+  const sortedItems = items.sort((a, b) => a.localeCompare(b));
 
   // Filter items based on selected item filter
   const filteredItems = sortedItems.filter(item => {
