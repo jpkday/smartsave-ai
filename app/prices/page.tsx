@@ -17,26 +17,86 @@ function PricesContent() {
   const [items, setItems] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
-  const [selectedStore, setSelectedStore] = useState<string>(''); // For mobile view
-  const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All'); // For item filtering
-  const [pricesDates, setPricesDates] = useState<{[key: string]: string}>({}); // Track last updated dates
+  const [selectedStore, setSelectedStore] = useState<string>('');
+  const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All');
+  const [pricesDates, setPricesDates] = useState<{[key: string]: string}>({});
   const [showCopied, setShowCopied] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Load items and prices when page loads
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialLoad || stores.length === 0) return;
     
     // Load from URL parameters
     const storeParam = searchParams.get('store');
     const itemParam = searchParams.get('item');
     
-    if (storeParam) {
-      setSelectedStore(storeParam);
+    if (storeParam || itemParam) {
+      // URL params take priority
+      if (storeParam) {
+        setSelectedStore(storeParam);
+        localStorage.setItem('prices_last_store', storeParam);
+      } else if (stores.length > 0) {
+        // Check localStorage for store if not in URL
+        try {
+          const lastStore = localStorage.getItem('prices_last_store');
+          if (lastStore && stores.includes(lastStore)) {
+            setSelectedStore(lastStore);
+          } else {
+            setSelectedStore(stores[0]);
+          }
+        } catch (e) {
+          setSelectedStore(stores[0]);
+        }
+      }
+      
+      if (itemParam) {
+        setSelectedItemFilter(itemParam);
+        localStorage.setItem('prices_last_item_filter', itemParam);
+      } else {
+        // Check localStorage for item filter
+        try {
+          const lastItemFilter = localStorage.getItem('prices_last_item_filter');
+          if (lastItemFilter) {
+            setSelectedItemFilter(lastItemFilter);
+          }
+        } catch (e) {
+          console.error('Failed to load from localStorage:', e);
+        }
+      }
+    } else {
+      // No URL params - check localStorage
+      try {
+        const lastStore = localStorage.getItem('prices_last_store');
+        const lastItemFilter = localStorage.getItem('prices_last_item_filter');
+        
+        if (lastStore && stores.includes(lastStore)) {
+          setSelectedStore(lastStore);
+        } else if (stores.length > 0) {
+          setSelectedStore(stores[0]);
+        }
+        
+        if (lastItemFilter) {
+          setSelectedItemFilter(lastItemFilter);
+        }
+        
+        // Update URL with loaded preferences
+        if (lastStore || lastItemFilter) {
+          updateURL(lastStore || stores[0], lastItemFilter || 'All');
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage:', e);
+        if (stores.length > 0) {
+          setSelectedStore(stores[0]);
+        }
+      }
     }
-    if (itemParam) {
-      setSelectedItemFilter(itemParam);
-    }
-  }, [searchParams]);
+    
+    setIsInitialLoad(false);
+  }, [searchParams, stores, isInitialLoad]);
 
   const loadData = async () => {
     // Load stores
@@ -48,9 +108,6 @@ function PricesContent() {
     if (storesData) {
       const storeNames = storesData.map(s => s.name);
       setStores(storeNames);
-      if (!selectedStore && storeNames.length > 0) {
-        setSelectedStore(storeNames[0]);
-      }
     }
 
     // Load items
@@ -377,6 +434,11 @@ function PricesContent() {
             onChange={(e) => {
               setSelectedStore(e.target.value);
               updateURL(e.target.value, selectedItemFilter);
+              try {
+                localStorage.setItem('prices_last_store', e.target.value);
+              } catch (err) {
+                console.error('Failed to save to localStorage:', err);
+              }
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
@@ -391,6 +453,11 @@ function PricesContent() {
             onChange={(e) => {
               setSelectedItemFilter(e.target.value);
               updateURL(selectedStore, e.target.value);
+              try {
+                localStorage.setItem('prices_last_item_filter', e.target.value);
+              } catch (err) {
+                console.error('Failed to save to localStorage:', err);
+              }
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
           >
@@ -572,6 +639,11 @@ function PricesContent() {
               onChange={(e) => {
                 setSelectedItemFilter(e.target.value);
                 updateURL(selectedStore, e.target.value);
+                try {
+                  localStorage.setItem('prices_last_item_filter', e.target.value);
+                } catch (err) {
+                  console.error('Failed to save to localStorage:', err);
+                }
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
             >

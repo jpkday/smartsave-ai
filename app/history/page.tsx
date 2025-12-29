@@ -45,38 +45,64 @@ function HistoryContent() {
   const [newPrice, setNewPrice] = useState('');
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     loadStoresAndItems();
     // Set today's date as default for new entries (using local time)
     setNewDate(getLocalDateString());
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialLoad || items.length === 0) return;
     
     // Load from URL parameters with proper decoding
     const itemParam = searchParams.get('item');
     const storeParam = searchParams.get('store');
     
-    if (itemParam) {
+    if (itemParam || storeParam) {
+      // URL params take priority
+      if (itemParam) {
+        try {
+          const decodedItem = JSON.parse(itemParam);
+          setSelectedItem(decodedItem);
+          localStorage.setItem('history_last_item', decodedItem);
+        } catch {
+          setSelectedItem(itemParam);
+          localStorage.setItem('history_last_item', itemParam);
+        }
+      }
+      
+      if (storeParam) {
+        try {
+          const decodedStore = JSON.parse(storeParam);
+          setSelectedStore(decodedStore);
+          localStorage.setItem('history_last_store', decodedStore);
+        } catch {
+          setSelectedStore(storeParam);
+          localStorage.setItem('history_last_store', storeParam);
+        }
+      }
+    } else {
+      // No URL params - check localStorage
       try {
-        // Try to parse as JSON first (new format)
-        const decodedItem = JSON.parse(itemParam);
-        setSelectedItem(decodedItem);
-      } catch {
-        // Fallback to direct string (old format)
-        setSelectedItem(itemParam);
+        const lastItem = localStorage.getItem('history_last_item');
+        const lastStore = localStorage.getItem('history_last_store');
+        
+        if (lastItem && items.includes(lastItem)) {
+          setSelectedItem(lastItem);
+          if (lastStore) {
+            setSelectedStore(lastStore);
+          }
+          updateURL(lastItem, lastStore || 'All');
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage:', e);
       }
     }
     
-    if (storeParam) {
-      try {
-        // Try to parse as JSON first (new format)
-        const decodedStore = JSON.parse(storeParam);
-        setSelectedStore(decodedStore);
-      } catch {
-        // Fallback to direct string (old format)
-        setSelectedStore(storeParam);
-      }
-    }
-  }, [searchParams]);
+    setIsInitialLoad(false);
+  }, [searchParams, items, isInitialLoad]);
 
   useEffect(() => {
     if (selectedItem) {
@@ -288,10 +314,11 @@ function HistoryContent() {
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
+          {/* Desktop */}
+          <div className="hidden md:flex justify-between items-start">
             <div className="flex-1">
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Price History</h1>
-              <div className="hidden md:flex items-center gap-3 mt-2">
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Price History</h1>
+              <div className="flex items-center gap-3 mt-2">
                 <p className="text-xs md:text-sm text-gray-600">Track how prices change over time</p>
                 <button
                   onClick={shareLink}
@@ -309,11 +336,16 @@ function HistoryContent() {
             </div>
             <Header currentPage="History" />
           </div>
+
+          {/* Mobile */}
+          <div className="md:hidden">
+            <Header currentPage="History" />
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Filters - Desktop: Item then Store */}
+        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
               <select
@@ -321,6 +353,11 @@ function HistoryContent() {
                 onChange={(e) => {
                   setSelectedItem(e.target.value);
                   updateURL(e.target.value, selectedStore);
+                  try {
+                    localStorage.setItem('history_last_item', e.target.value);
+                  } catch (err) {
+                    console.error('Failed to save to localStorage:', err);
+                  }
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
@@ -337,12 +374,65 @@ function HistoryContent() {
                 onChange={(e) => {
                   setSelectedStore(e.target.value);
                   updateURL(selectedItem, e.target.value);
+                  try {
+                    localStorage.setItem('history_last_store', e.target.value);
+                  } catch (err) {
+                    console.error('Failed to save to localStorage:', err);
+                  }
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
                 {stores.map(store => (
                   <option key={store} value={store}>{store}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters - Mobile: Store then Item */}
+        <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mb-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
+              <select
+                value={selectedStore}
+                onChange={(e) => {
+                  setSelectedStore(e.target.value);
+                  updateURL(selectedItem, e.target.value);
+                  try {
+                    localStorage.setItem('history_last_store', e.target.value);
+                  } catch (err) {
+                    console.error('Failed to save to localStorage:', err);
+                  }
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+              >
+                <option value="All">All Stores</option>
+                {stores.map(store => (
+                  <option key={store} value={store}>{store}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
+              <select
+                value={selectedItem}
+                onChange={(e) => {
+                  setSelectedItem(e.target.value);
+                  updateURL(e.target.value, selectedStore);
+                  try {
+                    localStorage.setItem('history_last_item', e.target.value);
+                  } catch (err) {
+                    console.error('Failed to save to localStorage:', err);
+                  }
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+              >
+                <option value="">Choose an item...</option>
+                {items.map(item => (
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>

@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
+const DEFAULT_DEMO_ITEM_ID = 43; // Item ID for demo default
 
 function CompareContent() {
   const searchParams = useSearchParams();
@@ -19,6 +20,8 @@ function CompareContent() {
   const [filterLetter, setFilterLetter] = useState<string>('All');
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [showCopied, setShowCopied] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [defaultDemoItemName, setDefaultDemoItemName] = useState<string | null>(null);
   
   // Quick Add state
   const [quickAddStore, setQuickAddStore] = useState<string>('');
@@ -26,6 +29,10 @@ function CompareContent() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialLoad || items.length === 0 || defaultDemoItemName === null) return;
     
     // Load from URL parameters
     const itemsParam = searchParams.get('items');
@@ -33,12 +40,37 @@ function CompareContent() {
       try {
         const parsedItems = JSON.parse(itemsParam);
         setSelectedItems(parsedItems);
+        // Save to localStorage
+        localStorage.setItem('compare_last_items', JSON.stringify(parsedItems));
       } catch (e) {
-        // Fallback for old URL format (comma-separated)
         setSelectedItems(itemsParam.split(','));
+        localStorage.setItem('compare_last_items', JSON.stringify(itemsParam.split(',')));
+      }
+    } else {
+      // No URL params - check localStorage first, then default to demo item
+      try {
+        const lastItems = localStorage.getItem('compare_last_items');
+        if (lastItems) {
+          const parsedLastItems = JSON.parse(lastItems);
+          setSelectedItems(parsedLastItems);
+          updateURL(parsedLastItems);
+        } else if (defaultDemoItemName && items.includes(defaultDemoItemName)) {
+          // Default to demo item for first-time users
+          setSelectedItems([defaultDemoItemName]);
+          updateURL([defaultDemoItemName]);
+          localStorage.setItem('compare_last_items', JSON.stringify([defaultDemoItemName]));
+        }
+      } catch (e) {
+        // If localStorage fails, just default to demo item
+        if (defaultDemoItemName && items.includes(defaultDemoItemName)) {
+          setSelectedItems([defaultDemoItemName]);
+          updateURL([defaultDemoItemName]);
+        }
       }
     }
-  }, [searchParams]);
+    
+    setIsInitialLoad(false);
+  }, [searchParams, items, isInitialLoad, defaultDemoItemName]);
 
   const updateURL = (items: string[]) => {
     if (items.length === 0) {
@@ -47,7 +79,6 @@ function CompareContent() {
     }
     
     const params = new URLSearchParams();
-    // Use JSON encoding to handle commas in item names
     params.set('items', JSON.stringify(items));
     
     router.push(`/compare?${params.toString()}`);
@@ -76,16 +107,23 @@ function CompareContent() {
       setStores(storesData.map(s => s.name));
     }
 
-    // Load items
+    // Load items (including ID to find demo item)
     const { data: itemsData } = await supabase
       .from('items')
-      .select('name, is_favorite')
+      .select('id, name, is_favorite')
+      .eq('user_id', SHARED_USER_ID)
       .order('name');
     
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
       const favs = itemsData.filter(i => i.is_favorite === true).map(i => i.name);
       setFavorites(favs);
+      
+      // Find the demo item by ID
+      const demoItem = itemsData.find(i => i.id === DEFAULT_DEMO_ITEM_ID);
+      if (demoItem) {
+        setDefaultDemoItemName(demoItem.name);
+      }
     }
 
     // Load latest prices from price_history
@@ -144,6 +182,13 @@ function CompareContent() {
     
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('compare_last_items', JSON.stringify(newSelectedItems));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
   };
 
   const calculateBestStore = () => {
@@ -248,12 +293,22 @@ function CompareContent() {
     const newSelectedItems = [...new Set([...selectedItems, ...filteredFavorites])];
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
+    try {
+      localStorage.setItem('compare_last_items', JSON.stringify(newSelectedItems));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
   };
 
   const deselectAllFavorites = () => {
     const newSelectedItems = selectedItems.filter(item => !filteredFavorites.includes(item));
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
+    try {
+      localStorage.setItem('compare_last_items', JSON.stringify(newSelectedItems));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
   };
 
   const allFavoritesSelected = filteredFavorites.length > 0 && filteredFavorites.every(fav => selectedItems.includes(fav));
@@ -331,13 +386,11 @@ function CompareContent() {
 
   const storeData = calculateBestStore();
   const sortedStores = Object.entries(storeData)
-    .filter(([, data]) => data.coverage > 0) // Only show stores with at least 1 item
+    .filter(([, data]) => data.coverage > 0)
     .sort(([, a], [, b]) => {
-      // Primary sort: coverage (descending)
       if (b.coverage !== a.coverage) {
         return b.coverage - a.coverage;
       }
-      // Secondary sort: price (ascending)
       return a.total - b.total;
     });
 
@@ -345,10 +398,10 @@ function CompareContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
+          <div className="hidden md:flex justify-between items-start">
             <div className="flex-1">
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
-              <div className="hidden md:flex items-center gap-3 mt-2">
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
+              <div className="flex items-center gap-3 mt-2">
                 {lastUpdated && (
                   <p className="text-xs md:text-sm text-gray-600">Prices last updated: {lastUpdated}</p>
                 )}
@@ -370,9 +423,11 @@ function CompareContent() {
             </div>
             <Header currentPage="Compare" />
           </div>
+          <div className="md:hidden">
+            <Header currentPage="Compare" />
+          </div>
         </div>
 
-        {/* Alphabet Filter - Desktop Only */}
         <div className="hidden md:block bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
@@ -403,18 +458,28 @@ function CompareContent() {
           </div>
         </div>
 
-        {/* Mobile Item Selector */}
         <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item to Compare</label>
           <select
             value={selectedItems.length === 1 ? selectedItems[0] : ''}
             onChange={(e) => {
               if (e.target.value) {
-                setSelectedItems([e.target.value]);
-                updateURL([e.target.value]);
+                const newItems = [e.target.value];
+                setSelectedItems(newItems);
+                updateURL(newItems);
+                try {
+                  localStorage.setItem('compare_last_items', JSON.stringify(newItems));
+                } catch (err) {
+                  console.error('Failed to save to localStorage:', err);
+                }
               } else {
                 setSelectedItems([]);
                 updateURL([]);
+                try {
+                  localStorage.removeItem('compare_last_items');
+                } catch (err) {
+                  console.error('Failed to clear localStorage:', err);
+                }
               }
             }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
@@ -426,7 +491,6 @@ function CompareContent() {
           </select>
         </div>
 
-        {/* Favorites Widget - Desktop Only */}
         {filteredFavorites.length > 0 && (
           <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
@@ -456,7 +520,6 @@ function CompareContent() {
           </div>
         )}
 
-        {/* Shopping List - Desktop Only */}
         <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
@@ -465,6 +528,11 @@ function CompareContent() {
                 onClick={() => {
                   setSelectedItems([]);
                   updateURL([]);
+                  try {
+                    localStorage.removeItem('compare_last_items');
+                  } catch (e) {
+                    console.error('Failed to clear localStorage:', e);
+                  }
                 }}
                 className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
               >
@@ -489,7 +557,6 @@ function CompareContent() {
           </div>
         </div>
 
-        {/* Results */}
         {selectedItems.length > 0 ? (
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Stores</h2>
@@ -596,7 +663,6 @@ function CompareContent() {
           </div>
         )}
 
-        {/* Quick Add Price Entry Widget */}
         {selectedItems.length === 1 && (
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Add Price</h2>
