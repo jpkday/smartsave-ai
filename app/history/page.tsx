@@ -46,12 +46,35 @@ function HistoryContent() {
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Search/autocomplete state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
 
   useEffect(() => {
     loadStoresAndItems();
     // Set today's date as default for new entries (using local time)
     setNewDate(getLocalDateString());
   }, []);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.search-autocomplete-container')) {
+        setShowAutocomplete(false);
+      }
+    };
+
+    if (showAutocomplete) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAutocomplete]);
 
   useEffect(() => {
     if (!isInitialLoad || items.length === 0) return;
@@ -130,6 +153,35 @@ function HistoryContent() {
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
     }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    
+    if (value.trim()) {
+      // Filter items that match the search
+      const matchingItems = items.filter(item => 
+        item.toLowerCase().includes(value.toLowerCase())
+      );
+      setAutocompleteItems(matchingItems);
+      setShowAutocomplete(matchingItems.length > 0);
+    } else {
+      setAutocompleteItems([]);
+      setShowAutocomplete(false);
+    }
+  };
+
+  const selectItemFromSearch = (itemName: string) => {
+    setSelectedItem(itemName);
+    updateURL(itemName, selectedStore);
+    try {
+      localStorage.setItem('history_last_item', itemName);
+    } catch (err) {
+      console.error('Failed to save to localStorage:', err);
+    }
+    setSearchQuery('');
+    setShowAutocomplete(false);
+    setAutocompleteItems([]);
   };
 
   const updateURL = (item: string, store: string) => {
@@ -348,24 +400,63 @@ function HistoryContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
-              <select
-                value={selectedItem}
-                onChange={(e) => {
-                  setSelectedItem(e.target.value);
-                  updateURL(e.target.value, selectedStore);
-                  try {
-                    localStorage.setItem('history_last_item', e.target.value);
-                  } catch (err) {
-                    console.error('Failed to save to localStorage:', err);
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
-              >
-                <option value="">Choose an item...</option>
-                {items.map(item => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
+              <div className="relative search-autocomplete-container">
+                <input
+                  type="text"
+                  placeholder="Search items..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.trim() && autocompleteItems.length > 0) {
+                      setShowAutocomplete(true);
+                    }
+                  }}
+                />
+                
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteItems.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {autocompleteItems.slice(0, 10).map((item) => {
+                      const isSelected = selectedItem === item;
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => selectItemFromSearch(item)}
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                            isSelected 
+                              ? 'bg-blue-50 text-blue-700 font-semibold'
+                              : 'hover:bg-gray-50 text-gray-800'
+                          }`}
+                        >
+                          {item} {isSelected && '✓'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {selectedItem && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold">
+                    {selectedItem}
+                    <button
+                      onClick={() => {
+                        setSelectedItem('');
+                        updateURL('', selectedStore);
+                        try {
+                          localStorage.removeItem('history_last_item');
+                        } catch (err) {
+                          console.error('Failed to clear localStorage:', err);
+                        }
+                      }}
+                      className="hover:bg-blue-700 rounded-full px-2 py-1"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
@@ -417,24 +508,63 @@ function HistoryContent() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
-              <select
-                value={selectedItem}
-                onChange={(e) => {
-                  setSelectedItem(e.target.value);
-                  updateURL(e.target.value, selectedStore);
-                  try {
-                    localStorage.setItem('history_last_item', e.target.value);
-                  } catch (err) {
-                    console.error('Failed to save to localStorage:', err);
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
-              >
-                <option value="">Choose an item...</option>
-                {items.map(item => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
+              <div className="relative search-autocomplete-container">
+                <input
+                  type="text"
+                  placeholder="Search items..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.trim() && autocompleteItems.length > 0) {
+                      setShowAutocomplete(true);
+                    }
+                  }}
+                />
+                
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteItems.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {autocompleteItems.slice(0, 10).map((item) => {
+                      const isSelected = selectedItem === item;
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => selectItemFromSearch(item)}
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                            isSelected 
+                              ? 'bg-blue-50 text-blue-700 font-semibold'
+                              : 'hover:bg-gray-50 text-gray-800'
+                          }`}
+                        >
+                          {item} {isSelected && '✓'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {selectedItem && (
+                <div className="mt-3">
+                  <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold">
+                    {selectedItem}
+                    <button
+                      onClick={() => {
+                        setSelectedItem('');
+                        updateURL('', selectedStore);
+                        try {
+                          localStorage.removeItem('history_last_item');
+                        } catch (err) {
+                          console.error('Failed to clear localStorage:', err);
+                        }
+                      }}
+                      className="hover:bg-blue-700 rounded-full px-2 py-1"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
