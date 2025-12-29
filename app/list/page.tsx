@@ -159,10 +159,36 @@ export default function ShoppingList() {
     }
   };
 
-  const selectItem = (itemName: string) => {
-    setNewItem(itemName);
+  const selectItem = async (itemName: string) => {
     setShowAutocomplete(false);
     setAutocompleteItems([]);
+    setNewItem('');
+    
+    // Add directly instead of relying on state
+    try {
+      if (!items.includes(itemName)) {
+        await supabase.from('items').insert({ 
+          name: itemName, 
+          user_id: SHARED_USER_ID,
+          is_favorite: false
+        });
+      }
+      
+      const alreadyInList = listItems.find(li => li.item_name === itemName);
+      if (!alreadyInList) {
+        await supabase.from('shopping_list').insert({
+          item_name: itemName,
+          quantity: 1,
+          user_id: SHARED_USER_ID,
+          checked: false,
+          added_at: new Date().toISOString()
+        });
+      }
+      
+      loadData();
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const addNewItem = async () => {
@@ -659,7 +685,7 @@ export default function ShoppingList() {
                     onClick={() => {
                       selectItem(item);
                       // Auto-add on select
-                      setTimeout(() => addNewItem(), 100);
+                      // setTimeout(() => addNewItem(), 100);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
                   >
@@ -971,7 +997,7 @@ export default function ShoppingList() {
                         onClick={() => {
                           selectItem(item);
                           // Auto-add on select
-                          setTimeout(() => addNewItem(), 100);
+                          // setTimeout(() => addNewItem(), 100);
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
                       >
@@ -1124,7 +1150,7 @@ export default function ShoppingList() {
                         onClick={() => {
                           selectItem(item);
                           // Auto-add on select
-                          setTimeout(() => addNewItem(), 100);
+                          // setTimeout(() => addNewItem(), 100);
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
                       >
