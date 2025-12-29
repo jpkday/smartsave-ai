@@ -32,6 +32,7 @@ export default function ShoppingList() {
   const [isMobile, setIsMobile] = useState(false);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Detect if we're on mobile
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function ShoppingList() {
       
       setPrices(pricesObj);
     }
+    setLoading(false);
   };
 
   const handleInputChange = (value: string) => {
@@ -706,7 +708,9 @@ export default function ShoppingList() {
         </div>
 
         {/* Shopping List */}
-        {listItems.length > 0 ? (
+        {loading ? (
+          <div className="text-center">Loading...</div>
+        ) : listItems.length > 0 ? (
           <>
             {/* List Items */}
             <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
