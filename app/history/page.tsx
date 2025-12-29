@@ -750,7 +750,7 @@ function HistoryContent() {
 
             {/* Add Price Entry Widget - At bottom */}
             <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Add Price Entry</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Add Latest Price</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{selectedStore}</span>
               </p>
