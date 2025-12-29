@@ -30,6 +30,8 @@ export default function ShoppingList() {
   const [newItem, setNewItem] = useState('');
   const [showCheckedItems, setShowCheckedItems] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
 
   // Detect if we're on mobile
   useEffect(() => {
@@ -41,6 +43,24 @@ export default function ShoppingList() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.autocomplete-container')) {
+        setShowAutocomplete(false);
+      }
+    };
+
+    if (showAutocomplete) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAutocomplete]);
 
   useEffect(() => {
     loadData();
@@ -122,6 +142,29 @@ export default function ShoppingList() {
     }
   };
 
+  const handleInputChange = (value: string) => {
+    setNewItem(value);
+    
+    if (value.trim()) {
+      // Filter items that aren't already in the list and match the search
+      const availableItems = items.filter(item => 
+        !listItems.find(li => li.item_name === item) &&
+        item.toLowerCase().includes(value.toLowerCase())
+      );
+      setAutocompleteItems(availableItems);
+      setShowAutocomplete(availableItems.length > 0);
+    } else {
+      setAutocompleteItems([]);
+      setShowAutocomplete(false);
+    }
+  };
+
+  const selectItem = (itemName: string) => {
+    setNewItem(itemName);
+    setShowAutocomplete(false);
+    setAutocompleteItems([]);
+  };
+
   const addNewItem = async () => {
     if (!newItem.trim()) return;
     
@@ -163,6 +206,8 @@ export default function ShoppingList() {
       }
       
       setNewItem('');
+      setShowAutocomplete(false);
+      setAutocompleteItems([]);
       
       // Reload data to refresh everything
       loadData();
@@ -579,25 +624,57 @@ export default function ShoppingList() {
           )}
         </div>
 
-        {/* Add New Item Widget - Hidden on Mobile (shows below list on mobile) */}
+        {/* Add to List Widget - Hidden on Mobile (shows below list on mobile) */}
         <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 mb-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g., Organic bananas"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-            />
-            <button
-              onClick={addNewItem}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-            >
-              Add
-            </button>
+          <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+          <div className="relative autocomplete-container">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Select or type new item..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                value={newItem}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                onFocus={() => {
+                  if (newItem.trim() && autocompleteItems.length > 0) {
+                    setShowAutocomplete(true);
+                  }
+                }}
+              />
+              <button
+                onClick={addNewItem}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+              >
+                Add
+              </button>
+            </div>
+            
+            {/* Autocomplete dropdown */}
+            {showAutocomplete && autocompleteItems.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {autocompleteItems.slice(0, 10).map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => {
+                      selectItem(item);
+                      // Auto-add on select
+                      setTimeout(() => addNewItem(), 100);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {newItem.trim() && !items.includes(newItem.trim()) 
+              ? `"${newItem}" will be added as a new item`
+              : 'Type to search existing items or add new ones'
+            }
+          </p>
         </div>
 
         {/* Shopping List */}
@@ -859,25 +936,57 @@ export default function ShoppingList() {
               </div>
             </div>
 
-            {/* Add New Item Widget - Mobile Only, shown below list */}
+            {/* Add to List Widget - Mobile Only, shown below list */}
             <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mt-6">
-              <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g., Organic bananas"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                />
-                <button
-                  onClick={addNewItem}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-                >
-                  Add
-                </button>
+              <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+              <div className="relative autocomplete-container">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Select or type new item..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    value={newItem}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                    onFocus={() => {
+                      if (newItem.trim() && autocompleteItems.length > 0) {
+                        setShowAutocomplete(true);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={addNewItem}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                  >
+                    Add
+                  </button>
+                </div>
+                
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteItems.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {autocompleteItems.slice(0, 10).map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          selectItem(item);
+                          // Auto-add on select
+                          setTimeout(() => addNewItem(), 100);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {newItem.trim() && !items.includes(newItem.trim()) 
+                  ? `"${newItem}" will be added as a new item`
+                  : 'Type to search existing items or add new ones'
+                }
+              </p>
             </div>
 
             {/* Best Store Recommendation - Desktop Only */}
@@ -980,25 +1089,57 @@ export default function ShoppingList() {
               </button>
             )}
             
-            {/* Add New Item when list is empty - Always visible */}
+            {/* Add to List when list is empty - Always visible */}
             <div className="bg-white rounded-lg shadow-lg p-4 mt-6 max-w-md mx-auto">
-              <h2 className="text-xl font-bold mb-3 text-gray-800">Add New Item</h2>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g., Organic bananas"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                />
-                <button
-                  onClick={addNewItem}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-                >
-                  Add
-                </button>
+              <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+              <div className="relative autocomplete-container">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Select or type new item..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    value={newItem}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                    onFocus={() => {
+                      if (newItem.trim() && autocompleteItems.length > 0) {
+                        setShowAutocomplete(true);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={addNewItem}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+                  >
+                    Add
+                  </button>
+                </div>
+                
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteItems.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {autocompleteItems.slice(0, 10).map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          selectItem(item);
+                          // Auto-add on select
+                          setTimeout(() => addNewItem(), 100);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {newItem.trim() && !items.includes(newItem.trim()) 
+                  ? `"${newItem}" will be added as a new item`
+                  : 'Type to search existing items or add new ones'
+                }
+              </p>
             </div>
           </div>
         )}

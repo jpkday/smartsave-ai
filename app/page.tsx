@@ -200,7 +200,7 @@ export default function Home() {
                   onClick={() => setShowCodeModal(true)}
                   className="text-xs underline opacity-75 hover:opacity-100 transition-opacity"
                 >
-                Change Code
+                Change Beta Code
                 </button>
               </div>
             </div>
