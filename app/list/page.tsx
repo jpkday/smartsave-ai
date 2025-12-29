@@ -631,7 +631,7 @@ export default function ShoppingList() {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Select or type new item..."
+                placeholder="Select existing or add new"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                 value={newItem}
                 onChange={(e) => handleInputChange(e.target.value)}
@@ -943,7 +943,7 @@ export default function ShoppingList() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Select or type new item..."
+                    placeholder="Select existing or add new"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     value={newItem}
                     onChange={(e) => handleInputChange(e.target.value)}
@@ -984,7 +984,7 @@ export default function ShoppingList() {
               <p className="text-xs text-gray-500 mt-2">
                 {newItem.trim() && !items.includes(newItem.trim()) 
                   ? `"${newItem}" will be added as a new item`
-                  : 'Type to search existing items or add new ones'
+                  : ''
                 }
               </p>
             </div>
@@ -1137,7 +1137,7 @@ export default function ShoppingList() {
               <p className="text-xs text-gray-500 mt-2">
                 {newItem.trim() && !items.includes(newItem.trim()) 
                   ? `"${newItem}" will be added as a new item`
-                  : 'Type to search existing items or add new ones'
+                  : ''
                 }
               </p>
             </div>
