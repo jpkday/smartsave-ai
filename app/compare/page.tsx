@@ -543,16 +543,16 @@ function CompareContent() {
             )}
           </div>
           {selectedItems.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-3">
               {selectedItems.map(item => (
                 <span
                   key={item}
-                  className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold"
+                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold"
                 >
                   {item}
                   <button
                     onClick={() => toggleItem(item)}
-                    className="hover:bg-blue-700 rounded-full px-1"
+                    className="hover:bg-blue-700 rounded-full px-1.5 py-0.5"
                   >
                     ✕
                   </button>
