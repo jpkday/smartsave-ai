@@ -186,22 +186,21 @@ export default function Home() {
               Enter Beta Code
             </button>
           ) : (
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 inline-block">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 inline-block">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-center gap-2">
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 bg-white/30 hover:bg-white/40 px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-2 bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors"
                   >
-                    <span className="font-mono font-bold text-lg tracking-widest">{householdCode}</span>
-                    <span className="text-sm">{copied ? '✓' : '📋'}</span>
+                    <span className="font-mono font-bold px-8 py-1 text-lg tracking-widest">{householdCode}</span>
                   </button>
                 </div>
                 <button
                   onClick={() => setShowCodeModal(true)}
                   className="text-xs underline opacity-75 hover:opacity-100 transition-opacity"
                 >
-                  Switch code
+                Change Code
                 </button>
               </div>
             </div>
