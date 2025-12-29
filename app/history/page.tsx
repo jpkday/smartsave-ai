@@ -620,10 +620,11 @@ function HistoryContent() {
 
             {/* Add Price Entry Widget - At bottom */}
             <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Add Price Entry</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Add Price Entry</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{selectedStore}</span>
               </p>
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
@@ -631,6 +632,7 @@ function HistoryContent() {
                     <span className="text-gray-800 font-semibold mr-1">$</span>
                     <input
                       type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={newPrice}
                       onChange={(e) => handlePriceChange(e.target.value)}
