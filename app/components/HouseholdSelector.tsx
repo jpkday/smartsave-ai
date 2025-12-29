@@ -74,7 +74,7 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
             setError('');
           }}
           onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="ASDF"
+          placeholder="A1B2"
           maxLength={4}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-2 uppercase text-center text-2xl font-mono tracking-widest"
           autoFocus
