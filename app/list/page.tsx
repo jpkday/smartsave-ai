@@ -663,9 +663,11 @@ export default function ShoppingList() {
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                 onFocus={() => {
-                  if (newItem.trim() && autocompleteItems.length > 0) {
-                    setShowAutocomplete(true);
-                  }
+                  const availableItems = items.filter(item => 
+                    !listItems.find(li => li.item_name === item)
+                  );
+                  setAutocompleteItems(availableItems);
+                  setShowAutocomplete(availableItems.length > 0);
                 }}
               />
               <button
@@ -872,7 +874,7 @@ export default function ShoppingList() {
                             </span>
                           </div>
                           <span className="text-lg font-bold text-red-600">
-                            To Be Calculated
+                            {/* To Be Calculated */}
                           </span>
                         </h3>
                         <div className="space-y-2">
@@ -975,9 +977,11 @@ export default function ShoppingList() {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                     onFocus={() => {
-                      if (newItem.trim() && autocompleteItems.length > 0) {
-                        setShowAutocomplete(true);
-                      }
+                      const availableItems = items.filter(item => 
+                        !listItems.find(li => li.item_name === item)
+                      );
+                      setAutocompleteItems(availableItems);
+                      setShowAutocomplete(availableItems.length > 0);
                     }}
                   />
                   <button
@@ -1128,9 +1132,11 @@ export default function ShoppingList() {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                     onFocus={() => {
-                      if (newItem.trim() && autocompleteItems.length > 0) {
-                        setShowAutocomplete(true);
-                      }
+                      const availableItems = items.filter(item => 
+                        !listItems.find(li => li.item_name === item)
+                      );
+                      setAutocompleteItems(availableItems);
+                      setShowAutocomplete(availableItems.length > 0);
                     }}
                   />
                   <button
