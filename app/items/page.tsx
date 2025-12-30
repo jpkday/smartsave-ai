@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
@@ -12,7 +12,7 @@ const DEFAULT_ITEMS = [
   'Chicken Breast (lb)',
   'Ground Beef (lb)',
   'Bread (loaf)',
-  'Butter (lb)'
+  'Butter (lb)',
 ];
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -22,391 +22,481 @@ interface Item {
   is_favorite: boolean;
 }
 
-export default function Items() {
+export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search + quick add
+  const [query, setQuery] = useState('');
   const [newItem, setNewItem] = useState('');
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingValue, setEditingValue] = useState('');
+
+  // Bottom sheet edit
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selected, setSelected] = useState<Item | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const addRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadItems();
   }, []);
-  
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sheetOpen) closeSheet();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [sheetOpen]);
+
   const loadItems = async () => {
+    setLoading(true);
+
     const { data, error } = await supabase
       .from('items')
       .select('name, is_favorite')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
-    
+
     if (error) {
       console.error('Error loading items:', error);
+      setLoading(false);
       return;
     }
-    
+
     if (data && data.length > 0) {
-      setItems(data.map(item => ({
-        name: item.name,
-        is_favorite: item.is_favorite || false
-      })));
-    } else {
-      // If no items exist, seed with defaults
-      const defaultItems = DEFAULT_ITEMS;
-      for (const item of defaultItems) {
-        await supabase.from('items').insert({ 
-          name: item, 
-          user_id: SHARED_USER_ID,
-          is_favorite: false 
-        });
-      }
-      setItems(defaultItems.map(name => ({ name, is_favorite: false })));
+      setItems(
+        data.map((x: any) => ({
+          name: x.name,
+          is_favorite: x.is_favorite || false,
+        }))
+      );
+      setLoading(false);
+      return;
     }
+
+    // Seed defaults once if empty
+    for (const name of DEFAULT_ITEMS) {
+      await supabase.from('items').insert({
+        name,
+        user_id: SHARED_USER_ID,
+        is_favorite: false,
+      });
+    }
+    setItems(DEFAULT_ITEMS.map((name) => ({ name, is_favorite: false })));
+    setLoading(false);
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (editingIndex !== null) {
-        const target = event.target as HTMLElement;
-        if (!target.closest('.editing-row')) {
-          cancelEdit();
-        }
-      }
-    };
-  
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [editingIndex]);
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const filtered = useMemo(() => {
+    if (!normalizedQuery) return items;
+    return items.filter((i) => i.name.toLowerCase().includes(normalizedQuery));
+  }, [items, normalizedQuery]);
+
+  const favorites = useMemo(
+    () =>
+      filtered
+        .filter((i) => i.is_favorite)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [filtered]
+  );
+
+  const regular = useMemo(
+    () =>
+      filtered
+        .filter((i) => !i.is_favorite)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [filtered]
+  );
+
+  const openSheet = (item: Item) => {
+    setSelected(item);
+    setEditValue(item.name);
+    setSheetOpen(true);
+    setSaving(false);
+
+    setTimeout(() => {
+      const el = document.getElementById('item-rename-input') as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    }, 50);
+  };
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setSelected(null);
+    setEditValue('');
+    setSaving(false);
+  };
 
   const addItem = async () => {
-    if (newItem.trim() && !items.find(i => i.name === newItem.trim())) {
-      const { error } = await supabase
-        .from('items')
-        .insert({ 
-          name: newItem.trim(), 
-          user_id: SHARED_USER_ID,
-          is_favorite: false
-        });
-      
-      if (error) {
-        console.error('Error adding item:', error);
-        alert('Failed to add item. Check your connection and try again.');
-        return;
-      }
-      
-      setItems([...items, { name: newItem.trim(), is_favorite: false }]);
-      setNewItem('');
+    const name = newItem.trim();
+    if (!name) return;
+
+    if (items.some((i) => i.name.toLowerCase() === name.toLowerCase())) {
+      alert('That item already exists.');
+      return;
     }
+
+    const { error } = await supabase.from('items').insert({
+      name,
+      user_id: SHARED_USER_ID,
+      is_favorite: false,
+    });
+
+    if (error) {
+      console.error('Error adding item:', error);
+      alert('Failed to add item. Check your connection and try again.');
+      return;
+    }
+
+    setItems((prev) => [...prev, { name, is_favorite: false }]);
+    setNewItem('');
+    addRef.current?.focus();
   };
 
   const toggleFavorite = async (itemName: string) => {
-    const item = items.find(i => i.name === itemName);
+    const item = items.find((i) => i.name === itemName);
     if (!item) return;
-    
-    const newFavoriteStatus = !item.is_favorite;
-    
+
+    const next = !item.is_favorite;
+
     const { error } = await supabase
       .from('items')
-      .update({ is_favorite: newFavoriteStatus })
+      .update({ is_favorite: next })
       .eq('name', itemName)
       .eq('user_id', SHARED_USER_ID);
-    
+
     if (error) {
       console.error('Error updating favorite:', error);
       alert('Failed to update favorite. Check your connection and try again.');
       return;
     }
-    
-    setItems(items.map(i => 
-      i.name === itemName ? { ...i, is_favorite: newFavoriteStatus } : i
-    ));
+
+    setItems((prev) => prev.map((i) => (i.name === itemName ? { ...i, is_favorite: next } : i)));
+
+    if (selected?.name === itemName) {
+      setSelected({ ...selected, is_favorite: next });
+    }
   };
 
-  const deleteItem = async (itemToDelete: string) => {
-    if (!confirm(`Delete "${itemToDelete}"? This will also remove all price data for this item.`)) {
-      return;
-    }
+  const deleteItem = async (itemName: string) => {
+    if (!confirm(`Delete "${itemName}"?\n\nThis will also remove all price data for this item.`)) return;
 
     const { error } = await supabase
       .from('items')
       .delete()
-      .eq('name', itemToDelete)
+      .eq('name', itemName)
       .eq('user_id', SHARED_USER_ID);
-    
+
     if (error) {
       console.error('Error deleting item:', error);
       alert('Failed to delete item. Check your connection and try again.');
       return;
     }
 
-    // Delete all price history for this item
-    await supabase
-      .from('price_history')
-      .delete()
-      .eq('item_name', itemToDelete)
-      .eq('user_id', SHARED_USER_ID);
+    // Clean up dependent tables (best-effort)
+    await supabase.from('price_history').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
+    await supabase.from('shopping_list').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
 
-    // Delete from shopping list
-    await supabase
-      .from('shopping_list')
-      .delete()
-      .eq('item_name', itemToDelete)
-      .eq('user_id', SHARED_USER_ID);
-
-    setItems(items.filter(item => item.name !== itemToDelete));
+    setItems((prev) => prev.filter((i) => i.name !== itemName));
+    closeSheet();
   };
 
-  const startEdit = (index: number, itemName: string) => {
-    setEditingIndex(index);
-    setEditingValue(itemName);
-  };
-  
-  const cancelEdit = () => {
-    setEditingIndex(null);
-    setEditingValue('');
-  };
-  
-  const saveEdit = async (oldItem: string) => {
-    if (!editingValue.trim() || editingValue.trim() === oldItem) {
-      cancelEdit();
+  const saveRename = async () => {
+    if (!selected) return;
+
+    const oldName = selected.name;
+    const nextName = editValue.trim();
+
+    if (!nextName || nextName === oldName) {
+      closeSheet();
       return;
     }
-  
-    // Check if new name already exists
-    if (items.find(i => i.name === editingValue.trim()) && editingValue.trim() !== oldItem) {
-      alert('An item with this name already exists');
+
+    const collision = items.some(
+      (i) => i.name.toLowerCase() === nextName.toLowerCase() && i.name !== oldName
+    );
+    if (collision) {
+      alert('An item with this name already exists.');
       return;
     }
+
+    setSaving(true);
 
     try {
-      // Update item in database
-      const { error: itemError, status: itemStatus } = await supabase
+      const { error: itemError } = await supabase
         .from('items')
-        .update({ name: editingValue.trim() })
-        .eq('name', oldItem)
+        .update({ name: nextName })
+        .eq('name', oldName)
         .eq('user_id', SHARED_USER_ID);
-      
-      if (itemError) {
-        throw new Error(`Item update failed: ${itemError.message}`);
-      }
 
-      // Update all price history with new item name
-      const { error: priceHistoryError } = await supabase
+      if (itemError) throw new Error(itemError.message);
+
+      const { error: phError } = await supabase
         .from('price_history')
-        .update({ item_name: editingValue.trim() })
-        .eq('item_name', oldItem)
+        .update({ item_name: nextName })
+        .eq('item_name', oldName)
         .eq('user_id', SHARED_USER_ID);
-      
-      if (priceHistoryError) {
-        throw new Error(`Price history update failed: ${priceHistoryError.message}`);
-      }
 
-      // Update shopping list with new item name
-      const { error: shoppingListError } = await supabase
+      if (phError) throw new Error(phError.message);
+
+      const { error: slError } = await supabase
         .from('shopping_list')
-        .update({ item_name: editingValue.trim() })
-        .eq('item_name', oldItem)
+        .update({ item_name: nextName })
+        .eq('item_name', oldName)
         .eq('user_id', SHARED_USER_ID);
-      
-      if (shoppingListError) {
-        throw new Error(`Shopping list update failed: ${shoppingListError.message}`);
-      }
-    
-      // Only update local state if ALL database updates succeeded
-      setItems(items.map(item => 
-        item.name === oldItem ? { ...item, name: editingValue.trim() } : item
-      ));
-    
-      cancelEdit();
-    } catch (error) {
-      console.error('Error saving edit:', error);
-      alert('Failed to save changes. Check your internet connection and try again.');
-      // Keep edit mode open so user can try again
+
+      if (slError) throw new Error(slError.message);
+
+      setItems((prev) => prev.map((i) => (i.name === oldName ? { ...i, name: nextName } : i)));
+      closeSheet();
+    } catch (e) {
+      console.error('Rename failed:', e);
+      alert('Failed to save changes. Check your connection and try again.');
+      setSaving(false);
     }
   };
 
-  const favoriteItems = items.filter(i => i.is_favorite).sort((a, b) => a.name.localeCompare(b.name));
-  const regularItems = items.filter(i => !i.is_favorite).sort((a, b) => a.name.localeCompare(b.name));
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
-        {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400">
+      <div className="max-w-3xl mx-auto p-3 sm:p-4 pb-24">
+        {/* Top header */}
+        <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 mb-3">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Items</h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Add, edit, or delete items from your shopping list</p>
+            {/* Hide title/subheader on mobile */}
+            <div className="min-w-0 hidden sm:block">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                Search, rename, and favorite items fast (mobile-first).
+              </p>
             </div>
+
             <Header currentPage="Items" />
           </div>
         </div>
 
-       {/* Add New Item */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-        <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
-        <div className="flex gap-2">
-            <input
-            type="text"
-            placeholder="e.g., Organic bananas"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addItem()}
-            />
-            <button
-            onClick={addItem}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
-            >
-            Add
-            </button>
-        </div>
-        </div>
-
-        {/* Items List */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Favorites Section */}
-          <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="text-2xl">⭐</span> Favorites ({favoriteItems.length > 0 ? favoriteItems.length : 'none'})
-          </h3>
-          {favoriteItems.length === 0 ? (
-            <p className="text-sm text-gray-500 mb-6 italic">
-              Star your favorite items below to quickly add them to your shopping list!
-            </p>
-          ) : (
-            <div className="space-y-2 mb-6">
-                {favoriteItems.map((item, idx) => (
-                  <div
-                    key={item.name}
-                    className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition border border-yellow-200"
-                  >
-                    {editingIndex === items.findIndex(i => i.name === item.name) ? (
-                      <div className="editing-row flex items-center flex-1 justify-between w-full">
-                        <div className="flex items-center flex-1 gap-3">
-                          <button
-                            onClick={() => toggleFavorite(item.name)}
-                            className="text-2xl cursor-pointer hover:scale-110 transition"
-                          >
-                            ⭐
-                          </button>
-                          <input
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && saveEdit(item.name)}
-                            className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
-                            autoFocus
-                          />
-                        </div>
-                        <button
-                          onClick={() => saveEdit(item.name)}
-                          className="text-green-600 hover:text-green-800 font-semibold cursor-pointer px-3"
-                        >
-                          ✓
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-gray-800 font-medium flex-1 flex items-center gap-3">
-                          <button
-                            onClick={() => toggleFavorite(item.name)}
-                            className="text-2xl cursor-pointer hover:scale-110 transition"
-                            title="Remove from favorites"
-                          >
-                            ⭐
-                          </button>
-                          {item.name}
-                          <button
-                            onClick={() => startEdit(items.findIndex(i => i.name === item.name), item.name)}
-                            className="ml-3 text-gray-400 hover:text-blue-600 cursor-pointer"
-                            title="Edit"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                        </span>
-                        <button
-                          onClick={() => toggleFavorite(item.name)}
-                          className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-                          title="Unfavorite (star icon to remove from favorites)"
-                        >
-                          ✖️
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
+        {/* Sticky search + quick add */}
+        <div className="sticky top-0 z-10 -mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-3 bg-gradient-to-br from-blue-500 to-green-400">
+          <div className="bg-white rounded-xl shadow-lg p-3">
+            <div className="text-lg font-semibold text-gray-700 mb-2">
+              Manage Items
+            </div>
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search existing"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                />
               </div>
-            )}
-          
-          {/* Other Items Section */}
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">All Items ({regularItems.length})</h3>
-          <div className="space-y-2">
-            {regularItems.map((item, idx) => (
-              <div
-                key={item.name}
-                className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+              <button
+                onClick={() => {
+                  setQuery('');
+                  setTimeout(() => searchRef.current?.focus(), 0);
+                }}
+                className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                title="Clear search"
               >
-                {editingIndex === items.findIndex(i => i.name === item.name) ? (
-                  <div className="editing-row flex items-center flex-1 justify-between w-full">
-                    <div className="flex items-center flex-1 gap-3">
-                      <button
-                        onClick={() => toggleFavorite(item.name)}
-                        className="text-2xl cursor-pointer hover:scale-110 transition opacity-30 hover:opacity-100"
-                      >
-                        ☆
-                      </button>
-                      <input
-                        type="text"
-                        value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && saveEdit(item.name)}
-                        className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
-                        autoFocus
-                      />
-                    </div>
-                    <button
-                      onClick={() => saveEdit(item.name)}
-                      className="text-green-600 hover:text-green-800 font-semibold cursor-pointer px-3"
-                    >
-                      ✓
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-gray-800 font-medium flex-1 flex items-center gap-3">
-                      <button
-                        onClick={() => toggleFavorite(item.name)}
-                        className="text-2xl cursor-pointer hover:scale-110 transition opacity-30 hover:opacity-100"
-                        title="Add to favorites"
-                      >
-                        ☆
-                      </button>
-                      {item.name}
-                      <button
-                        onClick={() => startEdit(items.findIndex(i => i.name === item.name), item.name)}
-                        className="ml-3 text-gray-400 hover:text-blue-600 cursor-pointer"
-                        title="Edit"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                    </span>
-                    <button
-                      onClick={() => deleteItem(item.name)}
-                      className="text-red-600 hover:text-red-800 cursor-pointer"
-                      title="Delete item"
-                    >
-                      🗑️
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
+                ✕
+              </button>
+            </div>
+
+            <div className="flex gap-2 mt-2">
+              <input
+                ref={addRef}
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                placeholder="Add a new item"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              />
+              <button
+                onClick={addItem}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="mt-2 text-xs text-gray-500 flex justify-between">
+              <span>{loading ? 'Loading…' : `${filtered.length} shown / ${items.length} total`}</span>
+              <span className="hidden sm:inline">Tip: search → tap item → rename</span>
+            </div>
           </div>
         </div>
+
+        {/* List */}
+        <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
+          {loading ? (
+            <div className="text-gray-600 text-sm">Loading items…</div>
+          ) : (
+            <>
+              {/* Favorites */}
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="text-2xl">⭐</span>
+                  Favorites ({favorites.length})
+                </h2>
+              </div>
+              {favorites.length === 0 ? (
+                <div className="text-sm text-gray-500 mb-4 italic">
+                  Favorite your high-frequency items to keep them on top.
+                </div>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  {favorites.map((item) => (
+                    <div
+                      key={item.name}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 transition"
+                    >
+                      {/* BIG tappable star */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(item.name);
+                        }}
+                        className="text-2xl leading-none flex-shrink-0 px-1"
+                        aria-label="Unfavorite item"
+                      >
+                        ⭐
+                      </button>
+
+                      {/* Tap body opens editor */}
+                      <button
+                        onClick={() => openSheet(item)}
+                        className="flex-1 text-left min-w-0"
+                      >
+                        <div className="font-medium text-gray-800 truncate">{item.name}</div>
+                        <div className="text-xs text-gray-500">Tap to edit</div>
+                      </button>
+
+                      <span className="text-gray-400 flex-shrink-0">›</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* All items */}
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold text-gray-700 mb-2">All Items ({regular.length})</h2>
+              </div>
+
+              {regular.length === 0 ? (
+                <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
+              ) : (
+                <div className="space-y-2">
+                  {regular.map((item) => (
+                    <div
+                      key={item.name}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition"
+                    >
+                      {/* BIG tappable star */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(item.name);
+                        }}
+                        className="text-2xl leading-none flex-shrink-0 px-1 text-gray-300"
+                        aria-label="Favorite item"
+                      >
+                        ☆
+                      </button>
+
+                      {/* Tap body opens editor */}
+                      <button
+                        onClick={() => openSheet(item)}
+                        className="flex-1 text-left min-w-0"
+                      >
+                        <div className="font-medium text-gray-800 truncate">{item.name}</div>
+                        <div className="text-xs text-gray-500">Tap to edit</div>
+                      </button>
+
+                      <span className="text-gray-400 flex-shrink-0">›</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+      <div
+        className="max-h-[85vh] overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+      {/* Bottom sheet */}
+      {sheetOpen && selected && (
+        <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
+
+          {/* Sheet */}
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
+            style={{
+              paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+          }}
+        >
+            <div className="flex items-center justify-between mb-3">
+              {/* Close */}
+              <button
+                onClick={closeSheet}
+                className="px-3 py-1 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                aria-label="Close"
+                disabled={saving}
+              >
+                ✕
+              </button>
+
+              <div className="font-semibold text-gray-800">Edit item</div>
+
+              {/* Delete (moved far away from Save) */}
+              <button
+                onClick={() => deleteItem(selected.name)}
+                className="px-3 py-1 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
+                disabled={saving}
+              >
+                Delete
+              </button>
+            </div>
+
+            <input
+              id="item-rename-input"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+              className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
+              placeholder="e.g., Grapefruit (ct)"
+            />
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <button
+                onClick={() => toggleFavorite(selected.name)}
+                className="py-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-800 font-semibold"
+                disabled={saving}
+              >
+                {selected.is_favorite ? 'Unfavorite' : 'Favorite'}
+              </button>
+
+              <button
+                onClick={saveRename}
+                className="py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+                disabled={saving}
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
+  </div>
   );
 }
