@@ -30,6 +30,10 @@ export default function ItemsPage() {
   const [query, setQuery] = useState('');
   const [newItem, setNewItem] = useState('');
 
+  // Alphabet filter
+  const [filterLetter, setFilterLetter] = useState<string>('All');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
   // Bottom sheet edit
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
@@ -91,10 +95,24 @@ export default function ItemsPage() {
 
   const normalizedQuery = query.trim().toLowerCase();
 
-  const filtered = useMemo(() => {
-    if (!normalizedQuery) return items;
-    return items.filter((i) => i.name.toLowerCase().includes(normalizedQuery));
-  }, [items, normalizedQuery]);
+const filtered = useMemo(() => {
+  let base = items;
+
+  if (query.trim()) {
+    base = base.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+  }
+
+  if (filterLetter === 'All') return base.sort((a,b) => a.name.localeCompare(b.name));
+
+  return base
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .filter(i => i.name.toUpperCase().startsWith(filterLetter));
+}, [items, query, filterLetter]);
+
+const toggleLetter = (letter: string) => {
+  setFilterLetter((prev) => (prev === letter ? 'All' : letter));
+};
+
 
   const favorites = useMemo(
     () =>
@@ -161,7 +179,7 @@ export default function ItemsPage() {
   const toggleFavorite = async (itemName: string) => {
     const item = items.find((i) => i.name === itemName);
     if (!item) return;
-
+    
     const next = !item.is_favorite;
 
     const { error } = await supabase
@@ -271,7 +289,7 @@ export default function ItemsPage() {
             <div className="min-w-0 hidden sm:block">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                Search, rename, and favorite items fast (mobile-first).
+                {/* Search, rename, and favorite items fast (mobile-first). */}
               </p>
             </div>
 
@@ -328,6 +346,38 @@ export default function ItemsPage() {
               <span>{loading ? 'Loading…' : `${filtered.length} shown / ${items.length} total`}</span>
               <span className="hidden sm:inline">Tip: search → tap item → rename</span>
             </div>
+          </div>
+        </div>
+
+        {/* Alphabet Filter */}
+        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
+            <button
+              onClick={() => setFilterLetter('All')}
+              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                filterLetter === 'All'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            
+            {alphabet.filter(letter =>
+              items.some(item => item.name.toUpperCase().startsWith(letter))
+            ).map(letter => (
+              <button
+                key={letter}
+                onClick={() => toggleLetter(letter)}
+                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                  filterLetter === letter
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {letter}
+              </button>
+            ))}
           </div>
         </div>
 

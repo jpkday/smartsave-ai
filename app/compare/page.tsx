@@ -32,6 +32,11 @@ function CompareContent() {
   const [quickAddStore, setQuickAddStore] = useState<string>('');
   const [quickAddPrice, setQuickAddPrice] = useState<string>('');
 
+  const toggleLetter = (letter: string) => {
+    setFilterLetter((prev) => (prev === letter ? 'All' : letter));
+  };
+  
+
   useEffect(() => {
     loadData();
   }, []);
@@ -491,7 +496,7 @@ function CompareContent() {
             ).map(letter => (
               <button
                 key={letter}
-                onClick={() => setFilterLetter(letter)}
+                onClick={() => toggleLetter(letter)}
                 className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                   filterLetter === letter
                     ? 'bg-blue-600 text-white'

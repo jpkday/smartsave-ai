@@ -33,7 +33,10 @@ export default function ShoppingList() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const toggleLetter = (letter: string) => {
+    setFilterLetter((prev) => (prev === letter ? 'All' : letter));
+  };
+  
   // Detect if we're on mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -558,7 +561,7 @@ export default function ShoppingList() {
             ).map(letter => (
               <button
                 key={letter}
-                onClick={() => setFilterLetter(letter)}
+                onClick={() => toggleLetter(letter)}
                 className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                   filterLetter === letter
                     ? 'bg-blue-600 text-white'
