@@ -145,7 +145,7 @@ export default function Receipts() {
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Quickly update prices from your shopping receipts</p>
             </div>
-            <Header currentPage="Receipts" />
+            <Header currentPage="Add Receipt" />
           </div>
         </div>
 

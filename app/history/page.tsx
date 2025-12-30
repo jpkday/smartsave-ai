@@ -386,12 +386,12 @@ function HistoryContent() {
                 </button>
               </div>
             </div>
-            <Header currentPage="History" />
+            <Header currentPage="Price History" />
           </div>
 
           {/* Mobile */}
           <div className="md:hidden">
-            <Header currentPage="History" />
+            <Header currentPage="Price History" />
           </div>
         </div>
 

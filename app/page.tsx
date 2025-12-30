@@ -58,7 +58,7 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="w-full bg-amber-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">📊</span>
-                <span className="flex-1 ml-6">History</span>
+                <span className="flex-1 ml-6">Price History</span>
               </button>
               
               <button 
@@ -83,7 +83,7 @@ export default function Home() {
               
               <Link href="/history" className="w-full bg-amber-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">📊</span>
-                <span className="flex-1 ml-6">History</span>
+                <span className="flex-1 ml-6">Price History</span>
               </Link>
               
               <button 
@@ -108,7 +108,7 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">📊</span>
-                <span className="flex-1 ml-6">History</span>
+                <span className="flex-1 ml-6">Price History</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">
@@ -118,17 +118,17 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🧾</span>
-                <span className="flex-1 ml-6">Receipts</span>
+                <span className="flex-1 ml-6">Enter Receipt</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">💰</span>
-                <span className="flex-1 ml-6">Prices</span>
+                <span className="flex-1 ml-6">Price Grid</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🛍️</span>
-                <span className="flex-1 ml-6">Stores</span>
+                <span className="flex-1 ml-6">Manage Stores</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
@@ -155,17 +155,17 @@ export default function Home() {
               
               <Link href="/receipts" className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🧾</span>
-                <span className="flex-1 ml-6">Receipts</span>
+                <span className="flex-1 ml-6">Enter Receipt</span>
               </Link>
               
               <Link href="/prices" className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">💰</span>
-                <span className="flex-1 ml-6">Prices</span>
+                <span className="flex-1 ml-6">Price Grid</span>
               </Link>
               
               <Link href="/stores" className="bg-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🛍️</span>
-                <span className="flex-1 ml-6">Stores</span>
+                <span className="flex-1 ml-6">Manage Stores</span>
               </Link>
               
               <Link href="/items" className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
@@ -230,17 +230,17 @@ export default function Home() {
               
               <Link href="/prices" onClick={() => setShowMoreMenu(false)} className="w-full bg-blue-600 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">💰</span>
-                <span className="flex-1 ml-6">Prices</span>
+                <span className="flex-1 ml-6">Price Grid</span>
               </Link>
               
               <Link href="/receipts" onClick={() => setShowMoreMenu(false)} className="w-full bg-orange-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">🧾</span>
-                <span className="flex-1 ml-6">Receipts</span>
+                <span className="flex-1 ml-6">Enter Receipt</span>
               </Link>
               
               <Link href="/stores" onClick={() => setShowMoreMenu(false)} className="w-full bg-pink-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">🛍️</span>
-                <span className="flex-1 ml-6">Stores</span>
+                <span className="flex-1 ml-6">Manage Stores</span>
               </Link>
             </div>
           </div>

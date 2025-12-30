@@ -159,7 +159,7 @@ export default function Stores() {
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Stores</h1>
             </div>
-            <Header currentPage="Stores" />
+            <Header currentPage="Manage Stores" />
           </div>
         </div>
 

@@ -13,12 +13,26 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Price History', path: '/history', icon: '📊' },
     { name: 'Items', path: '/items', icon: '📋' },
     { name: 'Price Grid', path: '/prices', icon: '💰' },
-    { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
+    { name: 'Add Receipt', path: '/receipts', icon: '🧾' }, // <-- label fix (was Add Receipt)
     { name: 'Manage Stores', path: '/stores', icon: '🛍️' },
   ];
 
+  // Mobile: page color mapping
+  const mobileColorByPage: Record<string, string> = {
+    'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
+    Compare: 'bg-green-500 hover:bg-green-600',
+    'Price History': 'bg-amber-700 hover:bg-amber-800',
+    Items: 'bg-purple-500 hover:bg-purple-600',
+    'Price Grid': 'bg-blue-600 hover:bg-blue-700',
+    'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
+    'Manage Stores': 'bg-pink-500 hover:bg-pink-600',
+  };
+
+  const mobileCurrentClass =
+    mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
+
   // Desktop-only: collapse these into "More"
-  const MORE_PAGES = ['Price Grid', 'Add Receipt', 'Manage Stores'];
+  const MORE_PAGES = ['Price Grid', 'Enter Receipt', 'Manage Stores']; // <-- label fix (was Add Receipt)
   const primaryPages = pages.filter((p) => !MORE_PAGES.includes(p.name));
   const morePages = pages.filter((p) => MORE_PAGES.includes(p.name));
   const isInMore = MORE_PAGES.includes(currentPage);
@@ -42,7 +56,7 @@ export default function Header({ currentPage }: HeaderProps) {
   return (
     <nav className="w-full">
       {/* ===================== */}
-      {/* Mobile: unchanged */}
+      {/* Mobile: same UI, just restore per-page color */}
       {/* ===================== */}
       <div className="flex md:hidden items-center gap-3">
         <Link
@@ -53,7 +67,9 @@ export default function Header({ currentPage }: HeaderProps) {
         </Link>
 
         <div className="flex-1 relative">
-          <div className="w-full px-4 py-3.5 rounded-lg font-bold text-white bg-gray-600 text-center flex items-center justify-center gap-2">
+          <div
+            className={`w-full px-4 py-3.5 rounded-lg font-bold text-white ${mobileCurrentClass} transition text-center flex items-center justify-center gap-2`}
+          >
             <span>
               {pages.find((p) => p.name === currentPage)?.icon} {currentPage}
             </span>

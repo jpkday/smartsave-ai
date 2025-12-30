@@ -34,7 +34,7 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
     // Check if code exists in database
     const { data, error: dbError } = await supabase
       .from('households')
-      .select('code')
+      .select('id,code')
       .eq('code', code)
       .single();
 
@@ -45,6 +45,7 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
 
     // Code is valid!
     localStorage.setItem('household_code', code);
+    localStorage.setItem('household_id', data.id);
     setShowModal(false);
     if (onSuccess) {
       onSuccess();
