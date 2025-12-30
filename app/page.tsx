@@ -145,7 +145,7 @@ export default function Home() {
               
               <Link href="/history" className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">📊</span>
-                <span className="flex-1 ml-6">History</span>
+                <span className="flex-1 ml-6">Price History</span>
               </Link>
               
               <Link href="/compare" className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">

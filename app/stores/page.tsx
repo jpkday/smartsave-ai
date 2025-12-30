@@ -158,7 +158,6 @@ export default function Stores() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Stores</h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Add, edit, or remove stores you shop at</p>
             </div>
             <Header currentPage="Stores" />
           </div>

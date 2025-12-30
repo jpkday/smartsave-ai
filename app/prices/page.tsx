@@ -403,7 +403,7 @@ function PricesContent() {
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Prices by Store</h1>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Price Grid</h1>
               <div className="hidden md:flex items-center gap-3 mt-2">
                 {lastSaved && (
                   <p className="text-xs md:text-sm text-gray-600">Last updated: {lastSaved}</p>
