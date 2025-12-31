@@ -33,10 +33,11 @@ export default function ShoppingList() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
-  
+ 
   // Detect if we're on mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -70,6 +71,24 @@ export default function ShoppingList() {
     loadData();
   }, []);
 
+  const getHouseholdId = async (): Promise<string> => {
+    const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
+    if (cached) return cached;
+  
+    const code = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+    if (!code) throw new Error('Missing household_code');
+  
+    const { data, error } = await supabase
+      .from('households')
+      .select('id')
+      .eq('code', code)
+      .single();
+  
+    if (error || !data?.id) throw new Error('Invalid household_code');
+    localStorage.setItem('household_id', data.id);
+    return data.id;
+  };
+  
   const loadData = async () => {
     // Load stores
     const { data: storesData, error: storesError } = await supabase
@@ -175,6 +194,7 @@ export default function ShoppingList() {
         await supabase.from('items').insert({ 
           name: itemName, 
           user_id: SHARED_USER_ID,
+          householdcode_code: householdCode,
           is_favorite: false
         });
       }
@@ -185,6 +205,7 @@ export default function ShoppingList() {
           item_name: itemName,
           quantity: 1,
           user_id: SHARED_USER_ID,
+          household_code: householdCode,
           checked: false,
           added_at: new Date().toISOString()
         });
@@ -210,6 +231,7 @@ export default function ShoppingList() {
           .insert({ 
             name: itemName, 
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             is_favorite: false
           });
         
@@ -227,6 +249,7 @@ export default function ShoppingList() {
             item_name: itemName,
             quantity: 1,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             checked: false,
             added_at: new Date().toISOString()
           });
@@ -260,6 +283,7 @@ export default function ShoppingList() {
             item_name: item,
             quantity: 1,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             checked: false,
             added_at: new Date().toISOString()
           });
@@ -299,6 +323,7 @@ export default function ShoppingList() {
             item_name: itemName,
             quantity: 1,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             checked: false,
             added_at: new Date().toISOString()
           });

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import HouseholdSelector from '../components/HouseholdSelector';
 
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
@@ -105,7 +106,26 @@ export default function ItemsPage() {
       setLoading(false);
       return;
     }
-
+    
+    // Handle edge case where LocalStoage doesn't retrieve beta code
+    const getHouseholdId = async (): Promise<string> => {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
+      if (cached) return cached;
+    
+      const code = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+      if (!code) throw new Error('Missing household_code');
+    
+      const { data, error } = await supabase
+        .from('households')
+        .select('id')
+        .eq('code', code)
+        .single();
+    
+      if (error || !data?.id) throw new Error('Invalid household_code');
+      localStorage.setItem('household_id', data.id);
+      return data.id;
+    };
+    
     // Seed defaults once if empty
     for (const name of DEFAULT_ITEMS) {
       await supabase.from('items').insert({

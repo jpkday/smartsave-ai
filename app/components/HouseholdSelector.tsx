@@ -15,8 +15,9 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
 
   useEffect(() => {
     if (autoShow) {
-      const saved = localStorage.getItem('household_code');
-      if (saved) {
+      const savedCode = localStorage.getItem('household_code');
+      const savedId = localStorage.getItem('household_id');
+      if (savedCode && savedId) {
         // If autoShow and code exists, don't show modal
         setShowModal(false);
       }
@@ -34,7 +35,7 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
     // Check if code exists in database
     const { data, error: dbError } = await supabase
       .from('households')
-      .select('id,code')
+      .select('id, code')
       .eq('code', code)
       .single();
 
