@@ -852,7 +852,7 @@ export default function ShoppingList() {
                                   <div className="flex items-center gap-1">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
                                     <Link 
-                                      href={`/history?item=${encodeURIComponent(JSON.stringify(item.item_name))}&store=${encodeURIComponent(JSON.stringify(store))}`}
+                                      href={`/items?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
                                       className={`font-medium hover:text-teal-600 hover:underline transition ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
                                     >
                                       {item.item_name}
@@ -934,7 +934,7 @@ export default function ShoppingList() {
                                   <div className="flex items-center gap-1">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
                                     <Link 
-                                      href={`/history?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
+                                      href={`/items?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
                                       className={`font-medium hover:text-teal-600 hover:underline transition ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
                                     >
                                       {item.item_name}
