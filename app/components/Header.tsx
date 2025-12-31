@@ -9,6 +9,7 @@ interface HeaderProps {
 
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
+    {name: 'Home', path: '/', icon: '🏠' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
     { name: 'Compare', path: '/compare', icon: '⚖️' },
     { name: 'Price History', path: '/history', icon: '📊' },
@@ -19,6 +20,7 @@ export default function Header({ currentPage }: HeaderProps) {
   ];
 
   const mobileColorByPage: Record<string, string> = {
+    'Home': 'bg-yellow-500 hover:bg-yellow-600',
     'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
     Compare: 'bg-green-500 hover:bg-green-600',
     'Price History': 'bg-amber-700 hover:bg-amber-800',
