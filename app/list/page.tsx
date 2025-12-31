@@ -34,6 +34,7 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+  const householdId = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
@@ -385,6 +386,17 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('Error checking item:', error);
       alert('Failed to check item. Check your connection and try again.');
+    }
+
+    if (!item.checked) { // Only track when checking items
+      const householdId = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
+      const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+      await supabase.from('shopping_list_events').insert({
+        item_name: item.item_name,
+        household_id: householdId,
+        household_code: householdCode,
+        checked_at: new Date().toISOString()
+      });
     }
   };
 
