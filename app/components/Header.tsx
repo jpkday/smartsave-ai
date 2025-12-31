@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   currentPage: string;
@@ -13,11 +14,10 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Price History', path: '/history', icon: '📊' },
     { name: 'Items', path: '/items', icon: '📋' },
     { name: 'Price Grid', path: '/prices', icon: '💰' },
-    { name: 'Add Receipt', path: '/receipts', icon: '🧾' }, // <-- label fix (was Add Receipt)
+    { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
     { name: 'Manage Stores', path: '/stores', icon: '🛍️' },
   ];
 
-  // Mobile: page color mapping
   const mobileColorByPage: Record<string, string> = {
     'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
     Compare: 'bg-green-500 hover:bg-green-600',
@@ -31,14 +31,19 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileCurrentClass =
     mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
 
-  // Desktop-only: collapse these into "More"
-  const MORE_PAGES = ['Price Grid', 'Enter Receipt', 'Manage Stores']; // <-- label fix (was Add Receipt)
+  const MORE_PAGES = ['Price Grid', 'Enter Receipt', 'Manage Stores'];
   const primaryPages = pages.filter((p) => !MORE_PAGES.includes(p.name));
   const morePages = pages.filter((p) => MORE_PAGES.includes(p.name));
   const isInMore = MORE_PAGES.includes(currentPage);
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [showHome, setShowHome] = useState(false);
   const moreRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    setShowHome(window.history.length <= 1);
+  }, []);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -55,16 +60,24 @@ export default function Header({ currentPage }: HeaderProps) {
 
   return (
     <nav className="w-full">
-      {/* ===================== */}
-      {/* Mobile: same UI, just restore per-page color */}
-      {/* ===================== */}
       <div className="flex md:hidden items-center gap-3">
-        <Link
-          href="/"
-          className="bg-gray-600 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
-        >
-          <span className="text-xl">🏠</span>
-        </Link>
+        {showHome ? (
+          <Link
+            href="/"
+            className="bg-gray-400 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+          >
+            <span className="text-xl">🏠</span>
+          </Link>
+        ) : (
+          <button
+            onClick={() => router.back()}
+            className="bg-gray-400 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
 
         <div className="flex-1 relative">
           <div
@@ -95,13 +108,7 @@ export default function Header({ currentPage }: HeaderProps) {
         </div>
       </div>
 
-      {/* ===================== */}
-      {/* Desktop: 2 rows */}
-      {/* Row 1 (top): right-aligned links */}
-      {/* Row 2: (intentionally blank — page title is rendered by the page itself) */}
-      {/* ===================== */}
       <div className="hidden md:block w-full">
-        {/* Row 1: NAV LINKS (right-aligned) */}
         <div className="w-full flex justify-end items-center gap-4">
           <Link href="/" className="text-gray-600 hover:text-blue-600 font-semibold">
             Home
@@ -119,7 +126,6 @@ export default function Header({ currentPage }: HeaderProps) {
             </Link>
           ))}
 
-          {/* More dropdown (desktop only, no icons) */}
           <div className="relative" ref={moreRef}>
             <button
               type="button"
@@ -165,8 +171,6 @@ export default function Header({ currentPage }: HeaderProps) {
             )}
           </div>
         </div>
-
-        {/* Row 2 removed to avoid duplicate page title */}
       </div>
     </nav>
   );

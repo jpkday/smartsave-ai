@@ -231,7 +231,6 @@ export default function ShoppingList() {
           .insert({ 
             name: itemName, 
             user_id: SHARED_USER_ID,
-            household_code: householdCode,
             is_favorite: false
           });
         
