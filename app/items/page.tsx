@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
-import HouseholdSelector from '../components/HouseholdSelector';
+import { useSearchParams } from 'next/navigation';
 
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
@@ -23,7 +23,8 @@ interface Item {
   is_favorite: boolean;
 }
 
-export default function ItemsPage() {
+function ItemsContent() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,26 +107,7 @@ export default function ItemsPage() {
       setLoading(false);
       return;
     }
-    
-    // Handle edge case where LocalStoage doesn't retrieve beta code
-    const getHouseholdId = async (): Promise<string> => {
-      const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
-      if (cached) return cached;
-    
-      const code = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
-      if (!code) throw new Error('Missing household_code');
-    
-      const { data, error } = await supabase
-        .from('households')
-        .select('id')
-        .eq('code', code)
-        .single();
-    
-      if (error || !data?.id) throw new Error('Invalid household_code');
-      localStorage.setItem('household_id', data.id);
-      return data.id;
-    };
-    
+
     // Seed defaults once if empty
     for (const name of DEFAULT_ITEMS) {
       await supabase.from('items').insert({
@@ -137,6 +119,28 @@ export default function ItemsPage() {
     setItems(DEFAULT_ITEMS.map((name) => ({ name, is_favorite: false })));
     setLoading(false);
   };
+
+  // Handle URL param for direct item editing
+  useEffect(() => {
+    if (items.length === 0) return;
+    
+    const itemParam = searchParams.get('item');
+    if (!itemParam) return;
+    
+    try {
+      const itemName = JSON.parse(itemParam);
+      const found = items.find(i => i.name === itemName);
+      if (found) {
+        if (window.innerWidth < 768) {
+          openSheet(found);
+        } else {
+          startInlineEdit(found.name);
+        }
+      }
+    } catch (e) {
+      console.error('Invalid item param:', e);
+    }
+  }, [items, searchParams]);
 
   const filtered = useMemo(() => {
     let base = items;
@@ -170,8 +174,11 @@ export default function ItemsPage() {
 
     setTimeout(() => {
       const el = document.getElementById('item-rename-input') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
+      if (el) {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
     }, 50);
   };
 
@@ -690,5 +697,13 @@ export default function ItemsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ItemsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+      <ItemsContent />
+    </Suspense>
   );
 }
