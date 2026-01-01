@@ -33,8 +33,8 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileCurrentClass =
     mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
 
-  const MORE_PAGES = ['Enter Price', 'Enter Receipt', 'Manage Stores'];
-  const primaryPages = pages.filter((p) => !MORE_PAGES.includes(p.name));
+  const MORE_PAGES = ['Manage Items', 'Enter Prices', 'Add Receipt', 'Manage Stores'];
+  const primaryPages = pages.filter((p) => p.name !== 'Home' && !MORE_PAGES.includes(p.name));
   const morePages = pages.filter((p) => MORE_PAGES.includes(p.name));
   const isInMore = MORE_PAGES.includes(currentPage);
 

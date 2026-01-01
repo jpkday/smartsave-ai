@@ -34,7 +34,6 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
-  const householdId = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
@@ -75,7 +74,6 @@ export default function ShoppingList() {
   const getHouseholdId = async (): Promise<string> => {
     const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
     if (cached) return cached;
-  
     const code = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
     if (!code) throw new Error('Missing household_code');
   
@@ -195,7 +193,7 @@ export default function ShoppingList() {
         await supabase.from('items').insert({ 
           name: itemName, 
           user_id: SHARED_USER_ID,
-          householdcode_code: householdCode,
+          household_code: householdCode,
           is_favorite: false
         });
       }
@@ -758,8 +756,8 @@ export default function ShoppingList() {
                   Your List ({listItems.filter(i => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
-                  {/* Show/Hide Checked Items - Mobile Only */}
-                  {isMobile && listItems.some(i => i.checked) && (
+                  {/* Show/Hide Checked Items */}
+                  {listItems.some(i => i.checked) && (
                     <button
                       onClick={() => setShowCheckedItems(!showCheckedItems)}
                       className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
@@ -782,8 +780,8 @@ export default function ShoppingList() {
                 const itemsByStore: {[store: string]: ListItem[]} = {};
                 const itemsWithoutPrice: ListItem[] = [];
                 
-                // Filter items: on mobile hide checked items (unless showCheckedItems is true)
-                const displayItems = isMobile && !showCheckedItems 
+                // Filter items: hide checked items (unless showCheckedItems is true)
+                const displayItems = !showCheckedItems 
                   ? listItems.filter(item => !item.checked)
                   : listItems;
                 
