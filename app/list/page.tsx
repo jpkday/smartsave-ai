@@ -1254,7 +1254,7 @@ export default function ShoppingList() {
                             closeStoreModal();
                           }}
                           className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
-                            isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                            isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center gap-2">
