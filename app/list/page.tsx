@@ -765,12 +765,13 @@ export default function ShoppingList() {
                       {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
                     </button>
                   )}
+                  {/* Hiding the Clear All button as the value is unclear and users "don't want to touch it accidentally"
                   <button
                     onClick={clearList}
                     className="text-red-600 hover:text-red-800 font-semibold cursor-pointer text-sm"
                   >
                     Clear All
-                  </button>
+                  </button>*/}
                 </div>
               </div>
               
