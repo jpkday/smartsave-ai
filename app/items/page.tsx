@@ -487,7 +487,7 @@ function ItemsContent() {
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">{/* intentionally blank */}</p>
             </div>
-            <Header currentPage="Items" />
+            <Header currentPage="Manage Items" />
           </div>
         </div>
 

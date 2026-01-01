@@ -422,7 +422,7 @@ function PricesContent() {
                 </button>
               </div>
             </div>
-            <Header currentPage="Price Grid" />
+            <Header currentPage="Enter Prices" />
           </div>
         </div>
 

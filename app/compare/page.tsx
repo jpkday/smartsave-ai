@@ -472,10 +472,10 @@ function CompareContent() {
                 )}
               </div>
             </div>
-            <Header currentPage="Compare" />
+            <Header currentPage="Compare Items" />
           </div>
           <div className="md:hidden">
-            <Header currentPage="Compare" />
+            <Header currentPage="Compare Items" />
           </div>
         </div>
 

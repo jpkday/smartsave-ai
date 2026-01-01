@@ -53,7 +53,7 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="w-full bg-green-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare</span>
+                <span className="flex-1 ml-6">Compare Items</span>
               </button>
               
               <button onClick={handleLockedClick} className="w-full bg-amber-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
@@ -78,7 +78,7 @@ export default function Home() {
               
               <Link href="/compare" className="w-full bg-green-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare</span>
+                <span className="flex-1 ml-6">Compare Items</span>
               </Link>
               
               <Link href="/history" className="w-full bg-amber-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
@@ -113,7 +113,7 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare</span>
+                <span className="flex-1 ml-6">Compare Items</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
@@ -133,7 +133,7 @@ export default function Home() {
               
               <button onClick={handleLockedClick} className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">📋</span>
-                <span className="flex-1 ml-6">Items</span>
+                <span className="flex-1 ml-6">Manage Items</span>
               </button>
             </>
           ) : (
@@ -150,7 +150,7 @@ export default function Home() {
               
               <Link href="/compare" className="bg-green-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare</span>
+                <span className="flex-1 ml-6">Compare Items</span>
               </Link>
               
               <Link href="/receipts" className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
@@ -160,7 +160,7 @@ export default function Home() {
               
               <Link href="/prices" className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">💰</span>
-                <span className="flex-1 ml-6">Price Grid</span>
+                <span className="flex-1 ml-6">Enter Prices</span>
               </Link>
               
               <Link href="/stores" className="bg-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
@@ -170,7 +170,7 @@ export default function Home() {
               
               <Link href="/items" className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">📋</span>
-                <span className="flex-1 ml-6">Items</span>
+                <span className="flex-1 ml-6">Manage Items</span>
               </Link>
             </>
           )}
@@ -225,12 +225,12 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-3">
               <Link href="/items" onClick={() => setShowMoreMenu(false)} className="w-full bg-purple-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">📋</span>
-                <span className="flex-1 ml-6">Items</span>
+                <span className="flex-1 ml-6">Manage Items</span>
               </Link>
               
               <Link href="/prices" onClick={() => setShowMoreMenu(false)} className="w-full bg-blue-600 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">💰</span>
-                <span className="flex-1 ml-6">Price Grid</span>
+                <span className="flex-1 ml-6">Enter Prices</span>
               </Link>
               
               <Link href="/receipts" onClick={() => setShowMoreMenu(false)} className="w-full bg-orange-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
