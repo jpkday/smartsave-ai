@@ -1236,7 +1236,7 @@ export default function ShoppingList() {
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                        {cheapest && <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">{cheapest.store}</span>}
+                        {cheapest && <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{cheapest.store}</span>}
                       </div>
                       {cheapest && <span className="font-bold text-gray-800">{formatMoney(cheapest.price)}</span>}
                     </button>
@@ -1268,12 +1268,11 @@ export default function ShoppingList() {
                   </div>
                 );
               })()}
-
-              <div className="mt-4 flex justify-end">
-                <button onClick={closeStoreModal} className="text-sm font-semibold text-gray-600 hover:text-gray-800">
-                  Cancel
-                </button>
+{/*
+              <div className="text-sm text-gray-600 mt-1">
+                  <br></br>The app will automatically save your preferences for {activeItemForStoreModal}.
               </div>
+*/}
             </div>
           </div>
         )}
