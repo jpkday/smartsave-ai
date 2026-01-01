@@ -877,10 +877,10 @@ export default function ShoppingList() {
                                       {item.item_name}
                                     </Link>
 
-                                    {/* If overridden, show a tiny badge */}
+                                    {/* If overridden, show a tiny badge 
                                     {pref !== 'AUTO' && (
                                       <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">{pref}</span>
-                                    )}
+                                    )}*/}
                                   </div>
 
                                   {priceData ? (
@@ -1200,7 +1200,7 @@ export default function ShoppingList() {
             <div className="bg-white rounded-lg shadow-xl p-5 max-w-md w-full">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">Choose store</h3>
+                  <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
                   <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
                 </div>
                 <button
