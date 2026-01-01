@@ -40,7 +40,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
       <div className="text-center text-white max-w-xs md:max-w-2xl w-full">
         <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">SmartSaveAI</h1>
-        <p className="text-base md:text-xl mb-6 md:mb-10 px-2">Stop overpaying for groceries. Shop smart and save.</p>
+        <p className="text-base md:text-xl mb-6 md:mb-10 px-2">Stop overpaying for groceries. Shop smart and save. TEST</p>
         
         {/* Mobile: Primary 4 buttons only */}
         <div className="grid grid-cols-1 gap-3 md:hidden">
