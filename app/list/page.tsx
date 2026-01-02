@@ -22,6 +22,7 @@ type StoreChoice = 'AUTO' | string;
 
 export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
+  const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [listItems, setListItems] = useState<ListItem[]>([]);
@@ -203,8 +204,11 @@ export default function ShoppingList() {
   };
 
   const loadData = async () => {
-    // Load stores
-    const { data: storesData, error: storesError } = await supabase.from('stores').select('name').order('name');
+    // Load stores with IDs
+    const { data: storesData, error: storesError } = await supabase
+      .from('stores')
+      .select('id, name')
+      .order('name');
 
     if (storesError) {
       console.error('Error loading stores:', storesError);
@@ -212,6 +216,11 @@ export default function ShoppingList() {
 
     if (storesData) {
       setStores(storesData.map((s) => s.name));
+      
+      // Build name → id lookup
+      const lookup: { [name: string]: string } = {};
+      storesData.forEach(s => lookup[s.name] = s.id);
+      setStoresByName(lookup);
     }
 
     // Load all items and favorites
@@ -295,18 +304,43 @@ export default function ShoppingList() {
     setNewItem('');
 
     try {
-      if (!items.includes(itemName)) {
-        await supabase.from('items').insert({
-          name: itemName,
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          is_favorite: false,
-        });
+      let itemId: number | null = null;
+
+      // Check if item exists and get its ID
+      const { data: existingItem } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', itemName)
+        .eq('user_id', SHARED_USER_ID)
+        .single();
+
+      if (existingItem) {
+        itemId = existingItem.id;
+      } else {
+        // Create new item
+        const { data: newItemData, error: itemError } = await supabase
+          .from('items')
+          .insert({
+            name: itemName,
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            is_favorite: false,
+          })
+          .select('id')
+          .single();
+
+        if (itemError || !newItemData) {
+          throw new Error('Failed to create item');
+        }
+
+        itemId = newItemData.id;
       }
 
+      // Add to shopping list with item_id
       const alreadyInList = listItems.find((li) => li.item_name === itemName);
-      if (!alreadyInList) {
+      if (!alreadyInList && itemId) {
         await supabase.from('shopping_list').insert({
+          item_id: itemId,
           item_name: itemName,
           quantity: 1,
           user_id: SHARED_USER_ID,
@@ -319,6 +353,7 @@ export default function ShoppingList() {
       loadData();
     } catch (error) {
       console.error('Error:', error);
+      alert('Failed to add item. Check your connection and try again.');
     }
   };
 
@@ -328,24 +363,43 @@ export default function ShoppingList() {
     const itemName = newItem.trim();
 
     try {
-      // Check if item already exists
-      if (!items.find((i) => i === itemName)) {
-        // Create new item
-        const { error: itemError } = await supabase.from('items').insert({
-          name: itemName,
-          user_id: SHARED_USER_ID,
-          is_favorite: false,
-        });
+      let itemId: number | null = null;
 
-        if (itemError) {
-          throw new Error(`Failed to create item: ${itemError.message}`);
+      // Check if item exists and get its ID
+      const { data: existingItem } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', itemName)
+        .eq('user_id', SHARED_USER_ID)
+        .single();
+
+      if (existingItem) {
+        itemId = existingItem.id;
+      } else {
+        // Create new item
+        const { data: newItemData, error: itemError } = await supabase
+          .from('items')
+          .insert({
+            name: itemName,
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            is_favorite: false,
+          })
+          .select('id')
+          .single();
+
+        if (itemError || !newItemData) {
+          throw new Error(`Failed to create item: ${itemError?.message}`);
         }
+
+        itemId = newItemData.id;
       }
 
-      // Add to shopping list
+      // Add to shopping list with item_id
       const alreadyInList = listItems.find((li) => li.item_name === itemName);
-      if (!alreadyInList) {
+      if (!alreadyInList && itemId) {
         const { error: listError } = await supabase.from('shopping_list').insert({
+          item_id: itemId,
           item_name: itemName,
           quantity: 1,
           user_id: SHARED_USER_ID,
@@ -372,11 +426,22 @@ export default function ShoppingList() {
 
   const addFavorites = async () => {
     try {
-      for (const item of favorites) {
-        if (listItems.find((li) => li.item_name === item)) continue;
+      for (const itemName of favorites) {
+        if (listItems.find((li) => li.item_name === itemName)) continue;
+
+        // Get item_id
+        const { data: item } = await supabase
+          .from('items')
+          .select('id')
+          .eq('name', itemName)
+          .eq('user_id', SHARED_USER_ID)
+          .single();
+
+        if (!item) continue;
 
         const { error } = await supabase.from('shopping_list').insert({
-          item_name: item,
+          item_id: item.id,
+          item_name: itemName,
           quantity: 1,
           user_id: SHARED_USER_ID,
           household_code: householdCode,
@@ -385,7 +450,7 @@ export default function ShoppingList() {
         });
 
         if (error) {
-          throw new Error(`Failed to add ${item}: ${error.message}`);
+          throw new Error(`Failed to add ${itemName}: ${error.message}`);
         }
       }
 
@@ -408,8 +473,21 @@ export default function ShoppingList() {
           throw new Error(`Failed to remove item: ${error.message}`);
         }
       } else {
-        // Add to list
+        // Get item_id first
+        const { data: item } = await supabase
+          .from('items')
+          .select('id')
+          .eq('name', itemName)
+          .eq('user_id', SHARED_USER_ID)
+          .single();
+
+        if (!item) {
+          throw new Error('Item not found');
+        }
+
+        // Add to list with item_id
         const { error } = await supabase.from('shopping_list').insert({
+          item_id: item.id,
           item_name: itemName,
           quantity: 1,
           user_id: SHARED_USER_ID,
@@ -451,37 +529,48 @@ export default function ShoppingList() {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
 
+    const newCheckedState = !item.checked;
+
     try {
-      const { error } = await supabase
-        .from('shopping_list')
-        .update({ checked: !item.checked })
-        .eq('id', id)
-        .eq('user_id', SHARED_USER_ID);
+      // Update local state optimistically
+      setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: newCheckedState } : li)));
 
-      if (error) {
-        throw new Error(`Failed to check item: ${error.message}`);
+      if (newCheckedState) {
+        // Checking item - call new API with trip tracking
+        const effectiveStoreName = getEffectiveStore(item.item_name);
+        const effectiveStoreId = effectiveStoreName ? storesByName[effectiveStoreName] : null;
+
+        const response = await fetch('/api/shopping-list/check-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shopping_list_id: id,
+            store_id: effectiveStoreId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to check item');
+        }
+
+        const result = await response.json();
+        console.log('Item checked:', result);
+      } else {
+        // Unchecking item - just update database
+        const { error } = await supabase
+          .from('shopping_list')
+          .update({ checked: false })
+          .eq('id', id);
+
+        if (error) {
+          throw error;
+        }
       }
-
-      setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: !li.checked } : li)));
     } catch (error) {
-      console.error('Error checking item:', error);
+      console.error('Error toggling item:', error);
+      // Revert optimistic update on error
+      setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: !newCheckedState } : li)));
       alert('Failed to check item. Check your connection and try again.');
-    }
-
-    // Track only when checking items
-    if (!item.checked) {
-      const householdId = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
-      const householdCodeLocal = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
-
-      // swallow errors here so checkbox UX isn't blocked
-      const { error: evErr } = await supabase.from('shopping_list_events').insert({
-        item_name: item.item_name,
-        household_id: householdId,
-        household_code: householdCodeLocal,
-        checked_at: new Date().toISOString(),
-      });
-
-      if (evErr) console.error('shopping_list_events insert error:', evErr);
     }
   };
 
@@ -1203,81 +1292,82 @@ export default function ShoppingList() {
           </div>
         )}
 
-        {/* ===================== */}
-        {/* Store Picker Modal     */}
-        {/* ===================== */}
-        {storeModalOpen && activeItemForStoreModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-5 max-w-md w-full">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
-                  <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
-                </div>
-                <button
-                  onClick={closeStoreModal}
-                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-                  title="Close"
-                  aria-label="Close"
-                >
-                  ✖️
-                </button>
+{/* ===================== */}
+{/* Store Picker Modal     */}
+{/* ===================== */}
+{storeModalOpen && activeItemForStoreModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl p-5 max-w-md w-full">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
+          <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
+        </div>
+        <button
+          onClick={closeStoreModal}
+          className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+          title="Close"
+          aria-label="Close"
+        >
+          ✖️
+        </button>
+      </div>
+
+      {(() => {
+        const options = getStoreOptionsForItem(activeItemForStoreModal);
+        const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
+
+        if (options.length === 0) {
+          return (
+            <p className="text-gray-500 text-sm">No price data available for this item.</p>
+          );
+        }
+
+        return (
+          <div className="space-y-2">
+            {/* Auto option */}
+            <button
+              onClick={() => {
+                setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                closeStoreModal();
+              }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
+                pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-800">Auto (cheapest)</span>
+                <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
               </div>
+              <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
+            </button>
 
-              {(() => {
-                const options = getStoreOptionsForItem(activeItemForStoreModal);
-                const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-                const cheapest = options.length > 0 ? options[0] : null;
+            {/* Store options - only stores with prices */}
+            {options.map(({ store, price }) => {
+              const isSelected = pref === store;
 
-                return (
-                  <div className="space-y-2">
-                    {/* Auto option */}
-                    <button
-                      onClick={() => {
-                        setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                        closeStoreModal();
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
-                        pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                        {cheapest && <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{cheapest.store}</span>}
-                      </div>
-                      {cheapest && <span className="font-bold text-gray-800">{formatMoney(cheapest.price)}</span>}
-                    </button>
-
-                    {/* Store options */}
-                    {stores.map((store) => {
-                      const option = options.find(o => o.store === store);
-                      const price = option?.price;
-                      const isSelected = pref === store;
-
-                      return (
-                        <button
-                          key={store}
-                          onClick={() => {
-                            setItemStorePreference(activeItemForStoreModal, store);
-                            closeStoreModal();
-                          }}
-                          className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
-                            isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span className="font-semibold text-gray-800">{store}</span>
-                          <span className={`font-bold ${price ? 'text-gray-800' : 'text-gray-400'}`}>
-                            {price ? formatMoney(price) : 'No price'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
+              return (
+                <button
+                  key={store}
+                  onClick={() => {
+                    setItemStorePreference(activeItemForStoreModal, store);
+                    closeStoreModal();
+                  }}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
+                    isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="font-semibold text-gray-800">{store}</span>
+                  <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                </button>
+              );
+            })}
           </div>
-        )}
+        );
+      })()}
+    </div>
+  </div>
+)}
 
         {/* ===================== */}
         {/* Quantity Modal        */}

@@ -248,34 +248,61 @@ function HistoryContent() {
       alert('Please enter a valid price');
       return;
     }
-
+  
     if (!newDate) {
       alert('Please select a date');
       return;
     }
-
+  
+    // Get item_id
+    const { data: itemData } = await supabase
+      .from('items')
+      .select('id')
+      .eq('name', selectedItem)
+      .eq('user_id', SHARED_USER_ID)
+      .single();
+  
+    if (!itemData) {
+      alert('Item not found');
+      return;
+    }
+  
+    // Get store_id
+    const { data: storeData } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('name', selectedStore)
+      .single();
+  
+    if (!storeData) {
+      alert('Store not found');
+      return;
+    }
+  
     // Insert new price record
     const { error } = await supabase
       .from('price_history')
       .insert({
+        item_id: itemData.id,
         item_name: selectedItem,
+        store_id: storeData.id,
         store: selectedStore,
         price: newPrice,
         user_id: SHARED_USER_ID,
         recorded_date: newDate,
         created_at: new Date().toISOString()
       });
-
+  
     if (error) {
       console.error('Error adding price:', error);
       alert('Failed to add price entry');
       return;
     }
-
+  
     // Clear form (using local date)
     setNewPrice('');
     setNewDate(getLocalDateString());
-
+  
     // Reload history to show new entry
     loadPriceHistory();
   };
@@ -305,22 +332,47 @@ function HistoryContent() {
       // Use override store if provided (for "All Stores" view), otherwise use selectedStore
       const storeToUse = storeOverride || selectedStore;
       
+      // Get item_id
+      const { data: itemData } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', selectedItem)
+        .eq('user_id', SHARED_USER_ID)
+        .single();
+  
+      if (!itemData) {
+        throw new Error('Item not found');
+      }
+  
+      // Get store_id
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('name', storeToUse)
+        .single();
+  
+      if (!storeData) {
+        throw new Error('Store not found');
+      }
+  
       // Insert new price record with today's date
       const { error } = await supabase
         .from('price_history')
         .insert({
+          item_id: itemData.id,
           item_name: selectedItem,
+          store_id: storeData.id,
           store: storeToUse,
           price: priceToConfirm,
           user_id: SHARED_USER_ID,
           recorded_date: getLocalDateString(),
           created_at: new Date().toISOString()
         });
-
+  
       if (error) {
         throw new Error(`Failed to confirm price: ${error.message}`);
       }
-
+  
       // Reload history to show new entry
       loadPriceHistory();
     } catch (error) {

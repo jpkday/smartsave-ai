@@ -12,6 +12,7 @@ export default function Header({ currentPage }: HeaderProps) {
     {name: 'Home', path: '/', icon: '🏠' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
     { name: 'Compare Items', path: '/compare', icon: '⚖️' },
+    { name: 'Recent Trips', path: '/trips', icon: '🛒' },
     { name: 'Price History', path: '/history', icon: '📊' },
     { name: 'Manage Items', path: '/items', icon: '📋' },
     { name: 'Enter Prices', path: '/prices', icon: '💰' },
@@ -23,6 +24,7 @@ export default function Header({ currentPage }: HeaderProps) {
     'Home': 'bg-yellow-500 hover:bg-yellow-600',
     'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
     'Compare Items': 'bg-green-500 hover:bg-green-600',
+    'Recent Trips': 'bg-orange-500 hover:bg-orange-600',
     'Price History': 'bg-amber-700 hover:bg-amber-800',
     'Manage Items': 'bg-purple-500 hover:bg-purple-600',
     'Enter Prices': 'bg-blue-600 hover:bg-blue-700',
@@ -33,7 +35,7 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileCurrentClass =
     mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
 
-  const MORE_PAGES = ['Manage Items', 'Enter Prices', 'Add Receipt', 'Manage Stores'];
+  const MORE_PAGES = ['Price History', 'Manage Items', 'Enter Prices', 'Add Receipt', 'Manage Stores'];
   const primaryPages = pages.filter((p) => p.name !== 'Home' && !MORE_PAGES.includes(p.name));
   const morePages = pages.filter((p) => MORE_PAGES.includes(p.name));
   const isInMore = MORE_PAGES.includes(currentPage);

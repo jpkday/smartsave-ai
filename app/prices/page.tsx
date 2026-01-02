@@ -198,23 +198,50 @@ function PricesContent() {
     if (!priceValue || parseFloat(priceValue) === 0) {
       return;
     }
-
+  
+    // Get item_id
+    const { data: itemData } = await supabase
+      .from('items')
+      .select('id')
+      .eq('name', item)
+      .eq('user_id', SHARED_USER_ID)
+      .single();
+  
+    if (!itemData) {
+      console.error('Item not found:', item);
+      return;
+    }
+  
+    // Get store_id
+    const { data: storeData } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('name', store)
+      .single();
+  
+    if (!storeData) {
+      console.error('Store not found:', store);
+      return;
+    }
+  
     // Insert new price record (never update - always insert for history)
     await supabase
       .from('price_history')
       .insert({
+        item_id: itemData.id,
         item_name: item,
+        store_id: storeData.id,
         store: store,
         price: priceValue,
         user_id: SHARED_USER_ID,
         recorded_date: new Date().toISOString().split('T')[0], // Today's date
         created_at: new Date().toISOString()
       });
-
+  
     // Update dates
     const today = new Date().toISOString().split('T')[0];
     setPricesDates({...pricesDates, [`${store}-${item}`]: today});
-
+  
     // Update last saved time
     const now = new Date().toLocaleDateString();
     setLastSaved(now);

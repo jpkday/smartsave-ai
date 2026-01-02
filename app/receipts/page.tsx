@@ -82,12 +82,12 @@ export default function Receipts() {
       alert('Please select a store');
       return;
     }
-
+  
     if (!date) {
       alert('Please select a date');
       return;
     }
-
+  
     // Filter out empty rows
     const validItems = receiptItems.filter(ri => ri.item && parseFloat(ri.price || '0') > 0);
     
@@ -95,7 +95,7 @@ export default function Receipts() {
       alert('Please add at least one item with a price');
       return;
     }
-
+  
     // Add any new items to the database
     for (const ri of validItems) {
       if (!items.includes(ri.item)) {
@@ -105,13 +105,40 @@ export default function Receipts() {
         setItems([...items, ri.item]);
       }
     }
-
+  
+    // Get store_id
+    const { data: storeData } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('name', store)
+      .single();
+  
+    if (!storeData) {
+      alert('Store not found');
+      return;
+    }
+  
     // Insert prices into price_history (never update - always insert)
     for (const ri of validItems) {
+      // Get item_id for this item
+      const { data: itemData } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', ri.item)
+        .eq('user_id', SHARED_USER_ID)
+        .single();
+  
+      if (!itemData) {
+        console.error('Item not found:', ri.item);
+        continue;
+      }
+  
       await supabase
         .from('price_history')
         .insert({
+          item_id: itemData.id,
           item_name: ri.item,
+          store_id: storeData.id,
           store: store,
           price: ri.price,
           user_id: SHARED_USER_ID,
@@ -119,7 +146,7 @@ export default function Receipts() {
           created_at: new Date().toISOString()
         });
     }
-
+  
     alert(`Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(date).toLocaleDateString()}`);
     
     // Reset form

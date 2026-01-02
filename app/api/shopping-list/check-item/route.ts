@@ -1,0 +1,160 @@
+import { supabase } from '../../../lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { shopping_list_id, store_id } = await request.json();
+
+    if (!shopping_list_id) {
+      return NextResponse.json(
+        { error: 'shopping_list_id is required' },
+        { status: 400 }
+      );
+    }
+
+    // 1. Get the shopping list item
+    const { data: listItem, error: itemError } = await supabase
+      .from('shopping_list')
+      .select('*')
+      .eq('id', shopping_list_id)
+      .single();
+
+    if (itemError || !listItem) {
+      return NextResponse.json(
+        { error: 'Shopping list item not found' },
+        { status: 404 }
+      );
+    }
+
+    // 2. Update checked status immediately
+    const { error: updateError } = await supabase
+      .from('shopping_list')
+      .update({ checked: true })
+      .eq('id', shopping_list_id);
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: 'Failed to update item' },
+        { status: 500 }
+      );
+    }
+
+    // 3. If no store provided, we're done (bought elsewhere or manual entry)
+    if (!store_id) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Item checked (no store tracking)' 
+      });
+    }
+
+    // 4. Get store name for denormalization in events
+    const { data: store } = await supabase
+      .from('stores')
+      .select('name')
+      .eq('id', store_id)
+      .single();
+
+    const storeName = store?.name || 'Unknown Store';
+
+    // 5. Find or create today's trip for this household + store
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    let { data: trip } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('household_code', listItem.household_code)
+      .eq('store_id', store_id)
+      .gte('started_at', `${today}T00:00:00`)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Create new trip if none found for today
+    if (!trip) {
+      const { data: newTrip, error: tripError } = await supabase
+        .from('trips')
+        .insert({
+          household_code: listItem.household_code,
+          store_id: store_id,
+          store: storeName,
+          started_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (tripError) {
+        console.error('Failed to create trip:', tripError);
+        return NextResponse.json(
+          { error: 'Failed to create trip' },
+          { status: 500 }
+        );
+      }
+
+      trip = newTrip;
+    }
+
+    // 6. Create shopping_list_event
+    const { error: eventError } = await supabase
+      .from('shopping_list_events')
+      .insert({
+        household_code: listItem.household_code,
+        item_id: listItem.item_id,
+        item_name: listItem.item_name,
+        quantity: listItem.quantity || 1,
+        store_id: store_id,
+        store: storeName,
+        trip_id: trip.id,
+        checked_at: new Date().toISOString(),
+      });
+
+    if (eventError) {
+      console.error('Failed to create event:', eventError);
+      // Don't fail the request - item is already checked
+    }
+
+    // 7. Check if all items for THIS TRIP are now checked
+    // Get all unique item_ids that have been added to this trip
+    const { data: tripItems } = await supabase
+      .from('shopping_list_events')
+      .select('item_id')
+      .eq('trip_id', trip.id);
+
+    let tripEnded = false;
+
+    if (tripItems && tripItems.length > 0) {
+      const tripItemIds = [...new Set(tripItems.map(ti => ti.item_id))];
+      
+      // Check if any of these items are still unchecked in the shopping list
+      const { count: uncheckedCount } = await supabase
+        .from('shopping_list')
+        .select('*', { count: 'exact', head: true })
+        .eq('household_code', listItem.household_code)
+        .in('item_id', tripItemIds)
+        .eq('checked', false);
+
+      // If all items for this trip are checked, end the trip
+      if (uncheckedCount === 0) {
+        await supabase
+          .from('trips')
+          .update({ ended_at: new Date().toISOString() })
+          .eq('id', trip.id);
+        
+        tripEnded = true;
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      trip_id: trip.id,
+      trip_ended: tripEnded,
+    });
+
+  } catch (error) {
+    console.error('Check item error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+  );
+  }
+}
