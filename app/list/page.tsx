@@ -1016,11 +1016,17 @@ export default function ShoppingList() {
                                 {/* Swap store icon */}
                                 <button
                                   onClick={() => openStoreModal(item.item_name)}
-                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                  className={`cursor-pointer text-xl ml-1 transition ${
+                                    (storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO')
+                                      ? 'text-indigo-600 hover:text-indigo-700'
+                                      : 'text-gray-300 hover:text-gray-500'
+                                  }`}
                                   title="Swap store"
                                   aria-label="Swap store"
                                 >
-                                  🔁
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                  </svg>
                                 </button>
 
                                 {/* Remove item icon */}
@@ -1292,82 +1298,90 @@ export default function ShoppingList() {
           </div>
         )}
 
-{/* ===================== */}
-{/* Store Picker Modal     */}
-{/* ===================== */}
-{storeModalOpen && activeItemForStoreModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
-          <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
-        </div>
-        <button
-          onClick={closeStoreModal}
-          className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-          title="Close"
-          aria-label="Close"
-        >
-          ✖️
-        </button>
-      </div>
-
-      {(() => {
-        const options = getStoreOptionsForItem(activeItemForStoreModal);
-        const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-
-        if (options.length === 0) {
-          return (
-            <p className="text-gray-500 text-sm">No price data available for this item.</p>
-          );
-        }
-
-        return (
-          <div className="space-y-2">
-            {/* Auto option */}
-            <button
-              onClick={() => {
-                setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                closeStoreModal();
-              }}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition text-left ${
-                pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-              </div>
-              <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
-            </button>
-
-            {/* Store options - only stores with prices */}
-            {options.map(({ store, price }) => {
-              const isSelected = pref === store;
-
-              return (
+        {/* ===================== */}
+        {/* Store Picker Modal     */}
+        {/* ===================== */}
+        {storeModalOpen && activeItemForStoreModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
+                  <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
+                </div>
                 <button
-                  key={store}
-                  onClick={() => {
-                    setItemStorePreference(activeItemForStoreModal, store);
-                    closeStoreModal();
-                  }}
-                  className={`w-full flex items-center justify-between p-3 rounded-2xl border transition text-left ${
-                    isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
-                  }`}
+                  onClick={closeStoreModal}
+                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+                  title="Close"
+                  aria-label="Close"
                 >
-                  <span className="font-semibold text-gray-800">{store}</span>
-                  <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                  ✖️
                 </button>
-              );
-            })}
+              </div>
+
+              {(() => {
+                const options = getStoreOptionsForItem(activeItemForStoreModal);
+                const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
+
+                if (options.length === 0) {
+                  return (
+                    <p className="text-gray-500 text-sm">No price data available for this item.</p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {/* Auto option */}
+                    <button
+                      onClick={() => {
+                        setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                        closeStoreModal();
+                      }}
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl border transition text-left ${
+                        pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-800">Auto (cheapest)</span>
+                        <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
+                      </div>
+                      <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
+                    </button>
+
+                    {/* Store options - only stores with prices */}
+                    {options.map(({ store, price }, idx) => {
+                      const isSelected = pref === store;
+                      const isBestPrice = idx === 0; // First option is cheapest
+
+                      return (
+                        <button
+                          key={store}
+                          onClick={() => {
+                            setItemStorePreference(activeItemForStoreModal, store);
+                            closeStoreModal();
+                          }}
+                          className={`w-full flex items-center justify-between p-4 rounded-2xl border transition text-left ${
+                            isSelected ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">{store}</span>
+                            {isBestPrice && (
+                              <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                                Best Price
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
-        );
-      })()}
-    </div>
-  </div>
-)}
+        )}
 
         {/* ===================== */}
         {/* Quantity Modal        */}
