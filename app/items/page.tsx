@@ -21,12 +21,16 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 interface Item {
   name: string;
   is_favorite: boolean;
+  household_code?: string;
 }
 
 function ItemsContent() {
   const searchParams = useSearchParams();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+  const isMasterAccount = householdCode === 'ASDF';
 
   // Search + quick add
   const [query, setQuery] = useState('');
@@ -87,7 +91,7 @@ function ItemsContent() {
 
     const { data, error } = await supabase
       .from('items')
-      .select('name, is_favorite')
+      .select('name, is_favorite, household_code')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
@@ -102,6 +106,7 @@ function ItemsContent() {
         data.map((x: any) => ({
           name: x.name,
           is_favorite: x.is_favorite || false,
+          household_code: x.household_code,
         }))
       );
       setLoading(false);
@@ -113,10 +118,15 @@ function ItemsContent() {
       await supabase.from('items').insert({
         name,
         user_id: SHARED_USER_ID,
+        household_code: householdCode || 'ASDF',
         is_favorite: false,
       });
     }
-    setItems(DEFAULT_ITEMS.map((name) => ({ name, is_favorite: false })));
+    setItems(DEFAULT_ITEMS.map((name) => ({ 
+      name, 
+      is_favorite: false,
+      household_code: householdCode || 'ASDF'
+    })));
     setLoading(false);
   };
 
@@ -166,6 +176,10 @@ function ItemsContent() {
     [filtered]
   );
 
+  const canDeleteItem = (item: Item): boolean => {
+    return isMasterAccount || item.household_code === householdCode;
+  };
+
   const openSheet = (item: Item) => {
     setSelected(item);
     setEditValue(item.name);
@@ -201,6 +215,7 @@ function ItemsContent() {
     const { error } = await supabase.from('items').insert({
       name,
       user_id: SHARED_USER_ID,
+      household_code: householdCode || 'ASDF',
       is_favorite: false,
     });
 
@@ -210,7 +225,11 @@ function ItemsContent() {
       return;
     }
 
-    setItems((prev) => [...prev, { name, is_favorite: false }]);
+    setItems((prev) => [...prev, { 
+      name, 
+      is_favorite: false,
+      household_code: householdCode || 'ASDF'
+    }]);
     setNewItem('');
     addRef.current?.focus();
   };
@@ -241,7 +260,18 @@ function ItemsContent() {
   };
 
   const deleteItem = async (itemName: string) => {
-    if (!confirm(`Delete "${itemName}"?\n\nThis will also remove all price data for this item.`)) return;
+    const item = items.find(i => i.name === itemName);
+    if (!item) return;
+
+    // Check permissions: ASDF can delete anything, others can only delete their own
+    const canDelete = canDeleteItem(item);
+    
+    if (!canDelete) {
+      alert('You can only delete items you created.');
+      return;
+    }
+
+    if (!confirm('Delete this item? This will also remove it from all shopping lists.')) return;
 
     const { error } = await supabase
       .from('items')
@@ -394,6 +424,7 @@ function ItemsContent() {
   // Desktop row: inline edit with /prices icons (pencil next to name)
   const renderDesktopRow = (item: Item, isFavorite: boolean) => {
     const isEditing = editingName === item.name;
+    const canDelete = canDeleteItem(item);
 
     return (
       <div
@@ -460,16 +491,18 @@ function ItemsContent() {
                 </button>
               </span>
 
-              {/* Trash stays on far right */}
-              <button
-                type="button"
-                onClick={() => deleteItem(item.name)}
-                className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
-                title="Delete item"
-                disabled={inlineSaving}
-              >
-                🗑️
-              </button>
+              {/* Only show trash if user can delete */}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => deleteItem(item.name)}
+                  className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
+                  title="Delete item"
+                  disabled={inlineSaving}
+                >
+                  🗑️
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -654,14 +687,19 @@ function ItemsContent() {
 
                 <div className="font-semibold text-gray-800">Edit item</div>
 
-                <button
-                  type="button"
-                  onClick={() => deleteItem(selected.name)}
-                  className="px-3 py-1 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
-                  disabled={saving}
-                >
-                  Delete
-                </button>
+                {/* Only show delete if user can delete */}
+                {canDeleteItem(selected) && (
+                  <button
+                    type="button"
+                    onClick={() => deleteItem(selected.name)}
+                    className="px-3 py-1 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
+                    disabled={saving}
+                  >
+                    Delete
+                  </button>
+                )}
+                {/* Spacer if can't delete */}
+                {!canDeleteItem(selected) && <div className="w-16"></div>}
               </div>
 
               <input

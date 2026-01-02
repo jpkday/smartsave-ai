@@ -323,6 +323,7 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -381,6 +382,7 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -839,7 +841,7 @@ export default function ShoppingList() {
           )}
         </div>
 
-        {/* Add to List Widget - Hidden on Mobile (shows below list on mobile) */}
+        {/* Add to List Widget - Desktop Only (shows below list on mobile) */}
         <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 mb-6">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
           <div className="relative autocomplete-container">
@@ -1151,7 +1153,7 @@ export default function ShoppingList() {
                       el.addEventListener('focus', () => {
                         setTimeout(() => {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300); // Delay to account for keyboard opening
+                        }, 300);
                       });
                     }
                   }}
@@ -1161,11 +1163,6 @@ export default function ShoppingList() {
                   value={newItem}
                   onChange={(e) => handleInputChange(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                  onFocus={() => {
-                    const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                    setAutocompleteItems(availableItems);
-                    setShowAutocomplete(availableItems.length > 0);
-                  }}
                 />
 
                 {/* Autocomplete dropdown - positioned above input */}
@@ -1278,7 +1275,7 @@ export default function ShoppingList() {
               </button>
             )}
 
-            {/* Add to List when list is empty - Always visible */}
+            {/* Add to List when list is empty - Desktop only shows autocomplete onFocus */}
             <div className="bg-white rounded-2xl shadow-lg p-4 mt-6 max-w-md mx-auto">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
@@ -1291,9 +1288,12 @@ export default function ShoppingList() {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                     onFocus={() => {
-                      const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                      setAutocompleteItems(availableItems);
-                      setShowAutocomplete(availableItems.length > 0);
+                      // Only show autocomplete on desktop
+                      if (!isMobile) {
+                        const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
+                        setAutocompleteItems(availableItems);
+                        setShowAutocomplete(availableItems.length > 0);
+                      }
                     }}
                   />
                   <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
