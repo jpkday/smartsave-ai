@@ -68,14 +68,14 @@ export default function Header({ currentPage }: HeaderProps) {
         {showHome ? (
           <Link
             href="/"
-            className="bg-gray-400 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+            className="bg-gray-400 text-white w-14 h-14 rounded-2xl font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
           >
             <span className="text-xl">🏠</span>
           </Link>
         ) : (
           <button
             onClick={() => router.back()}
-            className="bg-gray-400 text-white w-14 h-14 rounded-lg font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+            className="bg-gray-400 text-white w-14 h-14 rounded-2xl font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -85,7 +85,7 @@ export default function Header({ currentPage }: HeaderProps) {
 
         <div className="flex-1 relative">
           <div
-            className={`w-full px-4 py-3.5 rounded-lg font-bold text-white ${mobileCurrentClass} transition text-center flex items-center justify-center gap-2`}
+            className={`w-full px-4 py-3.5 rounded-2xl font-bold text-white ${mobileCurrentClass} transition text-center flex items-center justify-center gap-2`}
           >
             <span>
               {pages.find((p) => p.name === currentPage)?.icon} {currentPage}
@@ -154,7 +154,7 @@ export default function Header({ currentPage }: HeaderProps) {
             {moreOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
+                className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-50"
               >
                 {morePages.map((p) => (
                   <Link
