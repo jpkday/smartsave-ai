@@ -1145,42 +1145,62 @@ export default function ShoppingList() {
             <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mt-6">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Select existing or add new"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-800"
-                    value={newItem}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                    onFocus={() => {
-                      const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                      setAutocompleteItems(availableItems);
-                      setShowAutocomplete(availableItems.length > 0);
-                    }}
-                  />
-                  <button onClick={addNewItem} className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap">
-                    Add
-                  </button>
-                </div>
+                <input
+                  ref={(el) => {
+                    if (el) {
+                      el.addEventListener('focus', () => {
+                        setTimeout(() => {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300); // Delay to account for keyboard opening
+                      });
+                    }
+                  }}
+                  type="text"
+                  placeholder="Search or type new item..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-800 text-base"
+                  value={newItem}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                  onFocus={() => {
+                    const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
+                    setAutocompleteItems(availableItems);
+                    setShowAutocomplete(availableItems.length > 0);
+                  }}
+                />
 
+                {/* Autocomplete dropdown - positioned above input */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                    {autocompleteItems.slice(0, 10).map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => {
-                          selectItem(item);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                      >
-                        {item}
-                      </button>
-                    ))}
+                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border-2 border-gray-300 rounded-2xl shadow-2xl max-h-60 overflow-y-auto z-50">
+                    {autocompleteItems.slice(0, 10).map((item) => {
+                      const isFavorite = favorites.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => {
+                            selectItem(item);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
+                        >
+                          {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
+                          {item}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
+                
+                <button 
+                  onClick={addNewItem} 
+                  className="w-full mt-3 bg-indigo-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition text-base"
+                >
+                  Add to List
+                </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
+              {newItem.trim() && !items.includes(newItem.trim()) && (
+                <p className="text-xs text-gray-500 mt-2">
+                  "{newItem}" will be added as a new item
+                </p>
+              )}
             </div>
 
             {/* Best Store Recommendation - Desktop Only */}
