@@ -36,8 +36,18 @@ export default function ShoppingList() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+  
+  // Remember last store used for price entry
+  const [lastUsedStore, setLastUsedStore] = useState<string>('');
+
+  useEffect(() => {
+    // Load last used store from localStorage on mount
+    const stored = localStorage.getItem('last_price_store');
+    if (stored && stores.includes(stored)) {
+      setLastUsedStore(stored);
+    }
+  }, [stores]);
 
   // =========================
   // Store preference override
@@ -134,6 +144,90 @@ export default function ShoppingList() {
     setActiveItemForQuantity(null);
   };
 
+  // =========================
+  // Price entry modal state
+  // =========================
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [activeItemForPrice, setActiveItemForPrice] = useState<string | null>(null);
+  const [priceModalStore, setPriceModalStore] = useState<string>('');
+  const [priceModalValue, setPriceModalValue] = useState<string>('');
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  const openPriceModal = (itemName: string, storeName?: string) => {
+    setActiveItemForPrice(itemName);
+    setPriceModalStore(storeName || lastUsedStore || stores[0] || '');
+    setPriceModalValue('');
+    setPriceModalOpen(true);
+    setSavingPrice(false);
+  };
+
+  const closePriceModal = () => {
+    setPriceModalOpen(false);
+    setActiveItemForPrice(null);
+    setPriceModalStore('');
+    setPriceModalValue('');
+    setSavingPrice(false);
+  };
+
+  const savePrice = async () => {
+    if (!activeItemForPrice || !priceModalStore || !priceModalValue) return;
+  
+    const priceNum = parseFloat(priceModalValue);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+  
+    setSavingPrice(true);
+  
+    try {
+      // Get item_id
+      const { data: itemData } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', activeItemForPrice)
+        .eq('user_id', SHARED_USER_ID)
+        .single();
+  
+      if (!itemData) {
+        throw new Error('Item not found');
+      }
+  
+      const storeId = storesByName[priceModalStore];
+      if (!storeId) {
+        throw new Error('Store not found');
+      }
+  
+      // Insert into price_history
+      const { error } = await supabase.from('price_history').insert({
+        item_id: itemData.id,
+        item_name: activeItemForPrice,
+        store_id: storeId,
+        store: priceModalStore,
+        price: priceNum.toFixed(2),
+        user_id: SHARED_USER_ID,
+        recorded_date: new Date().toISOString(),
+      });
+  
+      if (error) {
+        throw error;
+      }
+  
+      // Remember this store for next time
+      setLastUsedStore(priceModalStore);
+      localStorage.setItem('last_price_store', priceModalStore);
+  
+      // Reload data to show new price
+      await loadData();
+      closePriceModal();
+      closeStoreModal(); // Close store modal if it's open
+    } catch (error) {
+      console.error('Error saving price:', error);
+      alert('Failed to save price. Check your connection and try again.');
+      setSavingPrice(false);
+    }
+  };
+
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
@@ -173,13 +267,14 @@ export default function ShoppingList() {
       if (e.key === 'Escape') {
         closeStoreModal();
         closeQuantityModal();
+        closePriceModal();
       }
     };
-    if (storeModalOpen || quantityModalOpen) {
+    if (storeModalOpen || quantityModalOpen || priceModalOpen) {
       window.addEventListener('keydown', onKeyDown);
     }
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [storeModalOpen, quantityModalOpen]);
+  }, [storeModalOpen, quantityModalOpen, priceModalOpen]);
 
   useEffect(() => {
     // Load store prefs early
@@ -323,7 +418,6 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
-            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -382,7 +476,6 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
-            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -975,7 +1068,9 @@ export default function ShoppingList() {
 
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
+                                   {/* Commenting out the star
+                                   {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
+                                   */}
                                     <button
                                       type="button"
                                       onClick={() => openQuantityModal(item)}
@@ -1087,7 +1182,12 @@ export default function ShoppingList() {
                                       {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
                                     </button>
                                   </div>
-                                  <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                  <button
+                                    onClick={() => openPriceModal(item.item_name)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 mt-0.5 font-semibold cursor-pointer"
+                                  >
+                                    + Add Price
+                                  </button>
                                 </div>
 
                                 {/* Swap store icon */}
@@ -1327,7 +1427,7 @@ export default function ShoppingList() {
         {/* ===================== */}
         {storeModalOpen && activeItemForStoreModal && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full">
+            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
@@ -1346,60 +1446,90 @@ export default function ShoppingList() {
               {(() => {
                 const options = getStoreOptionsForItem(activeItemForStoreModal);
                 const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
+                
+                // Stores without prices
+                const storesWithoutPrices = stores.filter(
+                  (store) => !options.find((opt) => opt.store === store)
+                );
 
-                if (options.length === 0) {
+                if (options.length === 0 && storesWithoutPrices.length === 0) {
                   return (
-                    <p className="text-gray-500 text-sm">No price data available for this item.</p>
+                    <p className="text-gray-500 text-sm">No stores available.</p>
                   );
                 }
 
                 return (
                   <div className="space-y-2">
-                    {/* Auto option */}
-                    <button
-                      onClick={() => {
-                        setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                        closeStoreModal();
-                      }}
-                      className={`w-full flex items-center justify-between p-4 rounded-2xl border transition text-left ${
-                        pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                        <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-                      </div>
-                      <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
-                    </button>
-
-                    {/* Store options - only stores with prices */}
-                    {options.map(({ store, price }, idx) => {
-                      const isSelected = pref === store;
-                      const isBestPrice = idx === 0; // First option is cheapest
-
-                      return (
+                    {options.length > 0 && (
+                      <>
+                        {/* Auto option */}
                         <button
-                          key={store}
                           onClick={() => {
-                            setItemStorePreference(activeItemForStoreModal, store);
+                            setItemStorePreference(activeItemForStoreModal, 'AUTO');
                             closeStoreModal();
                           }}
-                          className={`w-full flex items-center justify-between p-4 rounded-2xl border transition text-left ${
-                            isSelected ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:bg-gray-50'
+                          className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
+                            pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">{store}</span>
-                            {isBestPrice && (
-                              <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                Best Price
-                              </span>
-                            )}
+                            <span className="font-semibold text-gray-800">Auto (cheapest)</span>
+                            <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
                           </div>
-                          <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                          <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
                         </button>
-                      );
-                    })}
+
+                        {/* Store options - only stores with prices */}
+                        {options.map(({ store, price }, idx) => {
+                          const isSelected = pref === store;
+                          const isBestPrice = idx === 0;
+
+                          return (
+                            <button
+                              key={store}
+                              onClick={() => {
+                                setItemStorePreference(activeItemForStoreModal, store);
+                                closeStoreModal();
+                              }}
+                              className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
+                                isSelected ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-800">{store}</span>
+                                {isBestPrice && (
+                                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                                    Best Price
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {/* Stores without prices */}
+                    {storesWithoutPrices.length > 0 && (
+                      <>
+                        <div className="pt-3 pb-1">
+                          <h4 className="text-sm font-semibold text-gray-600">Add Price For:</h4>
+                        </div>
+                        {storesWithoutPrices.map((store) => (
+                          <button
+                            key={store}
+                            onClick={() => {
+                              openPriceModal(activeItemForStoreModal, store);
+                            }}
+                            className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition text-left"
+                          >
+                            <span className="font-semibold text-gray-800">{store}</span>
+                            <span className="text-sm text-blue-600 font-semibold">+ Add Price</span>
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -1443,6 +1573,76 @@ export default function ShoppingList() {
                   className="w-12 h-12 rounded-2xl bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
                 >
                   +
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== */}
+        {/* Price Entry Modal     */}
+        {/* ===================== */}
+        {priceModalOpen && activeItemForPrice && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Add Price</h3>
+                  <p className="text-sm text-gray-600 mt-1">{activeItemForPrice}</p>
+                </div>
+                <button
+                  onClick={closePriceModal}
+                  className="text-gray-300 hover:text-gray-500 text-xl"
+                  title="Close"
+                  aria-label="Close"
+                >
+                  ✖️
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Store selector */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
+                  <select
+                    value={priceModalStore}
+                    onChange={(e) => setPriceModalStore(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  >
+                    {stores.map((store) => (
+                      <option key={store} value={store}>
+                        {store}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Price input */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={priceModalValue}
+                      onChange={(e) => setPriceModalValue(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && savePrice()}
+                      className="w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-lg"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Save button */}
+                <button
+                  onClick={savePrice}
+                  disabled={savingPrice || !priceModalValue}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingPrice ? 'Saving...' : 'Save Price'}
                 </button>
               </div>
             </div>
