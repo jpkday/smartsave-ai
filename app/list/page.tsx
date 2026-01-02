@@ -1145,7 +1145,9 @@ export default function ShoppingList() {
 
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Hide the star!
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
+                                    */}
                                     <button
                                       type="button"
                                       onClick={() => openEditModal(item)}
@@ -1161,7 +1163,9 @@ export default function ShoppingList() {
                                       className="text-gray-400 hover:text-blue-600 cursor-pointer"
                                       title="Edit item"
                                     >
+                                       {/* Hide the pencil!
                                       <PencilIcon className="w-4 h-4 inline" />
+                                      */}
                                     </button>
                                   </div>
 
@@ -1270,7 +1274,9 @@ export default function ShoppingList() {
                                       className="text-gray-400 hover:text-blue-600 cursor-pointer"
                                       title="Edit item"
                                     >
+                                       {/* Hide the pencil!
                                       <PencilIcon className="w-4 h-4 inline" />
+                                      */}
                                     </button>
                                   </div>
                                   <button
