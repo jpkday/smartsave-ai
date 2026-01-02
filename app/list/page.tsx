@@ -715,7 +715,7 @@ export default function ShoppingList() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           {/* Desktop: Title/Subtitle on left, Nav on right */}
           <div className="hidden md:flex justify-between items-start">
             <div>
@@ -732,7 +732,7 @@ export default function ShoppingList() {
         </div>
 
         {/* Alphabet Filter - Hidden on Mobile */}
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
@@ -760,7 +760,7 @@ export default function ShoppingList() {
 
         {/* Favorites Widget - Hidden on Mobile */}
         {filteredFavorites.length > 0 && (
-          <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <button
                 onClick={() => setShowFavorites(!showFavorites)}
@@ -780,7 +780,7 @@ export default function ShoppingList() {
                       }
                     : addFavorites
                 }
-                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer"
+                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-2xl font-semibold transition cursor-pointer"
               >
                 {allFavoritesSelected ? 'Deselect All' : 'Add All'}
               </button>
@@ -793,7 +793,7 @@ export default function ShoppingList() {
                     <button
                       key={item}
                       onClick={() => toggleItem(item)}
-                      className={`px-3 py-1.5 rounded-lg border-2 transition cursor-pointer text-sm font-semibold ${
+                      className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${
                         isInList ? 'bg-blue-600 text-white border-blue-600' : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
                       }`}
                     >
@@ -807,7 +807,7 @@ export default function ShoppingList() {
         )}
 
         {/* Add Items Section - Hidden on Mobile */}
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
           <button
             onClick={() => setShowAddItems(!showAddItems)}
             className="flex items-center gap-2 text-xl font-bold mb-4 text-gray-800 cursor-pointer hover:text-blue-600 transition"
@@ -824,7 +824,7 @@ export default function ShoppingList() {
                   <button
                     key={item}
                     onClick={() => toggleItem(item)}
-                    className={`p-4 md:p-3 rounded-lg border-2 transition cursor-pointer font-semibold text-base ${
+                    className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${
                       isInList
                         ? 'bg-blue-600 text-white border-blue-600'
                         : isFavorite
@@ -842,14 +842,14 @@ export default function ShoppingList() {
         </div>
 
         {/* Add to List Widget - Hidden on Mobile (shows below list on mobile) */}
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 mb-6">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
           <div className="relative autocomplete-container">
             <div className="flex gap-2">
               <input
                 type="text"
                 placeholder="Select existing or add new"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                 value={newItem}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
@@ -859,14 +859,14 @@ export default function ShoppingList() {
                   setShowAutocomplete(availableItems.length > 0);
                 }}
               />
-              <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
+              <button onClick={addNewItem} className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap">
                 Add
               </button>
             </div>
 
             {/* Autocomplete dropdown */}
             {showAutocomplete && autocompleteItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                 {autocompleteItems.slice(0, 10).map((item) => (
                   <button
                     key={item}
@@ -892,7 +892,7 @@ export default function ShoppingList() {
         ) : listItems.length > 0 ? (
           <>
             {/* List Items */}
-            <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800">Your List ({listItems.filter((i) => !i.checked).length} items)</h2>
                 <div className="flex gap-2">
@@ -963,7 +963,7 @@ export default function ShoppingList() {
                             return (
                               <div
                                 key={item.id}
-                                className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
                                   item.checked
                                     ? 'bg-gray-100 border-gray-300'
                                     : isFavorite
@@ -1058,7 +1058,7 @@ export default function ShoppingList() {
                             return (
                               <div
                                 key={item.id}
-                                className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
                                   item.checked
                                     ? 'bg-gray-100 border-gray-300'
                                     : isFavorite
@@ -1132,14 +1132,14 @@ export default function ShoppingList() {
             </div>
 
             {/* Add to List Widget - Mobile Only, shown below list */}
-            <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mt-6">
+            <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mt-6">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Select existing or add new"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-800"
                     value={newItem}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
@@ -1149,13 +1149,13 @@ export default function ShoppingList() {
                       setShowAutocomplete(availableItems.length > 0);
                     }}
                   />
-                  <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
+                  <button onClick={addNewItem} className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap">
                     Add
                   </button>
                 </div>
 
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => (
                       <button
                         key={item}
@@ -1175,7 +1175,7 @@ export default function ShoppingList() {
 
             {/* Best Store Recommendation - Desktop Only */}
             {sortedStores.length > 0 && (
-              <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Single Store</h2>
                 <div className="space-y-3">
                   {sortedStores.map(([store, data], idx) => {
@@ -1183,7 +1183,7 @@ export default function ShoppingList() {
                     const isComplete = data.coverage === data.itemCount;
 
                     return (
-                      <div key={store} className={`p-4 rounded-lg border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
+                      <div key={store} className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
@@ -1239,24 +1239,24 @@ export default function ShoppingList() {
             )}
           </>
         ) : (
-          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-lg mb-4">Your shopping list is empty</p>
             {favorites.length > 0 && (
-              <button onClick={addFavorites} className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer items-center gap-2">
+              <button onClick={addFavorites} className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2">
                 <span className="text-xl">⭐</span>
                 Add Favorites to Get Started
               </button>
             )}
 
             {/* Add to List when list is empty - Always visible */}
-            <div className="bg-white rounded-lg shadow-lg p-4 mt-6 max-w-md mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-4 mt-6 max-w-md mx-auto">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Select or type new item..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     value={newItem}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
@@ -1266,13 +1266,13 @@ export default function ShoppingList() {
                       setShowAutocomplete(availableItems.length > 0);
                     }}
                   />
-                  <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
+                  <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
                     Add
                   </button>
                 </div>
 
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => (
                       <button
                         key={item}
@@ -1297,7 +1297,7 @@ export default function ShoppingList() {
 {/* ===================== */}
 {storeModalOpen && activeItemForStoreModal && (
   <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-xl p-5 max-w-md w-full">
+    <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
@@ -1331,7 +1331,7 @@ export default function ShoppingList() {
                 setItemStorePreference(activeItemForStoreModal, 'AUTO');
                 closeStoreModal();
               }}
-              className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
+              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition text-left ${
                 pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -1353,7 +1353,7 @@ export default function ShoppingList() {
                     setItemStorePreference(activeItemForStoreModal, store);
                     closeStoreModal();
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition text-left ${
+                  className={`w-full flex items-center justify-between p-3 rounded-2xl border transition text-left ${
                     isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
                   }`}
                 >
@@ -1374,7 +1374,7 @@ export default function ShoppingList() {
         {/* ===================== */}
         {quantityModalOpen && activeItemForQuantity && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-bold text-gray-800">{activeItemForQuantity.item_name}</h3>
                 <button onClick={closeQuantityModal} className="text-gray-300 hover:text-gray-500 text-xl">
@@ -1392,7 +1392,7 @@ export default function ShoppingList() {
                       closeQuantityModal();
                     }
                   }}
-                  className="w-12 h-12 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
+                  className="w-12 h-12 rounded-2xl bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
                 >
                   −
                 </button>
@@ -1402,7 +1402,7 @@ export default function ShoppingList() {
                     updateQuantity(activeItemForQuantity.id, activeItemForQuantity.quantity + 1);
                     setActiveItemForQuantity({ ...activeItemForQuantity, quantity: activeItemForQuantity.quantity + 1 });
                   }}
-                  className="w-12 h-12 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
+                  className="w-12 h-12 rounded-2xl bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
                 >
                   +
                 </button>
