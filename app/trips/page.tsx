@@ -62,14 +62,14 @@ export default function TripsPage() {
       setLoading(false);
       return;
     }
-
+  
     setLoading(true);
-
+  
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysToShow);
-
+  
     // Load trips
     const { data: tripsData, error: tripsError } = await supabase
       .from('trips')
@@ -77,109 +77,73 @@ export default function TripsPage() {
       .eq('household_code', householdCode)
       .gte('started_at', startDate.toISOString())
       .order('started_at', { ascending: false });
-
+  
     if (tripsError) {
       console.error('Error loading trips:', tripsError);
       setLoading(false);
       return;
     }
-
+  
     if (!tripsData || tripsData.length === 0) {
       setTrips([]);
       setLoading(false);
       return;
     }
-
+  
     // Auto-expand all trips initially
     setExpandedTrips(new Set(tripsData.map(t => t.id)));
-
-    // Load events for all trips with item details
+  
+    // Load events for all trips
     const tripIds = tripsData.map(t => t.id);
     const { data: eventsData, error: eventsError } = await supabase
       .from('shopping_list_events')
-      .select('trip_id, item_id, item_name, quantity, checked_at')
+      .select('trip_id, item_id, quantity, checked_at, price')
       .in('trip_id', tripIds)
       .order('checked_at', { ascending: true });
-
+  
     if (eventsError) {
       console.error('Error loading events:', eventsError);
     }
-
+  
     // Get unique item IDs from events
     const itemIds = [...new Set(eventsData?.map(e => e.item_id) || [])];
-
-    // Load item details (categories)
+  
+    // Load FRESH item details (names and categories) from items table
     const { data: itemsData } = await supabase
       .from('items')
-      .select('id, category')
+      .select('id, name, category')
       .in('id', itemIds);
-
-    // Build item lookup: item_id -> category
-    const itemMap: { [id: number]: string } = {};
+  
+    // Build item lookup: item_id -> { name, category }
+    const itemMap: { [id: number]: { name: string; category: string } } = {};
     if (itemsData) {
       itemsData.forEach(item => {
-        itemMap[item.id] = item.category || 'Other';
-      });
-    }
-
-    // Load store info to get store IDs
-    const storeNames = [...new Set(tripsData.map(t => t.store))];
-    const { data: storesData } = await supabase
-      .from('stores')
-      .select('id, name')
-      .in('name', storeNames);
-
-    const storeNameToId: { [name: string]: string } = {};
-    if (storesData) {
-      storesData.forEach(s => {
-        storeNameToId[s.name] = s.id;
-      });
-    }
-
-    // Load latest prices for all items
-    const { data: pricesData, error: pricesError } = await supabase
-      .from('price_history')
-      .select('*')
-      .eq('user_id', SHARED_USER_ID)
-      .in('item_id', itemIds)
-      .order('recorded_date', { ascending: false });
-
-    if (pricesError) {
-      console.error('Error loading prices:', pricesError);
-    }
-
-    // Build price lookup: store_id-item_id -> price
-    const priceMap: { [key: string]: number } = {};
-    if (pricesData) {
-      const latestPrices: { [key: string]: any } = {};
-      pricesData.forEach((p) => {
-        const key = `${p.store_id}-${p.item_id}`;
-        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
-          latestPrices[key] = p;
-          priceMap[key] = parseFloat(p.price);
-        }
-      });
-    }
-
-    // Combine trips with their events, categories, and prices
-    const tripsWithEvents: TripWithEvents[] = tripsData.map(trip => {
-      const tripEvents = eventsData?.filter(e => e.trip_id === trip.id) || [];
-      const storeId = storeNameToId[trip.store] || trip.store_id;
-      
-      // Add categories and prices to events
-      const eventsWithDetails: TripEvent[] = tripEvents.map(event => {
-        const category = itemMap[event.item_id];
-        const priceKey = `${storeId}-${event.item_id}`;
-        const price = priceMap[priceKey];
-        
-        return {
-          ...event,
-          category: category || 'Other',
-          price: price || undefined,
+        itemMap[item.id] = {
+          name: item.name,
+          category: item.category || 'Other',
         };
       });
-
-      // Calculate total cost
+    }
+  
+    // Combine trips with their events and fresh item data
+    const tripsWithEvents: TripWithEvents[] = tripsData.map(trip => {
+      const tripEvents = eventsData?.filter(e => e.trip_id === trip.id) || [];
+      
+      // Add fresh item names, categories, and snapshot prices to events
+      const eventsWithDetails: TripEvent[] = tripEvents.map(event => {
+        const itemInfo = itemMap[event.item_id];
+        
+        return {
+          item_id: event.item_id,
+          item_name: itemInfo?.name || 'Unknown Item', // FRESH NAME
+          quantity: event.quantity,
+          checked_at: event.checked_at,
+          category: itemInfo?.category || 'Other', // FRESH CATEGORY
+          price: event.price || undefined, // SNAPSHOT PRICE from event
+        };
+      });
+  
+      // Calculate total cost from snapshot prices
       const totalCost = eventsWithDetails.reduce((sum, event) => {
         if (event.price) {
           return sum + (event.price * event.quantity);
@@ -202,17 +166,16 @@ export default function TripsPage() {
           duration = `${hours}h ${mins}m`;
         }
       }
-
+  
       return {
         ...trip,
-        store_id: storeId,
         events: eventsWithDetails,
         itemCount: eventsWithDetails.length,
         duration,
         totalCost,
       };
     });
-
+  
     setTrips(tripsWithEvents);
     setLoading(false);
   };
@@ -292,27 +255,80 @@ export default function TripsPage() {
           </div>
         </div>
 
-        {/* Summary Stats */}
-        {!loading && trips.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="col-span-1 bg-white rounded-lg shadow-lg p-4 text-center">
-            <p className="text-3xl font-bold text-blue-600">{trips.length}</p>
-            <p className="text-sm text-gray-600 mt-1">Trips</p>
-            </div>
-            <div className="col-span-1 bg-white rounded-lg shadow-lg p-4 text-center">
-            <p className="text-3xl font-bold text-purple-600">
-                {trips.reduce((sum, t) => sum + t.itemCount, 0)}
-            </p>
-            <p className="text-sm text-gray-600 mt-1">Items</p>
-            </div>
-            <div className="col-span-2 bg-white rounded-lg shadow-lg p-4 text-center">
-            <p className="text-3xl font-bold text-green-600">
-                {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
-            </p>
-            <p className="text-sm text-gray-600 mt-1">Total Spend</p>
-            </div>
+{/* Summary Stats */}
+{!loading && trips.length > 0 && (
+  <>
+    <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="col-span-1 bg-white rounded-lg shadow-lg p-4 text-center">
+        <p className="text-3xl font-bold text-blue-500">{trips.length}</p>
+        <p className="text-sm font-bold text-blue-800 mt-1">Trips</p>
+      </div>
+      <div className="col-span-1 bg-white rounded-lg shadow-lg p-4 text-center">
+        <p className="text-3xl font-bold text-rose-500">
+          {trips.reduce((sum, t) => sum + t.itemCount, 0)}
+        </p>
+        <p className="text-sm font-bold text-rose-800 mt-1">Items</p>
+      </div>
+      <div className="col-span-2 bg-white rounded-lg shadow-lg p-4 text-center">
+        <p className="text-3xl font-bold text-emerald-500">
+          {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
+        </p>
+        <p className="text-sm font-bold text-emerald-800 mt-1">Total Spend</p>
+      </div>
+    </div>
+
+{/* Category Breakdown */}
+<div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+  <h2 className="text-xl font-bold text-gray-800 mb-4">Spending by Category</h2>
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    {(() => {
+      // Aggregate spending by category across all trips
+      const categoryTotals: { [category: string]: number } = {};
+      
+      trips.forEach(trip => {
+        trip.events.forEach(event => {
+          const cat = event.category || 'Other';
+          if (event.price) {
+            if (!categoryTotals[cat]) {
+              categoryTotals[cat] = 0;
+            }
+            categoryTotals[cat] += event.price * event.quantity;
+          }
+        });
+      });
+
+      // Sort by spending (highest first)
+      const sortedCategories = Object.entries(categoryTotals)
+        .sort(([, a], [, b]) => b - a);
+
+      // Category color mapping
+      const getCategoryColor = (category: string) => {
+        const colors: { [key: string]: string } = {
+          'Produce': 'bg-green-100 border-green-200 text-green-800',
+          'Pantry': 'bg-amber-100 border-amber-200 text-amber-800',
+          'Dairy': 'bg-purple-100 border-purple-200 text-purple-800',
+          'Beverages': 'bg-blue-100 border-blue-200 text-blue-800',
+          'Meat': 'bg-red-100 border-red-200 text-red-800',
+          'Frozen': 'bg-cyan-100 border-cyan-200 text-cyan-800',
+          'Bakery': 'bg-orange-100 border-orange-200 text-orange-800',
+          'Snacks': 'bg-yellow-100 border-yellow-200 text-yellow-800',
+          'Health': 'bg-pink-100 border-pink-200 text-pink-800',
+          'Other': 'bg-gray-100 border-gray-200 text-gray-800',
+        };
+        return colors[category] || 'bg-gray-100 border-gray-300 text-gray-800';
+      };
+
+      return sortedCategories.map(([category, total]) => (
+        <div key={category} className={`rounded-lg p-3 text-center border-2 ${getCategoryColor(category)}`}>
+          <p className="text-xs font-semibold uppercase mb-1">{category}</p>
+          <p className="text-xl font-bold">{formatMoney(total)}</p>
         </div>
-        )}
+      ));
+    })()}
+  </div>
+</div>
+  </>
+)}
 
         {/* Trips list */}
         {loading ? (
@@ -366,42 +382,57 @@ export default function TripsPage() {
                 <div className="relative">
                     {/* Scrollable container with padding at bottom for total */}
                     <div className="p-4 md:p-5 max-h-80 overflow-y-auto pb-20">
-                    {categories.map(category => (
+                    {categories.map(category => {
+                        // Calculate category subtotal
+                        const categorySubtotal = eventsByCategory[category].reduce((sum, event) => {
+                        if (event.price) {
+                            return sum + (event.price * event.quantity);
+                        }
+                        return sum;
+                        }, 0);
+
+                        return (
                         <div key={category} className="mb-4 last:mb-0">
-                        {/* Remove sticky, just use static header */}
-                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-2 bg-white py-1">
+                        {/* Category header with subtotal */}
+                        <div className="flex items-center justify-between bg-gray-100 py-2 rounded-md mb-2 -mx-4 md:-mx-5 px-4 md:px-5">
+                        <h4 className="text-sm font-bold text-gray-700 uppercase">
                             {category}
                         </h4>
-                        <div className="space-y-2">
+                        <span className="text-sm font-bold text-gray-700">
+                            {formatMoney(categorySubtotal)}
+                        </span>
+                        </div>
+                            <div className="space-y-2">
                             {eventsByCategory[category].map((event, idx) => (
-                            <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
                                 <div className="flex-1">
-                                <span className="text-gray-800 font-medium">{event.item_name}</span>
-                                {event.quantity > 1 && (
+                                    <span className="text-gray-800 font-medium">{event.item_name}</span>
+                                    {event.quantity > 1 && (
                                     <span className="text-gray-500 text-sm ml-2">× {event.quantity}</span>
-                                )}
+                                    )}
                                 </div>
                                 <div className="text-right">
-                                {event.price ? (
+                                    {event.price ? (
                                     <>
-                                    <p className="font-semibold text-gray-800">
+                                        <p className="font-semibold text-gray-800">
                                         {formatMoney(event.price * event.quantity)}
-                                    </p>
-                                    {event.quantity > 1 && (
-                                        <p className="text-xs text-gray-500">
-                                        {formatMoney(event.price)} each
                                         </p>
-                                    )}
+                                        {event.quantity > 1 && (
+                                        <p className="text-xs text-gray-500">
+                                            {formatMoney(event.price)} each
+                                        </p>
+                                        )}
                                     </>
-                                ) : (
+                                    ) : (
                                     <p className="text-gray-400 text-sm">No price</p>
-                                )}
+                                    )}
                                 </div>
-                            </div>
+                                </div>
                             ))}
+                            </div>
                         </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     </div>
 
                     {/* Trip total - positioned absolutely at bottom */}

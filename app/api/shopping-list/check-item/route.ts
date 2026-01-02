@@ -1,6 +1,8 @@
 import { supabase } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
+const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 export async function POST(request: NextRequest) {
   try {
     const { shopping_list_id, store_id } = await request.json();
@@ -56,7 +58,20 @@ export async function POST(request: NextRequest) {
 
     const storeName = store?.name || 'Unknown Store';
 
-    // 5. Find or create today's trip for this household + store
+    // 5. Get current price for this item at this store
+    const { data: priceData } = await supabase
+      .from('price_history')
+      .select('price')
+      .eq('item_id', listItem.item_id)
+      .eq('store_id', store_id)
+      .eq('user_id', SHARED_USER_ID)
+      .order('recorded_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const currentPrice = priceData ? parseFloat(priceData.price) : null;
+
+    // 6. Find or create today's trip for this household + store
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     
     let { data: trip } = await supabase
@@ -94,7 +109,7 @@ export async function POST(request: NextRequest) {
       trip = newTrip;
     }
 
-    // 6. Create shopping_list_event
+    // 7. Create shopping_list_event WITH PRICE
     const { error: eventError } = await supabase
       .from('shopping_list_events')
       .insert({
@@ -106,6 +121,7 @@ export async function POST(request: NextRequest) {
         store: storeName,
         trip_id: trip.id,
         checked_at: new Date().toISOString(),
+        price: currentPrice, // STORE THE PRICE SNAPSHOT
       });
 
     if (eventError) {
@@ -113,8 +129,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the request - item is already checked
     }
 
-    // 7. Check if all items for THIS TRIP are now checked
-    // Get all unique item_ids that have been added to this trip
+    // 8. Check if all items for THIS TRIP are now checked
     const { data: tripItems } = await supabase
       .from('shopping_list_events')
       .select('item_id')
@@ -155,6 +170,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-  );
+    );
   }
 }

@@ -23,8 +23,8 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileColorByPage: Record<string, string> = {
     'Home': 'bg-yellow-500 hover:bg-yellow-600',
     'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
-    'Compare Items': 'bg-green-500 hover:bg-green-600',
-    'Recent Trips': 'bg-orange-500 hover:bg-orange-600',
+    'Compare Items': 'bg-emerald-500 hover:bg-emerald-600',
+    'Recent Trips': 'bg-rose-500 hover:bg-rose-600',
     'Price History': 'bg-amber-700 hover:bg-amber-800',
     'Manage Items': 'bg-purple-500 hover:bg-purple-600',
     'Enter Prices': 'bg-blue-600 hover:bg-blue-700',
