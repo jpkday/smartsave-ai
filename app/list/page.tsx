@@ -1053,10 +1053,13 @@ export default function ShoppingList() {
           </p>
         </div>
 
-        {/* Shopping List */}
-        {loading ? (
-          <div className="text-center">Loading...</div>
-        ) : listItems.length > 0 ? (
+          {/* Shopping List */}
+          {loading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+            <p className="text-slate-500 mt-4">Loading Shopping List...</p>
+            </div>
+          ) : listItems.length > 0 ? (
           <>
             {/* List Items */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">

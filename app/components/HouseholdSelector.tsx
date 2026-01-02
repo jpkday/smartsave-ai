@@ -6,11 +6,12 @@ import { supabase } from '../lib/supabase';
 interface HouseholdSelectorProps {
   onSuccess?: () => void;
   autoShow?: boolean;
+  initialCode?: string;
 }
 
-export default function HouseholdSelector({ onSuccess, autoShow = false }: HouseholdSelectorProps) {
+export default function HouseholdSelector({ onSuccess, autoShow = false, initialCode = '' }: HouseholdSelectorProps) {
   const [showModal, setShowModal] = useState(true); // Changed to true by default!
-  const [inputCode, setInputCode] = useState('');
+  const [inputCode, setInputCode] = useState(initialCode);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -23,6 +24,11 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
       }
     }
   }, [autoShow]);
+
+  // Update input when initialCode changes
+  useEffect(() => {
+    setInputCode(initialCode);
+  }, [initialCode]);
 
   const handleSubmit = async () => {
     const code = inputCode.trim().toUpperCase();
@@ -63,10 +69,10 @@ export default function HouseholdSelector({ onSuccess, autoShow = false }: House
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
         <h2 className="text-xl font-semibold mb-4">
-          Welcome to the SmartSaveAI beta!
+          {initialCode ? 'Change Beta Code' : 'Welcome to the SmartSaveAI beta!'}
         </h2>
         <p className="text-gray-600 mb-4">
-          Enter your four character code to get started:
+          {initialCode ? 'Enter a new four character code:' : 'Enter your four character code to get started:'}
         </p>
         <input
           type="text"

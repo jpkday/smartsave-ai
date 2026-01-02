@@ -9,10 +9,12 @@ export default function Home() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isLoadingCode, setIsLoadingCode] = useState(true); // Add loading state
 
   useEffect(() => {
     const code = localStorage.getItem('household_code');
     setHouseholdCode(code);
+    setIsLoadingCode(false); // Mark as loaded
   }, []);
 
   const handleCodeSuccess = () => {
@@ -55,7 +57,7 @@ export default function Home() {
                 <span className="flex-1 ml-6">Compare Items</span>
               </button>
               
-              <button onClick={handleLockedClick} className="w-full bg-teal-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-teal-600 transition cursor-pointer text-center relative flex items-center">
+              <button onClick={handleLockedClick} className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">🛒</span>
                 <span className="flex-1 ml-6">Recent Trips</span>
               </button>
@@ -108,7 +110,7 @@ export default function Home() {
                 <span className="flex-1 ml-6">Manage Items</span>
               </button>
 
-              <button onClick={handleLockedClick} className="bg-teal-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-teal-600 transition cursor-pointer text-center relative flex items-center">
+              <button onClick={handleLockedClick} className="bg-rose-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🛒</span>
                 <span className="flex-1 ml-6">Recent Trips</span>
               </button>
@@ -184,36 +186,32 @@ export default function Home() {
           )}
         </div>
 
-        {/* Beta Code Section at Bottom */}
-        <div className="mt-8 md:mt-12">
-          {isLocked ? (
-            <button
-              onClick={() => setShowCodeModal(true)}
-              className="bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
-            >
-              Enter Beta Code
-            </button>
-          ) : (
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 inline-block">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-center gap-2">
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors"
-                  >
-                    <span className="font-mono font-bold px-8 py-1 text-lg tracking-widest">{householdCode}</span>
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowCodeModal(true)}
-                  className="text-xs underline opacity-75 hover:opacity-100 transition-opacity"
-                >
-                Change Beta Code
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+{/* Beta Code Section at Bottom */}
+{!isLoadingCode && (
+  <div className="mt-8 md:mt-12 text-center">
+    {isLocked ? (
+      <button
+        onClick={() => setShowCodeModal(true)}
+        className="bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
+      >
+        Enter Beta Code
+      </button>
+    ) : (
+      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 inline-block">
+        <button
+          onClick={() => setShowCodeModal(true)}
+          className="relative bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors group"
+          title="Click to change beta code"
+        >
+          <span className="font-mono font-bold text-lg tracking-widest">{householdCode}</span>
+          <svg className="w-4 h-4 opacity-0 group-hover:opacity-75 transition-opacity absolute right-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      </div>
+    )}
+  </div>
+)}
       </div>
 
       {/* More Menu Modal - Mobile Only - Only show if unlocked */}
@@ -264,7 +262,8 @@ export default function Home() {
       {showCodeModal && (
         <HouseholdSelector 
           onSuccess={handleCodeSuccess} 
-          autoShow={false} 
+          autoShow={false}
+          initialCode={householdCode || ''}
         />
       )}
     </div>
