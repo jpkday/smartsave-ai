@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
@@ -118,6 +117,22 @@ export default function ShoppingList() {
     setActiveItemForStoreModal(null);
   };
 
+  // =========================
+  // Quantity modal state
+  // =========================
+  const [quantityModalOpen, setQuantityModalOpen] = useState(false);
+  const [activeItemForQuantity, setActiveItemForQuantity] = useState<ListItem | null>(null);
+
+  const openQuantityModal = (item: ListItem) => {
+    setActiveItemForQuantity(item);
+    setQuantityModalOpen(true);
+  };
+
+  const closeQuantityModal = () => {
+    setQuantityModalOpen(false);
+    setActiveItemForQuantity(null);
+  };
+
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
@@ -125,7 +140,7 @@ export default function ShoppingList() {
   // Detect if we're on mobile
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is Tailwind's md breakpoint
+      setIsMobile(window.innerWidth < 768);
     };
 
     checkMobile();
@@ -151,14 +166,19 @@ export default function ShoppingList() {
     };
   }, [showAutocomplete]);
 
-  // Close store modal on ESC
+  // Close modals on ESC
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeStoreModal();
+      if (e.key === 'Escape') {
+        closeStoreModal();
+        closeQuantityModal();
+      }
     };
-    if (storeModalOpen) window.addEventListener('keydown', onKeyDown);
+    if (storeModalOpen || quantityModalOpen) {
+      window.addEventListener('keydown', onKeyDown);
+    }
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [storeModalOpen]);
+  }, [storeModalOpen, quantityModalOpen]);
 
   useEffect(() => {
     // Load store prefs early
@@ -850,7 +870,6 @@ export default function ShoppingList() {
                             const effStore = getEffectiveStore(item.item_name) || store;
                             const priceData = prices[`${effStore}-${item.item_name}`];
                             const price = priceData ? parseFloat(priceData.price) : 0;
-                            const pref = storePrefs[item.item_name] || 'AUTO';
 
                             return (
                               <div
@@ -868,19 +887,15 @@ export default function ShoppingList() {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
-                                    <Link
-                                      href={`/items?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
-                                      className={`font-medium hover:text-teal-600 hover:underline transition ${
+                                    <button
+                                      type="button"
+                                      onClick={() => openQuantityModal(item)}
+                                      className={`font-medium hover:text-teal-600 text-left ${
                                         item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                       }`}
                                     >
-                                      {item.item_name}
-                                    </Link>
-
-                                    {/* If overridden, show a tiny badge 
-                                    {pref !== 'AUTO' && (
-                                      <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">{pref}</span>
-                                    )}*/}
+                                      {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                    </button>
                                   </div>
 
                                   {priceData ? (
@@ -950,7 +965,6 @@ export default function ShoppingList() {
                         <div className="space-y-2">
                           {itemsWithoutPrice.map((item) => {
                             const isFavorite = favorites.includes(item.item_name);
-                            const pref = storePrefs[item.item_name] || 'AUTO';
 
                             return (
                               <div
@@ -968,23 +982,20 @@ export default function ShoppingList() {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
-                                    <Link
-                                      href={`/items?item=${encodeURIComponent(JSON.stringify(item.item_name))}`}
-                                      className={`font-medium hover:text-teal-600 hover:underline transition ${
+                                    <button
+                                      type="button"
+                                      onClick={() => openQuantityModal(item)}
+                                      className={`font-medium hover:text-teal-600 text-left ${
                                         item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                       }`}
                                     >
-                                      {item.item_name}
-                                    </Link>
-
-                                    {pref !== 'AUTO' && (
-                                      <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">{pref}</span>
-                                    )}
+                                      {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                    </button>
                                   </div>
                                   <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
                                 </div>
 
-                                {/* Swap store icon (still useful to set preference even before price exists) */}
+                                {/* Swap store icon */}
                                 <button
                                   onClick={() => openStoreModal(item.item_name)}
                                   className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
@@ -1218,10 +1229,6 @@ export default function ShoppingList() {
                 const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
                 const cheapest = options.length > 0 ? options[0] : null;
 
-                if (options.length === 0) {
-                  return <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">No price data for this item yet.</div>;
-                }
-
                 return (
                   <div className="space-y-2">
                     {/* Auto option */}
@@ -1242,8 +1249,9 @@ export default function ShoppingList() {
                     </button>
 
                     {/* Store options */}
-                    {options.map(({ store, price }) => {
-                      const isCheapest = cheapest?.store === store;
+                    {stores.map((store) => {
+                      const option = options.find(o => o.store === store);
+                      const price = option?.price;
                       const isSelected = pref === store;
 
                       return (
@@ -1257,22 +1265,58 @@ export default function ShoppingList() {
                             isSelected ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 hover:bg-gray-50'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">{store}</span>
-                            {isCheapest && <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">Best price</span>}
-                          </div>
-                          <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                          <span className="font-semibold text-gray-800">{store}</span>
+                          <span className={`font-bold ${price ? 'text-gray-800' : 'text-gray-400'}`}>
+                            {price ? formatMoney(price) : 'No price'}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
                 );
               })()}
-{/*
-              <div className="text-sm text-gray-600 mt-1">
-                  <br></br>The app will automatically save your preferences for {activeItemForStoreModal}.
+            </div>
+          </div>
+        )}
+
+        {/* ===================== */}
+        {/* Quantity Modal        */}
+        {/* ===================== */}
+        {quantityModalOpen && activeItemForQuantity && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-800">{activeItemForQuantity.item_name}</h3>
+                <button onClick={closeQuantityModal} className="text-gray-300 hover:text-gray-500 text-xl">
+                  ✖️
+                </button>
               </div>
-*/}
+
+              <div className="flex items-center justify-center gap-6 py-4">
+                <button
+                  onClick={() => {
+                    updateQuantity(activeItemForQuantity.id, activeItemForQuantity.quantity - 1);
+                    if (activeItemForQuantity.quantity > 1) {
+                      setActiveItemForQuantity({ ...activeItemForQuantity, quantity: activeItemForQuantity.quantity - 1 });
+                    } else {
+                      closeQuantityModal();
+                    }
+                  }}
+                  className="w-12 h-12 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
+                >
+                  −
+                </button>
+                <span className="text-3xl font-bold w-16 text-center">{activeItemForQuantity.quantity}</span>
+                <button
+                  onClick={() => {
+                    updateQuantity(activeItemForQuantity.id, activeItemForQuantity.quantity + 1);
+                    setActiveItemForQuantity({ ...activeItemForQuantity, quantity: activeItemForQuantity.quantity + 1 });
+                  }}
+                  className="w-12 h-12 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         )}
