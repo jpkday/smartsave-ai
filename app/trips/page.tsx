@@ -261,9 +261,9 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-0 md:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-0 md:px-4 py-4">
         {/* Time Range Selector */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-4">
           {[7, 14, 30].map(days => (
             <button
               key={days}
@@ -293,7 +293,7 @@ export default function TripsPage() {
         ) : (
           <>
 {/* Summary Stats */}
-<div className="grid grid-cols-4 gap-4 mb-8">
+<div className="grid grid-cols-4 gap-4 mb-4">
   <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
     <div className="text-3xl font-bold text-indigo-500">{trips.length}</div>
     <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
@@ -313,11 +313,11 @@ export default function TripsPage() {
 </div>
 
 {/* Category Breakdown */}
-<div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+<div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
   <div className="bg-gradient-to-r from-indigo-500 to-indigo-500 px-6 md:px-8 py-4">
     <h2 className="text-lg font-bold text-white">Spending by Category</h2>
   </div>
-  <div className="p-6 md:p-8">
+  <div className="p-4 md:p-8">
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {(() => {
         const categoryTotals: { [category: string]: number } = {};
