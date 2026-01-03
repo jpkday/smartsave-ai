@@ -32,9 +32,10 @@ function ItemsContent() {
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const isMasterAccount = householdCode === 'ASDF';
 
-  // Search + quick add
-  const [query, setQuery] = useState('');
-  const [newItem, setNewItem] = useState('');
+  // Combined search + add with autocomplete
+  const [inputValue, setInputValue] = useState('');
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
 
   // Alphabet filter (Compare-style)
   const [filterLetter, setFilterLetter] = useState<string>('All');
@@ -54,10 +55,9 @@ function ItemsContent() {
   const [editingValue, setEditingValue] = useState('');
   const [inlineSaving, setInlineSaving] = useState(false);
 
-  const searchRef = useRef<HTMLInputElement | null>(null);
-  const addRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Click-outside cancel for inline edit (desktop)
+  // Desktop inline edit
   const editRowRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -85,6 +85,24 @@ function ItemsContent() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editingName]);
+
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.autocomplete-container')) {
+        setShowAutocomplete(false);
+      }
+    };
+
+    if (showAutocomplete) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAutocomplete]);
 
   const loadItems = async () => {
     setLoading(true);
@@ -152,11 +170,35 @@ function ItemsContent() {
     }
   }, [items, searchParams]);
 
+  // Handle input change for autocomplete
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+
+    if (value.trim()) {
+      const filteredItems = items
+        .filter((item) => item.name.toLowerCase().includes(value.toLowerCase()))
+        .map((item) => item.name);
+      
+      setAutocompleteItems(filteredItems);
+      setShowAutocomplete(filteredItems.length > 0);
+    } else {
+      setAutocompleteItems([]);
+      setShowAutocomplete(false);
+    }
+  };
+
+  // Select item from autocomplete - just sets filter
+  const selectFromAutocomplete = (itemName: string) => {
+    setInputValue(itemName);
+    setShowAutocomplete(false);
+    setFilterLetter('All'); // Show all to ensure item is visible
+  };
+
   const filtered = useMemo(() => {
     let base = items;
 
-    if (query.trim()) {
-      base = base.filter((i) => i.name.toLowerCase().includes(query.toLowerCase()));
+    if (inputValue.trim()) {
+      base = base.filter((i) => i.name.toLowerCase().includes(inputValue.toLowerCase()));
     }
 
     if (filterLetter === 'All') return base.sort((a, b) => a.name.localeCompare(b.name));
@@ -164,7 +206,7 @@ function ItemsContent() {
     return base
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter((i) => i.name.toUpperCase().startsWith(filterLetter));
-  }, [items, query, filterLetter]);
+  }, [items, inputValue, filterLetter]);
 
   const favorites = useMemo(
     () => filtered.filter((i) => i.is_favorite).sort((a, b) => a.name.localeCompare(b.name)),
@@ -204,7 +246,7 @@ function ItemsContent() {
   };
 
   const addItem = async () => {
-    const name = newItem.trim();
+    const name = inputValue.trim();
     if (!name) return;
 
     if (items.some((i) => i.name.toLowerCase() === name.toLowerCase())) {
@@ -230,8 +272,9 @@ function ItemsContent() {
       is_favorite: false,
       household_code: householdCode || 'ASDF'
     }]);
-    setNewItem('');
-    addRef.current?.focus();
+    setInputValue('');
+    setShowAutocomplete(false);
+    inputRef.current?.focus();
   };
 
   const toggleFavorite = async (itemName: string) => {
@@ -263,7 +306,6 @@ function ItemsContent() {
     const item = items.find(i => i.name === itemName);
     if (!item) return;
 
-    // Check permissions: ASDF can delete anything, others can only delete their own
     const canDelete = canDeleteItem(item);
     
     if (!canDelete) {
@@ -285,7 +327,6 @@ function ItemsContent() {
       return;
     }
 
-    // Clean up dependent tables (best-effort)
     await supabase.from('price_history').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
     await supabase.from('shopping_list').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
 
@@ -295,7 +336,6 @@ function ItemsContent() {
     if (editingName === itemName) cancelInlineEdit();
   };
 
-  // Shared rename for both mobile sheet + desktop inline
   const renameItem = async (oldName: string, nextNameRaw: string) => {
     const nextName = nextNameRaw.trim();
     if (!nextName || nextName === oldName) return;
@@ -384,7 +424,6 @@ function ItemsContent() {
     </svg>
   );
 
-  // Mobile row: opens sheet
   const renderMobileRow = (item: Item, isFavorite: boolean) => {
     return (
       <div
@@ -421,7 +460,6 @@ function ItemsContent() {
     );
   };
 
-  // Desktop row: inline edit with /prices icons (pencil next to name)
   const renderDesktopRow = (item: Item, isFavorite: boolean) => {
     const isEditing = editingName === item.name;
     const canDelete = canDeleteItem(item);
@@ -436,7 +474,6 @@ function ItemsContent() {
             : 'w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100'
         }
       >
-        {/* Star (cursor pointer like pencil) */}
         <button
           type="button"
           onClick={() => toggleFavorite(item.name)}
@@ -477,7 +514,6 @@ function ItemsContent() {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2 min-w-0">
-              {/* Pencil moved right after name */}
               <span className="font-medium text-gray-800 text-base truncate">
                 {item.name}
                 <button
@@ -491,7 +527,6 @@ function ItemsContent() {
                 </button>
               </span>
 
-              {/* Only show trash if user can delete */}
               {canDelete && (
                 <button
                   type="button"
@@ -510,6 +545,8 @@ function ItemsContent() {
     );
   };
 
+  const itemExists = items.some((i) => i.name.toLowerCase() === inputValue.trim().toLowerCase());
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400">
       <div className="max-w-3xl mx-auto p-3 sm:p-4 pb-24">
@@ -524,54 +561,60 @@ function ItemsContent() {
           </div>
         </div>
 
-        {/* Sticky search + quick add */}
+        {/* Sticky combined search + add */}
         <div className="sticky top-0 z-10 -mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-3 bg-gradient-to-br from-blue-500 to-green-400">
           <div className="bg-white rounded-xl shadow-lg p-3">
             <div className="text-lg font-semibold text-gray-700 mb-2">Manage Items</div>
 
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
+            <div className="relative autocomplete-container">
+              <div className="flex gap-2">
                 <input
-                  ref={searchRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search existing"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                  placeholder="Search or add new item"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                 />
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
+                >
+                  Add
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('');
-                  setTimeout(() => searchRef.current?.focus(), 0);
-                }}
-                className="px-3 py-2 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="flex gap-2 mt-2">
-              <input
-                ref={addRef}
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addItem()}
-                placeholder="Add a new item"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-              />
-              <button
-                type="button"
-                onClick={addItem}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
-              >
-                Add
-              </button>
+              {/* Autocomplete dropdown */}
+              {showAutocomplete && autocompleteItems.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  {autocompleteItems.slice(0, 10).map((item) => {
+                    const itemData = items.find((i) => i.name === item);
+                    const isFavorite = itemData?.is_favorite || false;
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => selectFromAutocomplete(item)}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
+                      >
+                        {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="mt-2 text-xs text-gray-500 flex justify-between">
-              <span>{loading ? 'Loading…' : `${filtered.length} shown / ${items.length} total`}</span>
+              <span>
+                {inputValue.trim() && !itemExists
+                  ? `"${inputValue}" will be added as a new item`
+                  : loading
+                  ? 'Loading…'
+                  : `${filtered.length} shown / ${items.length} total`}
+              </span>
               <span className="hidden sm:inline">Tip: search → tap item → rename</span>
             </div>
           </div>
@@ -611,15 +654,15 @@ function ItemsContent() {
           </div>
         </div>
 
-        {/* List */}
-        <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
+{/* List */}
+<div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
           {loading ? (
             <div className="text-gray-600 text-sm">Loading items…</div>
           ) : (
             <>
               {/* Favorites */}
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                   <span className="text-2xl">⭐</span>
                   Favorites ({favorites.length})
                 </h2>
@@ -631,10 +674,10 @@ function ItemsContent() {
                 </div>
               ) : (
                 <>
-                  <div className="md:hidden space-y-2 mb-4">
+                  <div className="md:hidden space-y-2 mb-4 max-h-55 overflow-y-auto">
                     {favorites.map((item) => renderMobileRow(item, true))}
                   </div>
-                  <div className="hidden md:block space-y-2 mb-4">
+                  <div className="hidden md:block space-y-2 mb-4 max-h-55 overflow-y-auto">
                     {favorites.map((item) => renderDesktopRow(item, true))}
                   </div>
                 </>
@@ -642,7 +685,7 @@ function ItemsContent() {
 
               {/* All items */}
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold text-gray-700 mb-2">
+                <h2 className="text-lg font-semibold text-gray-700">
                   All Items ({regular.length})
                 </h2>
               </div>
@@ -651,10 +694,10 @@ function ItemsContent() {
                 <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
               ) : (
                 <>
-                  <div className="md:hidden space-y-2">
+                  <div className="md:hidden space-y-2 max-h-110 overflow-y-auto">
                     {regular.map((item) => renderMobileRow(item, false))}
                   </div>
-                  <div className="hidden md:block space-y-2">
+                  <div className="hidden md:block space-y-2 max-h-110 overflow-y-auto">
                     {regular.map((item) => renderDesktopRow(item, false))}
                   </div>
                 </>
@@ -687,7 +730,6 @@ function ItemsContent() {
 
                 <div className="font-semibold text-gray-800">Edit item</div>
 
-                {/* Only show delete if user can delete */}
                 {canDeleteItem(selected) && (
                   <button
                     type="button"
@@ -698,7 +740,6 @@ function ItemsContent() {
                     Delete
                   </button>
                 )}
-                {/* Spacer if can't delete */}
                 {!canDeleteItem(selected) && <div className="w-16"></div>}
               </div>
 
