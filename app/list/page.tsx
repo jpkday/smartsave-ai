@@ -926,7 +926,7 @@ export default function ShoppingList() {
   const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => listItems.find((li) => li.item_name === fav));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
@@ -1497,7 +1497,7 @@ export default function ShoppingList() {
             )}
 
             {/* Add to List when list is empty - Desktop only shows autocomplete onFocus */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 mt-6 max-w-md mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-4 mt-6 max-w-2xl mx-auto">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
                 <div className="flex gap-2">
@@ -1548,7 +1548,7 @@ export default function ShoppingList() {
         {/* ===================== */}
         {storeModalOpen && activeItemForStoreModal && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>

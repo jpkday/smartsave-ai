@@ -251,7 +251,7 @@ export default function TripsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
       {/* Premium Header */}
       <div className="bg-white rounded-2xl shadow-lg">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
