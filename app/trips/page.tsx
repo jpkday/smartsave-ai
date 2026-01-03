@@ -251,7 +251,7 @@ export default function TripsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
       {/* Premium Header */}
       <div className="bg-white rounded-2xl shadow-lg">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
@@ -261,7 +261,7 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-1 md:px-8 py-8">
         {/* Time Range Selector */}
         <div className="flex gap-2 mb-8">
           {[7, 14, 30].map(days => (
@@ -341,7 +341,7 @@ export default function TripsPage() {
           <button
             key={category}
             onClick={() => openCategoryModal(category)}
-            className={`rounded-xl p-4 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
+            className={`rounded-xl p-3 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
           >
             <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
             <div className="text-2xl font-bold">{formatMoney(total)}</div>
