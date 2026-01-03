@@ -41,6 +41,10 @@ export default function ShoppingList() {
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
 
+  // Undo system
+  const [undoItem, setUndoItem] = useState<ListItem | null>(null);
+  const [undoTimeout, setUndoTimeout] = useState<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     // Load last used store from localStorage on mount
     const stored = localStorage.getItem('last_price_store');
@@ -255,6 +259,7 @@ export default function ShoppingList() {
             store: editModalStore,
             price: priceNum.toFixed(2),
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             recorded_date: new Date().toISOString(),
           });
 
@@ -481,6 +486,7 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -539,6 +545,7 @@ export default function ShoppingList() {
           .insert({
             name: itemName,
             user_id: SHARED_USER_ID,
+            household_code: householdCode,
             is_favorite: false,
           })
           .select('id')
@@ -742,19 +749,92 @@ export default function ShoppingList() {
   };
 
   const removeItem = async (id: string) => {
-    try {
-      const { error } = await supabase.from('shopping_list').delete().eq('id', id).eq('user_id', SHARED_USER_ID);
+    const item = listItems.find((li) => li.id === id);
+    if (!item) return;
 
-      if (error) {
-        throw new Error(`Failed to remove item: ${error.message}`);
+    // Optimistically remove from UI
+    setListItems(listItems.filter((li) => li.id !== id));
+
+    // Show undo notification
+    setUndoItem(item);
+
+    // Clear any existing timeout
+    if (undoTimeout) clearTimeout(undoTimeout);
+
+    // Set new timeout to actually delete after 5 seconds
+    const timeout = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('shopping_list')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', SHARED_USER_ID);
+
+        if (error) {
+          throw new Error(`Failed to remove item: ${error.message}`);
+        }
+      } catch (error) {
+        console.error('Error removing item:', error);
+        // If delete fails, restore the item
+        setListItems((prev) => [...prev, item]);
+        alert('Failed to remove item. Check your connection and try again.');
+      } finally {
+        setUndoItem(null);
+        setUndoTimeout(null);
       }
+    }, 5000);
 
-      setListItems(listItems.filter((li) => li.id !== id));
-    } catch (error) {
-      console.error('Error removing item:', error);
-      alert('Failed to remove item. Check your connection and try again.');
-    }
+    setUndoTimeout(timeout);
   };
+
+  const undoRemove = async () => {
+    if (!undoItem) return;
+
+    // Clear the timeout
+    if (undoTimeout) {
+      clearTimeout(undoTimeout);
+      setUndoTimeout(null);
+    }
+
+    // Restore item to UI immediately
+    setListItems((prev) => [...prev, undoItem]);
+
+  // Re-add to database
+  try {
+    // First, get the item_id from the items table
+    const { data: itemData, error: itemError } = await supabase
+      .from('items')
+      .select('id')
+      .eq('name', undoItem.item_name)
+      .eq('user_id', SHARED_USER_ID)
+      .single();
+
+    if (itemError || !itemData) {
+      throw new Error('Item not found');
+    }
+
+    // Insert back into shopping_list with correct item_id
+    const { error: insertError } = await supabase.from('shopping_list').insert({
+      item_id: itemData.id,
+      item_name: undoItem.item_name,
+      quantity: undoItem.quantity,
+      user_id: SHARED_USER_ID,
+      household_code: householdCode,
+      checked: undoItem.checked,
+      added_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      throw insertError;
+    }
+  } catch (error) {
+    console.error('Error restoring item:', error);
+    alert('Failed to restore item. Try adding it again.');
+  }
+
+  // Close undo notification
+  setUndoItem(null);
+};
 
   const clearList = async () => {
     if (!confirm('Clear entire shopping list?')) return;
@@ -1145,9 +1225,6 @@ export default function ShoppingList() {
 
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    {/* Hide the star!
-                                    {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
-                                    */}
                                     <button
                                       type="button"
                                       onClick={() => openEditModal(item)}
@@ -1156,16 +1233,6 @@ export default function ShoppingList() {
                                       }`}
                                     >
                                       {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(item)}
-                                      className="text-gray-400 hover:text-blue-600 cursor-pointer"
-                                      title="Edit item"
-                                    >
-                                       {/* Hide the pencil!
-                                      <PencilIcon className="w-4 h-4 inline" />
-                                      */}
                                     </button>
                                   </div>
 
@@ -1267,16 +1334,6 @@ export default function ShoppingList() {
                                       }`}
                                     >
                                       {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(item)}
-                                      className="text-gray-400 hover:text-blue-600 cursor-pointer"
-                                      title="Edit item"
-                                    >
-                                       {/* Hide the pencil!
-                                      <PencilIcon className="w-4 h-4 inline" />
-                                      */}
                                     </button>
                                   </div>
                                   <button
@@ -1755,6 +1812,33 @@ export default function ShoppingList() {
                   {savingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Undo Toast */}
+        {undoItem && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-medium">
+                {undoItem.item_name} was removed.
+              </span>
+              <button
+                onClick={undoRemove}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+              >
+                Undo
+              </button>
+              <button
+                onClick={() => {
+                  if (undoTimeout) clearTimeout(undoTimeout);
+                  setUndoItem(null);
+                  setUndoTimeout(null);
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✖
+              </button>
             </div>
           </div>
         )}
