@@ -1813,9 +1813,9 @@ export default function ShoppingList() {
           </div>
         )}
 
-{/* Undo Toast */}
-{undoItem && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+          {/* Undo Toast */}
+          {undoItem && undoItem.item_name && (
+            <div key={undoItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
               <span className="flex-1 font-medium">
                 {undoItem.item_name} removed.
