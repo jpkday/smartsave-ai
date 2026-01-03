@@ -261,7 +261,7 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-1 md:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-0 md:px-8 py-8">
         {/* Time Range Selector */}
         <div className="flex gap-2 mb-8">
           {[7, 14, 30].map(days => (
@@ -282,7 +282,7 @@ export default function TripsPage() {
         {loading ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-            <p className="text-slate-500 mt-4">Loading trips...</p>
+            <p className="text-slate-500 mt-4">Loading trips..</p>
           </div>
         ) : trips.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">

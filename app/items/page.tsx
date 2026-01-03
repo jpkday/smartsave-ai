@@ -573,7 +573,7 @@ function ItemsContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400">
-      <div className="max-w-3xl mx-auto p-3 sm:p-4 pb-24">
+      <div className="max-w-3xl mx-auto p-1 sm:p-4 pb-24">
         {/* Top header */}
         <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 mb-3">
           <div className="flex justify-between items-start">

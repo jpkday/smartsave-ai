@@ -151,7 +151,7 @@ export default function Stores() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
       <div className="max-w-3xl mx-auto">
         {/* White Header Box */}
         <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
