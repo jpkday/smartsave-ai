@@ -28,15 +28,15 @@ body {
 
 @keyframes slide-up {
   from {
-    transform: translate(-50%, 100%);
     opacity: 0;
+    transform: translateY(100%);
   }
   to {
-    transform: translate(-50%, 0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
 .animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+  animation: slide-up 0.3s ease-out forwards;
 }
