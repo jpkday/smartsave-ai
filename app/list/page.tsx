@@ -37,6 +37,7 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
+  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
   
   // Load household code from localStorage
   useEffect(() => {
@@ -136,10 +137,11 @@ export default function ShoppingList() {
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const openEditModal = (item: ListItem) => {
+  const openEditModal = (item: ListItem, focusField: 'name' | 'price' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
     setEditModalQuantity(item.quantity);
+    setEditModalFocusField(focusField);
     
     // Get effective store and price
     const effStore = getEffectiveStore(item.item_name);
@@ -1324,10 +1326,10 @@ export default function ShoppingList() {
                                     </button>
                                   </div>
                                   <button
-                                    onClick={() => openEditModal(item)}
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 mt-0.5 font-semibold cursor-pointer"
+                                    onClick={() => openEditModal(item, 'price')}
+                                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
                                   >
-                                    + Add Price
+                                    Add Price
                                   </button>
                                 </div>
 
@@ -1364,6 +1366,13 @@ export default function ShoppingList() {
                   </div>
                 );
               })()}
+
+              {/* Helper text */}
+              <div className="mt-1 pt-1">
+                <p className="text-sm text-gray-500 text-left">
+                  Click an item to rename, update quantity or set the latest price.
+                </p>
+              </div>
 
               {/* Total (uses effective store for each item) */}
               <div className="mt-6 pt-4 border-t-2 border-gray-300">
@@ -1563,7 +1572,7 @@ export default function ShoppingList() {
           </div>
         )}
 
-{/* ===================== */}
+        {/* ===================== */}
         {/* Store Picker Modal     */}
         {/* ===================== */}
         {storeModalOpen && activeItemForStoreModal && (
@@ -1717,7 +1726,7 @@ export default function ShoppingList() {
                     onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     placeholder="Item name"
-                    autoFocus
+                    autoFocus={editModalFocusField === 'name'}
                   />
                 </div>
 
@@ -1780,6 +1789,7 @@ export default function ShoppingList() {
                       value={editModalPrice}
                       onChange={(e) => setEditModalPrice(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                      autoFocus={editModalFocusField === 'price'}
                       className="w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-lg"
                     />
                   </div>
