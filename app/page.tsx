@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import HouseholdSelector from './components/HouseholdSelector';
 import { useSearchParams } from 'next/navigation';
 
-export default function Home() {
+function HomeContent() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
@@ -61,7 +61,6 @@ export default function Home() {
   const isLocked = !householdCode;
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400" />}>
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
       <div className="text-center text-white max-w-xs md:max-w-2xl w-full">
         <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">SmartSaveAI</h1>
@@ -290,6 +289,13 @@ export default function Home() {
         />
       )}
     </div>
-  </Suspense>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400" />}>
+      <HomeContent />
+    </Suspense>
   );
 }
