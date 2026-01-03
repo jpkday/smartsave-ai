@@ -154,7 +154,7 @@ export default function Stores() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Stores</h1>
@@ -164,20 +164,20 @@ export default function Stores() {
         </div>
 
         {/* Add New Store */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
           <h2 className="text-xl font-bold mb-3 text-gray-800">Add Store</h2>
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="e.g., Trader Joe's"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
               value={newStore}
               onChange={(e) => setNewStore(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && addStore()}
             />
             <button
               onClick={addStore}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
             >
               Add
             </button>
@@ -185,7 +185,7 @@ export default function Stores() {
         </div>
 
         {/* Stores List */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4 text-gray-800">Your Stores ({stores.length})</h2>
           
           {stores.length === 0 ? (
@@ -195,7 +195,7 @@ export default function Stores() {
               {stores.map((store) => (
                 <div
                   key={store.id}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                  className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition"
                 >
                   {editingId === store.id ? (
                     <div className="editing-row flex items-center flex-1 justify-between w-full">
@@ -204,7 +204,7 @@ export default function Stores() {
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id, store.name)}
-                        className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
+                        className="flex-1 px-3 py-2 border border-blue-500 rounded-2xl focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
                         autoFocus
                       />
                       <button

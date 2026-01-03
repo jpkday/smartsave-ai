@@ -536,7 +536,7 @@ function ItemsContent() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search existing"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                 />
               </div>
               <button
@@ -545,7 +545,7 @@ function ItemsContent() {
                   setQuery('');
                   setTimeout(() => searchRef.current?.focus(), 0);
                 }}
-                className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                className="px-3 py-2 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
                 title="Clear search"
               >
                 ✕
@@ -559,12 +559,12 @@ function ItemsContent() {
                 onChange={(e) => setNewItem(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addItem()}
                 placeholder="Add a new item"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
               />
               <button
                 type="button"
                 onClick={addItem}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
               >
                 Add
               </button>
@@ -578,14 +578,14 @@ function ItemsContent() {
         </div>
 
         {/* Alphabet Filter */}
-        <div className="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               type="button"
               onClick={() => setFilterLetter('All')}
               className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                 filterLetter === 'All'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-indigo-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -601,7 +601,7 @@ function ItemsContent() {
                   onClick={() => toggleLetter(letter)}
                   className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                     filterLetter === letter
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -678,7 +678,7 @@ function ItemsContent() {
                 <button
                   type="button"
                   onClick={closeSheet}
-                  className="px-3 py-1 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
                   aria-label="Close"
                   disabled={saving}
                 >
@@ -692,7 +692,7 @@ function ItemsContent() {
                   <button
                     type="button"
                     onClick={() => deleteItem(selected.name)}
-                    className="px-3 py-1 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
+                    className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
                     disabled={saving}
                   >
                     Delete
@@ -724,7 +724,7 @@ function ItemsContent() {
                 <button
                   type="button"
                   onClick={saveRename}
-                  className="py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+                  className="py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
                   disabled={saving}
                 >
                   {saving ? 'Saving…' : 'Save'}

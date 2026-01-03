@@ -415,7 +415,7 @@ function PricesContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading stores...</p>
           </div>
         </div>
@@ -427,7 +427,7 @@ function PricesContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Price Grid</h1>
@@ -454,7 +454,7 @@ function PricesContent() {
         </div>
 
         {/* Mobile Store Selector */}
-        <div className="md:hidden mb-4 bg-white rounded-lg shadow-lg p-4">
+        <div className="md:hidden mb-4 bg-white rounded-2xl shadow-lg p-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
           <select
             value={selectedStore}
@@ -467,7 +467,7 @@ function PricesContent() {
                 console.error('Failed to save to localStorage:', err);
               }
             }}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
+            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
             {stores.map(store => (
             <option key={store} value={store}>{store}</option>
@@ -486,7 +486,7 @@ function PricesContent() {
                 console.error('Failed to save to localStorage:', err);
               }
             }}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
           >
             <option value="All">All Items</option>
             {sortedItems.map(item => (
@@ -496,7 +496,7 @@ function PricesContent() {
         </div>
 
         {/* Mobile View - Single Store */}
-        <div className="md:hidden bg-white rounded-lg shadow-lg">
+        <div className="md:hidden bg-white rounded-2xl shadow-lg">
           <div className="divide-y">
             {filteredItems.map((item, idx) => {
               const currentPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0');
@@ -582,7 +582,7 @@ function PricesContent() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center p-3 rounded-lg bg-white">
+                  <div className="flex items-center p-3 rounded-2xl bg-white">
                     <span className="text-gray-800 font-bold text-lg mr-2">$</span>
                     <div className="flex-1">
                       <input
@@ -590,7 +590,7 @@ function PricesContent() {
                         inputMode="decimal"
                         placeholder="0.00"
                         style={{ MozAppearance: 'textfield' }}
-                        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-2xl text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                         value={prices[`${selectedStore}-${item}`] || ''}
                         onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
                         onBlur={() => handlePriceSave(selectedStore, item)}
@@ -611,13 +611,13 @@ function PricesContent() {
                   
                   {/* Price Comparison Message */}
                   {currentPrice === 0 ? null : itemPrices.length <= 1 ? (
-                    <div className="mt-3 p-4 rounded-lg border-2 bg-blue-50 border-blue-300">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-blue-50 border-blue-300">
                       <p className="text-sm text-blue-800 font-semibold">
                         ℹ️ Only price tracked - add prices from other stores to compare
                       </p>
                     </div>
                   ) : isBest ? (
-                    <div className="mt-3 p-4 rounded-lg border-2 bg-green-50 border-green-500">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-green-50 border-green-500">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">✅</span>
                         <div className="flex-1">
@@ -628,7 +628,7 @@ function PricesContent() {
                       </div>
                     </div>
                   ) : savings <= 0.25 ? (
-                    <div className="mt-3 p-4 rounded-lg border-2 bg-yellow-50 border-yellow-300">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-yellow-50 border-yellow-300">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">⚠️</span>
                         <div className="flex-1">
@@ -639,7 +639,7 @@ function PricesContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-3 p-4 rounded-lg border-2 bg-red-50 border-red-300">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-red-50 border-red-300">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">❌</span>
                         <div className="flex-1">
@@ -657,7 +657,7 @@ function PricesContent() {
         </div>
 
         {/* Desktop View - Full Table */}
-        <div className="hidden md:block bg-white rounded-lg shadow-lg overflow-x-auto">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg overflow-x-auto">
           {/* Desktop Item Filter */}
           <div className="p-4 border-b bg-gray-50">
             <label className="inline-block text-sm font-semibold text-gray-700 mr-3">Filter Item:</label>
@@ -672,7 +672,7 @@ function PricesContent() {
                   console.error('Failed to save to localStorage:', err);
                 }
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+              className="px-4 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
             >
               <option value="All">All Items</option>
               {sortedItems.map(item => (
@@ -782,7 +782,7 @@ export default function Prices() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>
           </div>
         </div>

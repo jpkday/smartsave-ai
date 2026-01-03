@@ -267,17 +267,17 @@ export default function TripsPage() {
           <>
 {/* Summary Stats */}
 <div className="grid grid-cols-4 gap-4 mb-8">
-  <div className="col-span-1 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
     <div className="text-3xl font-bold text-indigo-500">{trips.length}</div>
     <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
   </div>
-  <div className="col-span-1 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
     <div className="text-3xl font-bold text-purple-600">
       {trips.reduce((sum, t) => sum + t.itemCount, 0)}
     </div>
     <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
   </div>
-  <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+  <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
     <div className="text-3xl font-bold text-emerald-600">
       {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
     </div>
@@ -286,7 +286,7 @@ export default function TripsPage() {
 </div>
 
 {/* Category Breakdown */}
-<div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+<div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
   <div className="bg-gradient-to-r from-indigo-500 to-indigo-500 px-6 md:px-8 py-4">
     <h2 className="text-lg font-bold text-white">Spending by Category</h2>
   </div>

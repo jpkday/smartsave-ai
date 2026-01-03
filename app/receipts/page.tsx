@@ -166,7 +166,7 @@ export default function Receipts() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
@@ -176,7 +176,7 @@ export default function Receipts() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6">
           {/* Store and Date Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
@@ -184,7 +184,7 @@ export default function Receipts() {
               <select
                 value={store}
                 onChange={(e) => setStore(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
               >
                 <option value="">Select</option>
                 {stores.map(s => (
@@ -198,7 +198,7 @@ export default function Receipts() {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
               />
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function Receipts() {
                       onChange={(e) => updateItem(idx, 'item', e.target.value)}
                       placeholder="Type or select item..."
                       ref={(el) => { if (el) itemRefs.current[idx] = el; }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     />
                     <datalist id={`items-${idx}`}>
                       {items.sort().map(item => (
@@ -226,7 +226,7 @@ export default function Receipts() {
                     </datalist>
                   </div>
                   <div className="w-32">
-                    <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                    <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                       <span className="text-gray-800 font-semibold mr-1">$</span>
                       <input
                         type="text"
@@ -258,7 +258,7 @@ export default function Receipts() {
             </div>
             <button
               onClick={addRow}
-              className="mt-3 text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+              className="mt-3 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
             >
               + Add Item
             </button>
@@ -275,7 +275,7 @@ export default function Receipts() {
           {/* Save Button */}
           <button
             onClick={saveReceipt}
-            className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition cursor-pointer"
+            className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
           >
             Save Receipt
           </button>

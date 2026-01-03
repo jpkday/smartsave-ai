@@ -417,7 +417,7 @@ function HistoryContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* White Header Box */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           {/* Desktop */}
           <div className="hidden md:flex justify-between items-start">
             <div className="flex-1">
@@ -448,7 +448,7 @@ function HistoryContent() {
         </div>
 
         {/* Filters - Desktop: Item then Store */}
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
@@ -456,7 +456,7 @@ function HistoryContent() {
                 <input
                   type="text"
                   placeholder="Search items..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => {
@@ -468,7 +468,7 @@ function HistoryContent() {
                 
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
                       const isSelected = selectedItem === item;
                       return (
@@ -477,7 +477,7 @@ function HistoryContent() {
                           onClick={() => selectItemFromSearch(item)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
                             isSelected 
-                              ? 'bg-blue-50 text-blue-700 font-semibold'
+                              ? 'bg-indigo-50 text-blue-700 font-semibold'
                               : 'hover:bg-gray-50 text-gray-800'
                           }`}
                         >
@@ -490,7 +490,7 @@ function HistoryContent() {
               </div>
               {selectedItem && (
                 <div className="mt-2">
-                  <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold">
+                  <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
                     {selectedItem}
                     <button
                       onClick={() => {
@@ -502,7 +502,7 @@ function HistoryContent() {
                           console.error('Failed to clear localStorage:', err);
                         }
                       }}
-                      className="hover:bg-blue-700 rounded-full px-2 py-1"
+                      className="hover:bg-indigo-700 rounded-2xl px-2 py-1"
                     >
                       ✕
                     </button>
@@ -523,7 +523,7 @@ function HistoryContent() {
                     console.error('Failed to save to localStorage:', err);
                   }
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
                 {stores.map(store => (
@@ -535,7 +535,7 @@ function HistoryContent() {
         </div>
 
         {/* Filters - Mobile: Store then Item */}
-        <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mb-6">
+        <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mb-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
@@ -550,7 +550,7 @@ function HistoryContent() {
                     console.error('Failed to save to localStorage:', err);
                   }
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
                 {stores.map(store => (
@@ -564,7 +564,7 @@ function HistoryContent() {
                 <input
                   type="text"
                   placeholder="Search items..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => {
@@ -576,7 +576,7 @@ function HistoryContent() {
                 
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
                       const isSelected = selectedItem === item;
                       return (
@@ -585,7 +585,7 @@ function HistoryContent() {
                           onClick={() => selectItemFromSearch(item)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
                             isSelected 
-                              ? 'bg-blue-50 text-blue-700 font-semibold'
+                              ? 'bg-indigo-50 text-blue-700 font-semibold'
                               : 'hover:bg-gray-50 text-gray-800'
                           }`}
                         >
@@ -598,7 +598,7 @@ function HistoryContent() {
               </div>
               {selectedItem && (
                 <div className="mt-3">
-                  <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold">
+                  <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
                     {selectedItem}
                     <button
                       onClick={() => {
@@ -610,7 +610,7 @@ function HistoryContent() {
                           console.error('Failed to clear localStorage:', err);
                         }
                       }}
-                      className="hover:bg-blue-700 rounded-full px-2 py-1"
+                      className="hover:bg-indigo-700 rounded-2xl px-2 py-1"
                     >
                       ✕
                     </button>
@@ -623,24 +623,24 @@ function HistoryContent() {
 
         {/* History Display */}
         {!selectedItem ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Select an item above to view price history</p>
           </div>
         ) : loading ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Loading...</p>
           </div>
         ) : selectedStore === 'All' ? (
           // Show grouped by store (All Stores view)
           priceHistory.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+            <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
               <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItem}</p>
               <p className="text-gray-400 text-sm mt-2">Select a specific store to add your first price entry</p>
             </div>
           ) : (
             <div className="space-y-4">
               {Object.entries(groupedHistory).sort(([a], [b]) => a.localeCompare(b)).map(([store, records]) => (
-                <div key={store} className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+                <div key={store} className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
                   <h2 className="text-xl font-bold text-gray-800 mb-4">{store}</h2>
                   <div className="space-y-3">
                     {records.map((record, idx) => {
@@ -651,7 +651,7 @@ function HistoryContent() {
                       return (
                         <div key={record.id}>
                           <div className="flex justify-between items-center gap-3">
-                            <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                               <div>
                                 <p className="font-semibold text-gray-800">
                                   {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
@@ -680,7 +680,7 @@ function HistoryContent() {
                             <div className="mt-2 flex justify-end">
                               <button
                                 onClick={() => confirmPrice(record.price)}
-                                className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-lg font-semibold text-sm transition cursor-pointer flex items-center gap-1"
+                                className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm transition cursor-pointer flex items-center gap-1"
                                 title="Confirm this price for today"
                               >
                                 Confirm Price
@@ -700,7 +700,7 @@ function HistoryContent() {
           <div className="space-y-6">
             {/* Price Graph - Shows if there's any data */}
             {priceHistory.length > 0 && (
-              <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
                   Price Over Time
                 </h2>
@@ -739,7 +739,7 @@ function HistoryContent() {
             
             {/* Timeline List - Shows existing data or helpful message */}
             {priceHistory.length > 0 ? (
-              <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
                   {selectedItem} at {selectedStore}
                 </h2>
@@ -752,7 +752,7 @@ function HistoryContent() {
                     return (
                       <div key={record.id}>
                         <div className="flex justify-between items-center gap-3">
-                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                             <div>
                               <p className="font-semibold text-gray-800">
                                 {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
@@ -781,7 +781,7 @@ function HistoryContent() {
                           <div className="mt-2 flex justify-end">
                             <button
                               onClick={() => confirmPrice(record.price)}
-                              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-lg font-semibold transition cursor-pointer"
+                              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-2xl font-semibold transition cursor-pointer"
                               title="Confirm this price for today"
                             >
                               Confirm Price
@@ -794,14 +794,14 @@ function HistoryContent() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+              <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
                 <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItem} at {selectedStore}</p>
                 <p className="text-gray-400 text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
               </div>
             )}
 
             {/* Add Price Entry Widget - At bottom */}
-            <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
+            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-2">Add Latest Price</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{selectedStore}</span>
@@ -810,7 +810,7 @@ function HistoryContent() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
-                  <div className="flex items-center border border-gray-300 rounded-lg px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                  <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                     <span className="text-gray-800 font-semibold mr-1">$</span>
                     <input
                       type="text"
@@ -828,15 +828,15 @@ function HistoryContent() {
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
                   />
                 </div>
                 <div className="flex items-end">
                   <button
                     onClick={addPriceEntry}
-                    className="w-full bg-teal-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-teal-600 transition cursor-pointer"
+                    className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-teal-600 transition cursor-pointer"
                   >
-                    Add Entry
+                    Add Price
                   </button>
                 </div>
               </div>
@@ -853,7 +853,7 @@ export default function History() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>
           </div>
         </div>

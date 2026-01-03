@@ -1010,7 +1010,7 @@ export default function ShoppingList() {
 
         {/* Add to List Widget - Desktop Only (shows below list on mobile) */}
         <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 mb-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+          <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
           <div className="relative autocomplete-container">
             <div className="flex gap-2">
               <input
