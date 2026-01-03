@@ -129,26 +129,29 @@ export async function POST(request: NextRequest) {
       // Don't fail the request - item is already checked
     }
 
-    // 8. Check if all items for THIS TRIP are now checked
-    const { data: tripItems } = await supabase
-      .from('shopping_list_events')
+// 8. Check if there are any remaining unchecked items for this store
+    // Get items that have prices at this store (potential items for this trip)
+    const { data: itemsAtStore } = await supabase
+      .from('price_history')
       .select('item_id')
-      .eq('trip_id', trip.id);
+      .eq('store_id', store_id)
+      .eq('user_id', SHARED_USER_ID);
 
     let tripEnded = false;
 
-    if (tripItems && tripItems.length > 0) {
-      const tripItemIds = [...new Set(tripItems.map(ti => ti.item_id))];
+    if (itemsAtStore && itemsAtStore.length > 0) {
+      const itemIdsAtStore = [...new Set(itemsAtStore.map(i => i.item_id))];
       
-      // Check if any of these items are still unchecked in the shopping list
+      // Check if there are any unchecked items in the shopping list for this store
       const { count: uncheckedCount } = await supabase
         .from('shopping_list')
         .select('*', { count: 'exact', head: true })
         .eq('household_code', listItem.household_code)
-        .in('item_id', tripItemIds)
+        .eq('user_id', SHARED_USER_ID)
+        .in('item_id', itemIdsAtStore)
         .eq('checked', false);
 
-      // If all items for this trip are checked, end the trip
+      // If no more items for this store, end the trip
       if (uncheckedCount === 0) {
         await supabase
           .from('trips')

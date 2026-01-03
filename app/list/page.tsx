@@ -404,7 +404,11 @@ export default function ShoppingList() {
     }
 
     // Load shopping list
-    const { data: listData, error: listError } = await supabase.from('shopping_list').select('*').eq('user_id', SHARED_USER_ID);
+    const { data: listData, error: listError } = await supabase
+      .from('shopping_list')
+      .select('*')
+      .eq('user_id', SHARED_USER_ID)
+      .eq('household_code', householdCode);
 
     if (listError) {
       console.error('Error loading shopping list:', listError);
@@ -807,7 +811,11 @@ export default function ShoppingList() {
     if (!confirm('Clear entire shopping list?')) return;
 
     try {
-      const { error } = await supabase.from('shopping_list').delete().eq('user_id', SHARED_USER_ID);
+      const { error } = await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('user_id', SHARED_USER_ID)
+        .eq('household_code', householdCode);
 
       if (error) {
         throw new Error(`Failed to clear list: ${error.message}`);
@@ -1497,13 +1505,13 @@ export default function ShoppingList() {
             )}
 
             {/* Add to List when list is empty - Desktop only shows autocomplete onFocus */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 mt-6 max-w-2xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 mt-6 max-w-2xl mx-auto">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Select or type new item..."
+                    placeholder="Select or add new item..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     value={newItem}
                     onChange={(e) => handleInputChange(e.target.value)}
