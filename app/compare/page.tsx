@@ -448,7 +448,7 @@ function CompareContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
           <div className="hidden md:flex justify-between items-start">
             <div className="flex-1">
               <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Compare by Item</h1>
@@ -479,13 +479,13 @@ function CompareContent() {
           </div>
         </div>
 
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
               className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                 filterLetter === 'All'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-indigo-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -499,7 +499,7 @@ function CompareContent() {
                 onClick={() => toggleLetter(letter)}
                 className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
                   filterLetter === letter
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-indigo-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -509,13 +509,13 @@ function CompareContent() {
           </div>
         </div>
 
-        <div className="md:hidden bg-white rounded-lg shadow-lg p-4 mb-6">
+        <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Search Items to Compare</label>
           <div className="relative search-autocomplete-container">
             <input
               type="text"
               placeholder="Type to search items..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               onFocus={() => {
@@ -527,7 +527,7 @@ function CompareContent() {
             
             {/* Autocomplete dropdown */}
             {showAutocomplete && autocompleteItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                 {autocompleteItems.slice(0, 10).map((item) => {
                   const isSelected = selectedItems.includes(item);
                   return (
@@ -536,7 +536,7 @@ function CompareContent() {
                       onClick={() => selectItemFromSearch(item)}
                       className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
                         isSelected 
-                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          ? 'bg-indigo-50 text-blue-700 font-semibold'
                           : 'hover:bg-gray-50 text-gray-800'
                       }`}
                     >
@@ -552,7 +552,7 @@ function CompareContent() {
               {selectedItems.map(item => (
                 <span
                   key={item}
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-full text-base font-semibold"
+                  className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold"
                 >
                   {item}
                   <button
@@ -568,12 +568,12 @@ function CompareContent() {
         </div>
 
         {filteredFavorites.length > 0 && (
-          <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg md:text-xl font-bold text-gray-800">⭐ Favorites</h2>
               <button
                 onClick={allFavoritesSelected ? deselectAllFavorites : selectAllFavorites}
-                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer"
+                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-2xl font-semibold transition cursor-pointer"
               >
                 {allFavoritesSelected ? 'Deselect All' : 'Select All'}
               </button>
@@ -583,7 +583,7 @@ function CompareContent() {
                 <button
                   key={item}
                   onClick={() => toggleItem(item)}
-                  className={`px-3 py-1.5 rounded-lg border-2 transition cursor-pointer text-sm font-semibold ${
+                  className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${
                     selectedItems.includes(item)
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-yellow-400 hover:border-yellow-500'
@@ -596,7 +596,7 @@ function CompareContent() {
           </div>
         )}
 
-        <div className="hidden md:block bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Select Items</h2>
             {selectedItems.length > 0 && (
@@ -622,7 +622,7 @@ function CompareContent() {
             <input
               type="text"
               placeholder="Search items..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               onFocus={() => {
@@ -634,7 +634,7 @@ function CompareContent() {
             
             {/* Autocomplete dropdown */}
             {showAutocomplete && autocompleteItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                 {autocompleteItems.slice(0, 10).map((item) => {
                   const isSelected = selectedItems.includes(item);
                   return (
@@ -660,7 +660,7 @@ function CompareContent() {
               <button
                 key={item}
                 onClick={() => toggleItem(item)}
-                className={`p-4 md:p-3 rounded-lg border-2 transition cursor-pointer font-semibold text-base ${
+                className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${
                   selectedItems.includes(item)
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
@@ -673,7 +673,7 @@ function CompareContent() {
         </div>
 
         {selectedItems.length > 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Stores</h2>
             
             {sortedStores.length > 0 ? (
@@ -685,7 +685,7 @@ function CompareContent() {
                   return (
                     <div
                       key={store}
-                      className={`p-4 rounded-lg border-2 ${
+                      className={`p-4 rounded-2xl border-2 ${
                         idx === 0
                           ? 'bg-green-50 border-green-500'
                           : 'bg-gray-50 border-gray-300'
@@ -764,7 +764,7 @@ function CompareContent() {
                 })}
               </div>
             ) : (
-              <div className="p-6 md:p-8 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+              <div className="p-6 md:p-8 text-center bg-yellow-50 border-2 border-yellow-200 rounded-2xl">
                 <p className="text-base md:text-lg font-semibold text-yellow-800 mb-2">No price data available</p>
                 <p className="text-sm text-yellow-700">
                   Use the Quick Add box below to add prices for {selectedItems.join(', ')}
@@ -773,14 +773,14 @@ function CompareContent() {
             )}
           </div>
         ) : (
-          <div className="md:hidden bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="md:hidden bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Select an item above to compare prices</p>
           </div>
         )}
 
         {selectedItems.length === 1 && (
-          <div className="bg-white rounded-lg shadow-lg p-4 md:p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Add Price</h2>
+          <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Add Price</h2>
             <p className="text-sm text-gray-600 mb-4">
               Adding price for: <span className="font-semibold">{selectedItems[0]}</span>
             </p>
@@ -790,7 +790,7 @@ function CompareContent() {
                 <select
                   value={quickAddStore}
                   onChange={(e) => setQuickAddStore(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
                 >
                   <option value="">Select store...</option>
                   {stores.map(store => (
@@ -800,7 +800,7 @@ function CompareContent() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
-                <div className="flex items-center border border-gray-300 rounded-lg px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                   <span className="text-gray-800 font-semibold mr-1">$</span>
                   <input
                     type="text"
@@ -816,7 +816,7 @@ function CompareContent() {
               <div className="flex items-end">
                 <button
                   onClick={handleQuickAddPrice}
-                  className="w-full bg-teal-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-teal-600 transition cursor-pointer"
+                  className="w-full bg-indigo-500 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-teal-600 transition cursor-pointer"
                 >
                   Add Price
                 </button>
@@ -826,7 +826,7 @@ function CompareContent() {
         )}
 
         {selectedItems.length === 0 && (
-          <div className="hidden md:block bg-white rounded-lg shadow-lg p-8 md:p-12 text-center">
+          <div className="hidden md:block bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Select items above to compare prices</p>
           </div>
         )}
@@ -840,7 +840,7 @@ export default function Compare() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>
           </div>
         </div>
