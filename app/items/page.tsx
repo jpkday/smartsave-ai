@@ -305,35 +305,59 @@ function ItemsContent() {
   const deleteItem = async (itemName: string) => {
     const item = items.find(i => i.name === itemName);
     if (!item) return;
-
+  
     const canDelete = canDeleteItem(item);
     
     if (!canDelete) {
       alert('You can only delete items you created.');
       return;
     }
-
+  
     if (!confirm('Delete this item? This will also remove it from all shopping lists.')) return;
-
-    const { error } = await supabase
-      .from('items')
-      .delete()
-      .eq('name', itemName)
-      .eq('user_id', SHARED_USER_ID);
-
-    if (error) {
+  
+    try {
+      // Delete from dependent tables FIRST (to avoid foreign key constraint errors)
+      const { error: shoppingListError } = await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('item_name', itemName)
+        .eq('user_id', SHARED_USER_ID);
+  
+      if (shoppingListError) {
+        throw shoppingListError;
+      }
+  
+      const { error: priceError } = await supabase
+        .from('price_history')
+        .delete()
+        .eq('item_name', itemName)
+        .eq('user_id', SHARED_USER_ID);
+  
+      if (priceError) {
+        throw priceError;
+      }
+  
+      // Now delete from items table (safe because no references exist)
+      const { error: itemError } = await supabase
+        .from('items')
+        .delete()
+        .eq('name', itemName)
+        .eq('user_id', SHARED_USER_ID);
+  
+      if (itemError) {
+        throw itemError;
+      }
+  
+      // Update UI
+      setItems((prev) => prev.filter((i) => i.name !== itemName));
+  
+      if (selected?.name === itemName) closeSheet();
+      if (editingName === itemName) cancelInlineEdit();
+  
+    } catch (error) {
       console.error('Error deleting item:', error);
       alert('Failed to delete item. Check your connection and try again.');
-      return;
     }
-
-    await supabase.from('price_history').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
-    await supabase.from('shopping_list').delete().eq('item_name', itemName).eq('user_id', SHARED_USER_ID);
-
-    setItems((prev) => prev.filter((i) => i.name !== itemName));
-
-    if (selected?.name === itemName) closeSheet();
-    if (editingName === itemName) cancelInlineEdit();
   };
 
   const renameItem = async (oldName: string, nextNameRaw: string) => {

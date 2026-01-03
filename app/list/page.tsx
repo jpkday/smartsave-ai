@@ -751,16 +751,16 @@ export default function ShoppingList() {
   const removeItem = async (id: string) => {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
-
+  
     // Optimistically remove from UI
     setListItems(listItems.filter((li) => li.id !== id));
-
+  
     // Show undo notification
     setUndoItem(item);
-
+  
     // Clear any existing timeout
     if (undoTimeout) clearTimeout(undoTimeout);
-
+  
     // Set new timeout to actually delete after 5 seconds
     const timeout = setTimeout(async () => {
       try {
@@ -769,7 +769,7 @@ export default function ShoppingList() {
           .delete()
           .eq('id', id)
           .eq('user_id', SHARED_USER_ID);
-
+  
         if (error) {
           throw new Error(`Failed to remove item: ${error.message}`);
         }
@@ -782,59 +782,26 @@ export default function ShoppingList() {
         setUndoItem(null);
         setUndoTimeout(null);
       }
-    }, 5000);
-
+    }, 5000); // ← This timeout WILL fire and delete from DB if undo is not clicked
+  
     setUndoTimeout(timeout);
   };
-
-  const undoRemove = async () => {
+  
+  const undoRemove = () => {
     if (!undoItem) return;
-
-    // Clear the timeout
+  
+    // Clear the timeout (this PREVENTS the database deletion)
     if (undoTimeout) {
       clearTimeout(undoTimeout);
       setUndoTimeout(null);
     }
-
-    // Restore item to UI immediately
+  
+    // Restore item to UI (item is still in database, was never deleted)
     setListItems((prev) => [...prev, undoItem]);
-
-  // Re-add to database
-  try {
-    // First, get the item_id from the items table
-    const { data: itemData, error: itemError } = await supabase
-      .from('items')
-      .select('id')
-      .eq('name', undoItem.item_name)
-      .eq('user_id', SHARED_USER_ID)
-      .single();
-
-    if (itemError || !itemData) {
-      throw new Error('Item not found');
-    }
-
-    // Insert back into shopping_list with correct item_id
-    const { error: insertError } = await supabase.from('shopping_list').insert({
-      item_id: itemData.id,
-      item_name: undoItem.item_name,
-      quantity: undoItem.quantity,
-      user_id: SHARED_USER_ID,
-      household_code: householdCode,
-      checked: undoItem.checked,
-      added_at: new Date().toISOString(),
-    });
-
-    if (insertError) {
-      throw insertError;
-    }
-  } catch (error) {
-    console.error('Error restoring item:', error);
-    alert('Failed to restore item. Try adding it again.');
-  }
-
-  // Close undo notification
-  setUndoItem(null);
-};
+  
+    // Close undo notification
+    setUndoItem(null);
+  };
 
   const clearList = async () => {
     if (!confirm('Clear entire shopping list?')) return;
@@ -1816,12 +1783,12 @@ export default function ShoppingList() {
           </div>
         )}
 
-        {/* Undo Toast */}
-        {undoItem && (
+{/* Undo Toast */}
+{undoItem && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
               <span className="flex-1 font-medium">
-                {undoItem.item_name} was removed.
+                {undoItem.item_name} removed.
               </span>
               <button
                 onClick={undoRemove}
@@ -1830,8 +1797,27 @@ export default function ShoppingList() {
                 Undo
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (undoTimeout) clearTimeout(undoTimeout);
+                  
+                  // Immediately delete from database
+                  try {
+                    const { error } = await supabase
+                      .from('shopping_list')
+                      .delete()
+                      .eq('id', undoItem.id)
+                      .eq('user_id', SHARED_USER_ID);
+
+                    if (error) {
+                      throw error;
+                    }
+                  } catch (error) {
+                    console.error('Error removing item:', error);
+                    // Restore to UI if deletion failed
+                    setListItems((prev) => [...prev, undoItem]);
+                    alert('Failed to remove item. Check your connection and try again.');
+                  }
+                  
                   setUndoItem(null);
                   setUndoTimeout(null);
                 }}
