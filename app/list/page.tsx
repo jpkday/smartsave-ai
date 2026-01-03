@@ -36,8 +36,16 @@ export default function ShoppingList() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
+  const [householdCode, setHouseholdCode] = useState<string | null>(null);
   
+  // Load household code from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const code = localStorage.getItem('household_code');
+      setHouseholdCode(code);
+    }
+  }, []);
+
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
 
@@ -349,9 +357,13 @@ export default function ShoppingList() {
     if (typeof window !== 'undefined') {
       setStorePrefs(loadStorePrefs());
     }
-    loadData();
+    
+    // Only load data when we have a household code
+    if (householdCode) {
+      loadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [householdCode]);
 
   const getHouseholdId = async (): Promise<string> => {
     const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
