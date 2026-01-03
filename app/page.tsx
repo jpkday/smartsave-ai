@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import HouseholdSelector from './components/HouseholdSelector';
+import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -10,12 +11,33 @@ export default function Home() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isLoadingCode, setIsLoadingCode] = useState(true); // Add loading state
+  const searchParams = useSearchParams(); // Add slug ability to beta codes
 
   useEffect(() => {
     const code = localStorage.getItem('household_code');
     setHouseholdCode(code);
     setIsLoadingCode(false); // Mark as loaded
   }, []);
+
+  // Check for code in URL parameter first, then localStorage
+  useEffect(() => {
+    const urlCode = searchParams.get('code');
+    
+    if (urlCode) {
+      // Set the code from URL parameter
+      localStorage.setItem('household_code', urlCode);
+      setHouseholdCode(urlCode);
+      setIsLoadingCode(false);
+      
+      // Optional: Clean up URL to remove the parameter
+      window.history.replaceState({}, '', '/');
+    } else {
+      // Check localStorage
+      const code = localStorage.getItem('household_code');
+      setHouseholdCode(code);
+      setIsLoadingCode(false);
+    }
+  }, [searchParams]);
 
   const handleCodeSuccess = () => {
     const code = localStorage.getItem('household_code');
@@ -39,6 +61,7 @@ export default function Home() {
   const isLocked = !householdCode;
 
   return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400" />}>
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
       <div className="text-center text-white max-w-xs md:max-w-2xl w-full">
         <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">SmartSaveAI</h1>
@@ -267,5 +290,6 @@ export default function Home() {
         />
       )}
     </div>
+  </Suspense>
   );
 }
