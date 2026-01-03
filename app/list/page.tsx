@@ -1810,14 +1810,12 @@ export default function ShoppingList() {
               <span className="flex-1 font-medium">
                 {undoItem.item_name} removed.
               </span>
-              {/* 
               <button
                 onClick={undoRemove}
                 className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
               >
                 Undo
               </button>
-              */}
               <button
                 onClick={async () => {
                   if (undoTimeout) clearTimeout(undoTimeout);
