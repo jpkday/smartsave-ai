@@ -948,25 +948,15 @@ export default function ShoppingList() {
   const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => listItems.find((li) => li.item_name === fav));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* White Header Box */}
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
-          {/* Desktop: Title/Subtitle on left, Nav on right */}
-          <div className="hidden md:flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Shopping List</h1>
-              <p className="text-xs md:text-sm text-gray-600 mt-2">Plan your shopping trip and save money</p>
-            </div>
-            <Header currentPage="Shopping List" />
-          </div>
-
-          {/* Mobile: Just Header Nav */}
-          <div className="md:hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+      <div className="sticky top-0 z-50 bg-white shadow-lg">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+          <div className="flex justify-between items-center">
             <Header currentPage="Shopping List" />
           </div>
         </div>
-
+      </div>
+      <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
         {/* Alphabet Filter - Hidden on Mobile */}
         <div className="hidden md:block bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
@@ -1859,6 +1849,6 @@ export default function ShoppingList() {
           </div>
         )}
       </div>
-    </div>
+     </div> 
   );
 }
