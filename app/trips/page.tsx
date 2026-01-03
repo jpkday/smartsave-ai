@@ -37,12 +37,29 @@ export default function TripsPage() {
   const [daysToShow, setDaysToShow] = useState(7);
   const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
 
+  // Category detail modal
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
 
   useEffect(() => {
     loadTrips();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysToShow]);
+
+  // Close category modal on ESC
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeCategoryModal();
+      }
+    };
+    if (categoryModalOpen) {
+      window.addEventListener('keydown', onKeyDown);
+    }
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [categoryModalOpen]);
 
   const toggleTrip = (tripId: string) => {
     setExpandedTrips(prev => {
@@ -54,6 +71,16 @@ export default function TripsPage() {
       }
       return next;
     });
+  };
+
+  const openCategoryModal = (category: string) => {
+    setSelectedCategory(category);
+    setCategoryModalOpen(true);
+  };
+
+  const closeCategoryModal = () => {
+    setCategoryModalOpen(false);
+    setSelectedCategory(null);
   };
 
   const loadTrips = async () => {
@@ -311,13 +338,14 @@ export default function TripsPage() {
           .sort(([, a], [, b]) => b - a);
 
         return sortedCategories.map(([category, total]) => (
-          <div 
-            key={category} 
-            className={`rounded-xl p-4 border transition-all duration-200 hover:scale-105 text-right ${getCategoryColor(category)}`}
+          <button
+            key={category}
+            onClick={() => openCategoryModal(category)}
+            className={`rounded-xl p-4 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
           >
             <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
             <div className="text-2xl font-bold">{formatMoney(total)}</div>
-          </div>
+          </button>
         ));
       })()}
     </div>
@@ -432,6 +460,124 @@ export default function TripsPage() {
               })}
             </div>
           </>
+        )}
+{/* Category Detail Modal */}
+{categoryModalOpen && selectedCategory && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden">
+              {/* Header - Fixed */}
+              <div className="flex justify-between items-start p-6 pb-4 border-b border-gray-200">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">
+                    {selectedCategory} Items
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Last {daysToShow} days
+                  </p>
+                </div>
+                <button
+                  onClick={closeCategoryModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  aria-label="Close"
+                >
+                  ✖
+                </button>
+              </div>
+
+              {(() => {
+                // Collect all items from this category across all trips
+                const categoryItems: Array<TripEvent & { trip_date: string; store: string }> = [];
+                
+                trips.forEach(trip => {
+                  trip.events
+                    .filter(event => (event.category || 'Other') === selectedCategory)
+                    .forEach(event => {
+                      categoryItems.push({
+                        ...event,
+                        trip_date: trip.started_at,
+                        store: trip.store,
+                      });
+                    });
+                });
+
+                // Sort alphabetically by item name
+                categoryItems.sort((a, b) => 
+                  a.item_name.localeCompare(b.item_name)
+                );
+
+                if (categoryItems.length === 0) {
+                  return (
+                    <p className="text-gray-500 text-center py-8">
+                      No items in this category
+                    </p>
+                  );
+                }
+
+                const total = categoryItems.reduce(
+                  (sum, item) => sum + ((item.price || 0) * item.quantity),
+                  0
+                );
+
+                return (
+                  <>
+                    {/* Items - Scrollable */}
+                    <div className="flex-1 overflow-y-auto p-6 py-4">
+                      <div className="space-y-2">
+                        {categoryItems.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border ${getCategoryColor(selectedCategory)}`}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="font-semibold">
+                                {item.item_name}
+                                {item.quantity > 1 && (
+                                  <span className="text-sm ml-1 opacity-75">× {item.quantity}</span>
+                                )}
+                              </span>
+                              <span className="font-bold">
+                                {item.price ? formatMoney(item.price * item.quantity) : '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs opacity-75">
+                              <span>{item.store}</span>
+                              <span>•</span>
+                              <span>
+                                {new Date(item.checked_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                              <span>•</span>
+                              <span>
+                                {new Date(item.checked_at).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Total - Fixed at Bottom */}
+                    <div className={`p-4 border-t-2 ${getCategoryColor(selectedCategory)}`}>
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">Category Total</span>
+                        <span className="text-2xl font-bold">
+                          {formatMoney(total)}
+                        </span>
+                      </div>
+                      <p className="text-xs opacity-75 mt-1 text-right">
+                        {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
         )}
       </div>
     </div>
