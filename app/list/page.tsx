@@ -38,10 +38,19 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
+  const [recentItems, setRecentItems] = useState<string[]>([]);
+  const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
+  const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
+
+
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   
+  type SelectItemsFilter = 'ALL' | 'FAVORITES' | 'RECENT';
+  const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>('ALL');
+
+
   // =========================
   // Mobile Mode Toggle (Store vs Build)
   // =========================
@@ -533,6 +542,45 @@ export default function ShoppingList() {
 
       setPrices(pricesObj);
     }
+
+// =========================
+// Recent items (from shopping_list_events)
+// =========================
+console.log('[RECENT] householdCode at query time:', householdCode);
+
+if (!householdCode) {
+  console.warn('[RECENT] householdCode missing; skipping recent query');
+  setRecentItems([]);
+} else {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: recentData, error: recentErr } = await supabase
+    .from('shopping_list_events')
+    .select('item_name, checked_at')
+    .eq('household_code', householdCode)
+    .not('checked_at', 'is', null)
+    .gte('checked_at', thirtyDaysAgo)
+    .order('checked_at', { ascending: false })
+    .limit(250);
+
+  if (recentErr) {
+    console.error('[RECENT] query error:', recentErr);
+    setRecentItems([]);
+  } else {
+    console.log('[RECENT] rows:', recentData?.length ?? 0, 'sample:', recentData?.slice(0, 5));
+
+    const uniqueRecent = Array.from(
+      new Set(
+        (recentData ?? [])
+          .map((r) => (typeof r.item_name === 'string' ? r.item_name.trim() : ''))
+          .filter((n) => n.length > 0)
+      )
+    ).slice(0, 25);
+
+    console.log('[RECENT] uniqueRecent:', uniqueRecent);
+    setRecentItems(uniqueRecent);
+  }}
+
     setLoading(false);
   };
 
@@ -732,6 +780,7 @@ export default function ShoppingList() {
 
       loadData();
     } catch (error) {
+      console.log('[loadData] fired');
       console.error('Error adding favorites:', error);
       alert('Failed to add favorites. Check your connection and try again.');
     }
@@ -784,7 +833,8 @@ export default function ShoppingList() {
           showUndoAddToast(inserted as ListItem);
         }
       }
-      
+      console.log('[RECENT] overlap sample:', buildModeAvailableAll.slice(0, 20).filter(n => recentItemSet.has(n.toLowerCase())));
+
       await loadData();
       
     } catch (error) {
@@ -1038,8 +1088,40 @@ export default function ShoppingList() {
   const filteredFavorites = filterLetter === 'All' ? favorites : favorites.filter((item) => item.toUpperCase().startsWith(filterLetter));
   const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => listItems.find((li) => li.item_name === fav));
 
-  // Build-mode helper: items in DB but NOT on current list
-  const buildModeAvailableItems = filteredItems.filter((name) => !listItems.some((li) => li.item_name === name));
+
+// 1) all available items (not already on the list)
+const buildModeAvailableAll = filteredItems.filter(
+  (name) => !listItems.some((li) => li.item_name.toLowerCase() === name.toLowerCase())
+);
+
+// 2) counts for pills (optional but nice)
+const buildModeAllCount = buildModeAvailableAll.length;
+const buildModeFavoritesCount = buildModeAvailableAll.filter((n) => favoriteSet.has(n.toLowerCase())).length;
+const buildModeRecentCount = buildModeAvailableAll.filter((n) => recentItemSet.has(n.toLowerCase())).length;
+
+// 3) the list that ACTUALLY renders in Select Items
+const buildModeAvailableItems =
+  selectItemsFilter === 'FAVORITES'
+    ? buildModeAvailableAll.filter((n) => favoriteSet.has(n.toLowerCase()))
+    : selectItemsFilter === 'RECENT'
+    ? buildModeAvailableAll.filter((n) => recentItemSet.has(n.toLowerCase()))
+    : buildModeAvailableAll;
+// Add this debug line:
+console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCount:', buildModeAvailableItems.length, 'recentItems:', recentItems, 'recentItemSet size:', recentItemSet.size);
+/*
+  const buildModeFilteredItems =
+  selectItemsFilter === 'FAVORITES'
+    ? buildModeAvailableItems.filter((name) => favorites.includes(name))
+    : selectItemsFilter === 'RECENT'
+    ? buildModeAvailableItems.filter((name) => recentItems.includes(name))
+    : buildModeAvailableItems;
+
+
+  const buildModeVisibleItems =
+  selectItemsFilter === 'FAVORITES'
+    ? buildModeAvailableItems.filter((name) => favorites.includes(name))
+    : buildModeAvailableItems;
+*/
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -1154,9 +1236,43 @@ export default function ShoppingList() {
         {/* Build Mode: Select Items (Mobile Only) */}
         {isMobile && mobileMode === 'build' && (
           <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            <div className="flex justify-between items-center mb-3">
+            <div className="flex justify-between items-center mb-2">
               <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
               <span className="text-xs text-gray-500">{buildModeAvailableItems.length} available</span>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setSelectItemsFilter('ALL')}
+                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                  selectItemsFilter === 'ALL'
+                    ? 'bg-blue-500 text-white border-gray-400'
+                    : 'bg-white text-slate-600 border-gray-400 hover:bg-slate-50'
+                }`}
+              >
+                All Items ({buildModeAllCount})
+              </button>
+              <button
+                onClick={() => setSelectItemsFilter('FAVORITES')}
+                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                  selectItemsFilter === 'FAVORITES'
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                }`}
+              >
+                Favorites ({buildModeFavoritesCount})
+              </button>
+              <button
+              onClick={() => setSelectItemsFilter('RECENT')}
+              className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                selectItemsFilter === 'RECENT'
+                  ? 'bg-rose-500 text-white border-rose-600'
+                  : 'bg-white text-rose-500 border-rose-200 hover:bg-slate-50'
+              }`}
+            >
+              Recent ({buildModeRecentCount})
+            </button>
             </div>
 
             {buildModeAvailableItems.length === 0 ? (
