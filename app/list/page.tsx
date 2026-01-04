@@ -38,7 +38,10 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
-
+  
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  
   // =========================
   // Mobile Mode Toggle (Store vs Build)
   // =========================
@@ -55,9 +58,55 @@ export default function ShoppingList() {
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
 
-  // Undo system
-  const [undoItem, setUndoItem] = useState<ListItem | null>(null);
-  const [undoTimeout, setUndoTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // UN-DO "REMOVE FROM" SHOPPING LIST
+  const [undoRemoveItem, setUndoRemoveItem] = useState<ListItem | null>(null);
+  const [undoRemoveTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+    // UN-DO "ADD TO" SHOPPING LIST
+    const [undoAddItem, setUndoAddItem] = useState<ListItem | null>(null);
+    const [undoAddTimeout, setUndoAddTimeout] = useState<NodeJS.Timeout | null>(null);
+    const showUndoAddToast = (item: ListItem) => {
+      // clear any existing add-toast
+      if (undoAddTimeout) clearTimeout(undoAddTimeout);
+    
+      setUndoAddItem(item);
+    
+      const timeout = setTimeout(() => {
+        setUndoAddItem(null);
+        setUndoAddTimeout(null);
+      }, 5000);
+    
+      setUndoAddTimeout(timeout);
+    };
+    
+    const undoAdd = async () => {
+      if (!undoAddItem) return;
+    
+      if (undoAddTimeout) {
+        clearTimeout(undoAddTimeout);
+        setUndoAddTimeout(null);
+      }
+    
+      try {
+        // delete the newly-added row
+        const { error } = await supabase
+          .from('shopping_list')
+          .delete()
+          .eq('id', undoAddItem.id)
+          .eq('user_id', SHARED_USER_ID);
+    
+        if (error) throw error;
+    
+        // refresh UI
+        await loadData();
+      } catch (e) {
+        console.error('Error undoing add:', e);
+        alert('Failed to undo. Check your connection and try again.');
+      } finally {
+        setUndoAddItem(null);
+      }
+    };
 
   useEffect(() => {
     // Load last used store from localStorage on mount
@@ -541,10 +590,12 @@ export default function ShoppingList() {
         itemId = newItemData.id;
       }
 
-      // Add to shopping list with item_id
-      const alreadyInList = listItems.find((li) => li.item_name === itemName);
-      if (!alreadyInList && itemId) {
-        await supabase.from('shopping_list').insert({
+    // Add to shopping list with item_id
+    const alreadyInList = listItems.find((li) => li.item_name === itemName);
+    if (!alreadyInList && itemId) {
+      const { data: inserted, error: listError } = await supabase
+        .from('shopping_list')
+        .insert({
           item_id: itemId,
           item_name: itemName,
           quantity: 1,
@@ -552,10 +603,21 @@ export default function ShoppingList() {
           household_code: householdCode,
           checked: false,
           added_at: new Date().toISOString(),
-        });
+        })
+        .select('id, item_name, quantity, checked')
+        .single();
+
+      if (listError) {
+        throw new Error(`Failed to add to shopping list: ${listError.message}`);
       }
 
-      loadData();
+      if (inserted) {
+        showUndoAddToast(inserted as ListItem);
+      }
+    }
+
+    await loadData();
+
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to add item. Check your connection and try again.');
@@ -564,12 +626,12 @@ export default function ShoppingList() {
 
   const addNewItem = async () => {
     if (!newItem.trim()) return;
-
+  
     const itemName = newItem.trim();
-
+  
     try {
       let itemId: number | null = null;
-
+  
       // Check if item exists and get its ID
       const { data: existingItem } = await supabase
         .from('items')
@@ -577,7 +639,7 @@ export default function ShoppingList() {
         .eq('name', itemName)
         .eq('user_id', SHARED_USER_ID)
         .maybeSingle();
-
+  
       if (existingItem) {
         itemId = existingItem.id;
       } else {
@@ -592,43 +654,52 @@ export default function ShoppingList() {
           })
           .select('id')
           .single();
-
+  
         if (itemError || !newItemData) {
           throw new Error(`Failed to create item: ${itemError?.message}`);
         }
-
+  
         itemId = newItemData.id;
       }
-
+  
       // Add to shopping list with item_id
       const alreadyInList = listItems.find((li) => li.item_name === itemName);
       if (!alreadyInList && itemId) {
-        const { error: listError } = await supabase.from('shopping_list').insert({
-          item_id: itemId,
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          checked: false,
-          added_at: new Date().toISOString(),
-        });
-
+        const { data: inserted, error: listError } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_id: itemId,
+            item_name: itemName,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            checked: false,
+            added_at: new Date().toISOString(),
+          })
+          .select('id, item_name, quantity, checked')
+          .single();
+  
         if (listError) {
           throw new Error(`Failed to add to shopping list: ${listError.message}`);
         }
+  
+        // ✅ Show "Added" toast with Undo, using the inserted row id
+        if (inserted) {
+          showUndoAddToast(inserted as ListItem);
+        }
       }
-
+  
       setNewItem('');
       setShowAutocomplete(false);
       setAutocompleteItems([]);
-
-      loadData();
+  
+      await loadData();
     } catch (error) {
       console.error('Error adding item:', error);
       alert('Failed to add item. Check your connection and try again.');
     }
   };
-
+  
   const addFavorites = async () => {
     try {
       for (const itemName of favorites) {
@@ -679,29 +750,43 @@ export default function ShoppingList() {
         }
       } else {
         // Get item_id first
-        const { data: item } = await supabase.from('items').select('id').eq('name', itemName).eq('user_id', SHARED_USER_ID).single();
-
-        if (!item) {
-          throw new Error('Item not found');
+        const { data: item, error: itemErr } = await supabase
+          .from('items')
+          .select('id')
+          .eq('name', itemName)
+          .eq('user_id', SHARED_USER_ID)
+          .single();
+      
+        if (itemErr || !item) {
+          throw new Error(itemErr?.message || 'Item not found');
         }
-
-        // Add to list with item_id
-        const { error } = await supabase.from('shopping_list').insert({
-          item_id: item.id,
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          checked: false,
-          added_at: new Date().toISOString(),
-        });
-
-        if (error) {
-          throw new Error(`Failed to add item: ${error.message}`);
+      
+        // Add to list with item_id (RETURN the inserted row so we can toast + undo)
+        const { data: inserted, error: listErr } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_id: item.id,
+            item_name: itemName,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            checked: false,
+            added_at: new Date().toISOString(),
+          })
+          .select('id, item_name, quantity, checked')
+          .single();
+      
+        if (listErr) {
+          throw new Error(`Failed to add item: ${listErr.message}`);
+        }
+      
+        if (inserted) {
+          showUndoAddToast(inserted as ListItem);
         }
       }
-
-      loadData();
+      
+      await loadData();
+      
     } catch (error) {
       console.error('Error toggling item:', error);
       alert('Failed to update list. Check your connection and try again.');
@@ -790,10 +875,10 @@ export default function ShoppingList() {
     setListItems(listItems.filter((li) => li.id !== id));
 
     // Show undo notification
-    setUndoItem(item);
+    setUndoRemoveItem(item);
 
     // Clear any existing timeout
-    if (undoTimeout) clearTimeout(undoTimeout);
+    if (undoRemoveTimeout) clearTimeout(undoRemoveTimeout);
 
     // Set new timeout to actually delete after 5 seconds
     const timeout = setTimeout(async () => {
@@ -809,28 +894,28 @@ export default function ShoppingList() {
         setListItems((prev) => [...prev, item]);
         alert('Failed to remove item. Check your connection and try again.');
       } finally {
-        setUndoItem(null);
-        setUndoTimeout(null);
+        setUndoRemoveItem(null);
+        setUndoRemoveTimeout(null);
       }
     }, 5000); // ← This timeout WILL fire and delete from DB if undo is not clicked
 
-    setUndoTimeout(timeout);
+    setUndoRemoveTimeout(timeout);
   };
 
   const undoRemove = () => {
-    if (!undoItem) return;
+    if (!undoRemoveItem) return;
 
     // Clear the timeout (this PREVENTS the database deletion)
-    if (undoTimeout) {
-      clearTimeout(undoTimeout);
-      setUndoTimeout(null);
+    if (undoRemoveTimeout) {
+      clearTimeout(undoRemoveTimeout);
+      setUndoRemoveTimeout(null);
     }
 
     // Restore item to UI (item is still in database, was never deleted)
-    setListItems((prev) => [...prev, undoItem]);
+    setListItems((prev) => [...prev, undoRemoveItem]);
 
     // Close undo notification
-    setUndoItem(null);
+    setUndoRemoveItem(null);
   };
 
   const clearList = async () => {
@@ -1019,7 +1104,7 @@ export default function ShoppingList() {
       {/* Add to List Widget - Desktop + Mobile(Build) */}
       {(!isMobile || mobileMode === 'build') && (
         <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-          <h2 className="text-xl font-semibold mb-3 text-gray-800">Search</h2>
+          <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
           <div className="relative autocomplete-container">
             <div className="flex gap-2">
               <input
@@ -1066,7 +1151,7 @@ export default function ShoppingList() {
         </div>
       )}
 
-        {/* Build Mode: Add More Items (Mobile Only) */}
+        {/* Build Mode: Select Items (Mobile Only) */}
         {isMobile && mobileMode === 'build' && (
           <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
             <div className="flex justify-between items-center mb-3">
@@ -1075,24 +1160,33 @@ export default function ShoppingList() {
             </div>
 
             {buildModeAvailableItems.length === 0 ? (
-              <div className="text-sm text-gray-500">Nothing left to add for this letter.</div>
+              <div className="text-sm text-gray-500">All items added for this letter.</div>
             ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="space-y-2 max-h-114 overflow-y-auto">
                 {buildModeAvailableItems.slice(0, 250).map((item) => {
                   const isFavorite = favorites.includes(item);
                   return (
-                    <div key={item} className="flex items-center justify-between border border-gray-100 rounded-2xl px-3 py-3">
-                      <div className="text-med text-gray-800 flex items-center gap-2">
-                        {isFavorite && <span className="text-yellow-500">⭐</span>}
-                        {item}
-                      </div>
-                      <button
-                        onClick={() => toggleItem(item)} // safe: list excludes these, so this only ADDS
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer transition"
-                      >
-                        Add
-                      </button>
-                    </div>
+                    <div
+  key={item}
+  className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition
+    ${
+      isFavorite
+        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+        : 'bg-white border-gray-300 hover:bg-gray-50'
+    }`}
+>
+  <div className="flex-1">
+    <div className="font-medium text-gray-800">{item}</div>
+  </div>
+
+  <button
+    onClick={() => toggleItem(item)}
+    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition"
+  >
+    Add
+  </button>
+</div>
+
                   );
                 })}
               </div>
@@ -1170,11 +1264,11 @@ export default function ShoppingList() {
                       isInList
                         ? 'bg-blue-600 text-white border-blue-600'
                         : isFavorite
-                        ? 'border-yellow-400 hover:border-yellow-500 bg-yellow-50 text-gray-700 hover:bg-yellow-100'
+                        ? 'bg-yellow-50 border-yellow-200 text-gray-700 hover:bg-yellow-100'                        
                         : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                     }`}
                   >
-                    {isFavorite && !isInList && <span className="text-yellow-500 text-lg mr-1">⭐</span>}
+                    {/*{isFavorite && !isInList && <span className="text-yellow-500 text-lg mr-1">⭐</span>}*/}
                     {item}
                   </button>
                 );
@@ -1233,7 +1327,7 @@ export default function ShoppingList() {
                     }
                   });
 
-                return (
+                return (                  
                   <div className="space-y-6">
                     {Object.entries(itemsByStore).map(([store, storeItems]) => (
                       <div key={store}>
@@ -1274,7 +1368,21 @@ export default function ShoppingList() {
                                     : 'bg-white border-gray-300 hover:bg-gray-50'
                                 }`}
                               >
-                                <input type="checkbox" checked={item.checked} onChange={() => toggleChecked(item.id)} className="w-5 h-5 cursor-pointer" />
+                              <input
+                                type="checkbox"
+                                checked={item.checked}
+                                disabled={mobileMode == 'build'}
+                                onChange={() => {
+                                  if (mobileMode == 'build') return;
+                                  toggleChecked(item.id);
+                                }}
+                                className={`w-5 h-5 rounded transition
+                                  ${
+                                    mobileMode == 'build'
+                                      ? 'cursor-not-allowed opacity-30'
+                                      : 'cursor-pointer'
+                                  }`}
+                              ></input>
 
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1375,7 +1483,21 @@ export default function ShoppingList() {
                                     : 'bg-white border-gray-300 hover:bg-gray-50'
                                 }`}
                               >
-                                <input type="checkbox" checked={item.checked} onChange={() => toggleChecked(item.id)} className="w-5 h-5 cursor-pointer" />
+                              <input
+                                type="checkbox"
+                                checked={item.checked}
+                                disabled={mobileMode == 'build'}
+                                onChange={() => {
+                                  if (mobileMode == 'build') return;
+                                  toggleChecked(item.id);
+                                }}
+                                className={`w-5 h-5 rounded transition
+                                  ${
+                                    mobileMode == 'build'
+                                      ? 'cursor-not-allowed opacity-30'
+                                      : 'cursor-pointer'
+                                  }`}
+                              ></input>
 
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1875,21 +1997,50 @@ export default function ShoppingList() {
           </div>
         )}
 
-        {/* Undo Toast */}
-        {undoItem && (
-          <div key={undoItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+        {/* Undo Add Item Toast */}
+        {mounted && undoAddItem && (
+          <div key={undoAddItem.id} className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">{undoItem.item_name} removed.</span>
+              <span className="flex-1 font-medium">{undoAddItem.item_name} added.</span>
+
+              <button
+                onClick={undoAdd}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+              >
+                Undo
+              </button>
+
+              <button
+                onClick={() => {
+                  if (undoAddTimeout) clearTimeout(undoAddTimeout);
+                  setUndoAddItem(null);
+                  setUndoAddTimeout(null);
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+                aria-label="Dismiss"
+              >
+                ✖
+              </button>
+            </div>
+          </div>
+        )}
+
+
+        {/* Undo Remove Item Toast */}
+        {mounted && undoRemoveItem && (
+          <div key={undoRemoveItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-medium">{undoRemoveItem.item_name} removed.</span>
               <button onClick={undoRemove} className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap">
                 Undo
               </button>
               <button
                 onClick={async () => {
-                  if (undoTimeout) clearTimeout(undoTimeout);
+                  if (undoRemoveTimeout) clearTimeout(undoRemoveTimeout);
 
                   // Immediately delete from database
                   try {
-                    const { error } = await supabase.from('shopping_list').delete().eq('id', undoItem.id).eq('user_id', SHARED_USER_ID);
+                    const { error } = await supabase.from('shopping_list').delete().eq('id', undoRemoveItem.id).eq('user_id', SHARED_USER_ID);
 
                     if (error) {
                       throw error;
@@ -1897,12 +2048,12 @@ export default function ShoppingList() {
                   } catch (error) {
                     console.error('Error removing item:', error);
                     // Restore to UI if deletion failed
-                    setListItems((prev) => [...prev, undoItem]);
+                    setListItems((prev) => [...prev, undoRemoveItem]);
                     alert('Failed to remove item. Check your connection and try again.');
                   }
 
-                  setUndoItem(null);
-                  setUndoTimeout(null);
+                  setUndoRemoveItem(null);
+                  setUndoRemoveTimeout(null);
                 }}
                 className="text-gray-400 hover:text-white text-xl"
               >
