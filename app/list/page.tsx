@@ -38,7 +38,12 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
-  
+
+  // =========================
+  // Mobile Mode Toggle (Store vs Build)
+  // =========================
+  const [mobileMode, setMobileMode] = useState<'store' | 'build'>('store');
+
   // Load household code from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -142,7 +147,7 @@ export default function ShoppingList() {
     setEditModalName(item.item_name);
     setEditModalQuantity(item.quantity);
     setEditModalFocusField(focusField);
-    
+
     // Get effective store and price
     const effStore = getEffectiveStore(item.item_name);
     if (effStore) {
@@ -160,7 +165,7 @@ export default function ShoppingList() {
       setEditModalPrice('');
       setEditModalOriginalPrice('');
     }
-    
+
     setEditModalOpen(true);
     setSavingEdit(false);
   };
@@ -322,6 +327,28 @@ export default function ShoppingList() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Persist / restore mobile mode (mobile only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isMobile) return;
+    try {
+      const saved = localStorage.getItem('list_mobile_mode');
+      if (saved === 'store' || saved === 'build') setMobileMode(saved);
+    } catch {
+      // ignore
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isMobile) return;
+    try {
+      localStorage.setItem('list_mobile_mode', mobileMode);
+    } catch {
+      // ignore
+    }
+  }, [isMobile, mobileMode]);
+
   // Close autocomplete when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -359,7 +386,7 @@ export default function ShoppingList() {
     if (typeof window !== 'undefined') {
       setStorePrefs(loadStorePrefs());
     }
-    
+
     // Only load data when we have a household code
     if (householdCode) {
       loadData();
@@ -382,10 +409,7 @@ export default function ShoppingList() {
 
   const loadData = async () => {
     // Load stores with IDs
-    const { data: storesData, error: storesError } = await supabase
-      .from('stores')
-      .select('id, name')
-      .order('name');
+    const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
 
     if (storesError) {
       console.error('Error loading stores:', storesError);
@@ -393,10 +417,10 @@ export default function ShoppingList() {
 
     if (storesData) {
       setStores(storesData.map((s) => s.name));
-      
+
       // Build name → id lookup
       const lookup: { [name: string]: string } = {};
-      storesData.forEach(s => lookup[s.name] = s.id);
+      storesData.forEach((s) => (lookup[s.name] = s.id));
       setStoresByName(lookup);
     }
 
@@ -655,12 +679,7 @@ export default function ShoppingList() {
         }
       } else {
         // Get item_id first
-        const { data: item } = await supabase
-          .from('items')
-          .select('id')
-          .eq('name', itemName)
-          .eq('user_id', SHARED_USER_ID)
-          .single();
+        const { data: item } = await supabase.from('items').select('id').eq('name', itemName).eq('user_id', SHARED_USER_ID).single();
 
         if (!item) {
           throw new Error('Item not found');
@@ -749,10 +768,7 @@ export default function ShoppingList() {
         console.log('Item checked:', result);
       } else {
         // Unchecking item - just update database
-        const { error } = await supabase
-          .from('shopping_list')
-          .update({ checked: false })
-          .eq('id', id);
+        const { error } = await supabase.from('shopping_list').update({ checked: false }).eq('id', id);
 
         if (error) {
           throw error;
@@ -769,25 +785,21 @@ export default function ShoppingList() {
   const removeItem = async (id: string) => {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
-  
+
     // Optimistically remove from UI
     setListItems(listItems.filter((li) => li.id !== id));
-  
+
     // Show undo notification
     setUndoItem(item);
-  
+
     // Clear any existing timeout
     if (undoTimeout) clearTimeout(undoTimeout);
-  
+
     // Set new timeout to actually delete after 5 seconds
     const timeout = setTimeout(async () => {
       try {
-        const { error } = await supabase
-          .from('shopping_list')
-          .delete()
-          .eq('id', id)
-          .eq('user_id', SHARED_USER_ID);
-  
+        const { error } = await supabase.from('shopping_list').delete().eq('id', id).eq('user_id', SHARED_USER_ID);
+
         if (error) {
           throw new Error(`Failed to remove item: ${error.message}`);
         }
@@ -801,22 +813,22 @@ export default function ShoppingList() {
         setUndoTimeout(null);
       }
     }, 5000); // ← This timeout WILL fire and delete from DB if undo is not clicked
-  
+
     setUndoTimeout(timeout);
   };
-  
+
   const undoRemove = () => {
     if (!undoItem) return;
-  
+
     // Clear the timeout (this PREVENTS the database deletion)
     if (undoTimeout) {
       clearTimeout(undoTimeout);
       setUndoTimeout(null);
     }
-  
+
     // Restore item to UI (item is still in database, was never deleted)
     setListItems((prev) => [...prev, undoItem]);
-  
+
     // Close undo notification
     setUndoItem(null);
   };
@@ -825,11 +837,7 @@ export default function ShoppingList() {
     if (!confirm('Clear entire shopping list?')) return;
 
     try {
-      const { error } = await supabase
-        .from('shopping_list')
-        .delete()
-        .eq('user_id', SHARED_USER_ID)
-        .eq('household_code', householdCode);
+      const { error } = await supabase.from('shopping_list').delete().eq('user_id', SHARED_USER_ID).eq('household_code', householdCode);
 
       if (error) {
         throw new Error(`Failed to clear list: ${error.message}`);
@@ -942,10 +950,11 @@ export default function ShoppingList() {
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   const filteredItems = filterLetter === 'All' ? items.sort() : items.sort().filter((item) => item.toUpperCase().startsWith(filterLetter));
-
   const filteredFavorites = filterLetter === 'All' ? favorites : favorites.filter((item) => item.toUpperCase().startsWith(filterLetter));
-
   const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => listItems.find((li) => li.item_name === fav));
+
+  // Build-mode helper: items in DB but NOT on current list
+  const buildModeAvailableItems = filteredItems.filter((name) => !listItems.some((li) => li.item_name === name));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -956,14 +965,37 @@ export default function ShoppingList() {
           </div>
         </div>
       </div>
+
       <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
-        {/* Alphabet Filter - Hidden on Mobile */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
+        {/* Mobile-only mode toggle */}
+        <div className="md:hidden rounded-lg p-2 mb-4">
+          <div className="grid grid-cols-2 gap-2">
+          <button
+              onClick={() => setMobileMode('build')}
+              className={`py-2 rounded-lg font-bold text-sm cursor-pointer transition ${
+                mobileMode === 'build' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Build Mode
+            </button>
+            <button
+              onClick={() => setMobileMode('store')}
+              className={`py-2 rounded-lg font-bold text-sm cursor-pointer transition ${
+                mobileMode === 'store' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Store Mode
+            </button>
+          </div>
+        </div>
+
+        {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
+        <div className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6`}>
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
               className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                filterLetter === 'All' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               All
@@ -975,7 +1007,7 @@ export default function ShoppingList() {
                   key={letter}
                   onClick={() => toggleLetter(letter)}
                   className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                    filterLetter === letter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {letter}
@@ -983,6 +1015,90 @@ export default function ShoppingList() {
               ))}
           </div>
         </div>
+
+      {/* Add to List Widget - Desktop + Mobile(Build) */}
+      {(!isMobile || mobileMode === 'build') && (
+        <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+          <h2 className="text-xl font-semibold mb-3 text-gray-800">Search</h2>
+          <div className="relative autocomplete-container">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Select existing or add new"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                value={newItem}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                onFocus={() => {
+                  const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
+                  setAutocompleteItems(availableItems);
+                  setShowAutocomplete(availableItems.length > 0);
+                }}
+              />
+              <button
+                onClick={addNewItem}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Autocomplete dropdown */}
+            {showAutocomplete && autocompleteItems.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                {autocompleteItems.slice(0, 10).map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => {
+                      selectItem(item);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}
+          </p>
+        </div>
+      )}
+
+        {/* Build Mode: Add More Items (Mobile Only) */}
+        {isMobile && mobileMode === 'build' && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
+              <span className="text-xs text-gray-500">{buildModeAvailableItems.length} available</span>
+            </div>
+
+            {buildModeAvailableItems.length === 0 ? (
+              <div className="text-sm text-gray-500">Nothing left to add for this letter.</div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {buildModeAvailableItems.slice(0, 250).map((item) => {
+                  const isFavorite = favorites.includes(item);
+                  return (
+                    <div key={item} className="flex items-center justify-between border border-gray-100 rounded-2xl px-3 py-3">
+                      <div className="text-med text-gray-800 flex items-center gap-2">
+                        {isFavorite && <span className="text-yellow-500">⭐</span>}
+                        {item}
+                      </div>
+                      <button
+                        onClick={() => toggleItem(item)} // safe: list excludes these, so this only ADDS
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer transition"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Favorites Widget - Hidden on Mobile */}
         {filteredFavorites.length > 0 && (
@@ -1067,63 +1183,21 @@ export default function ShoppingList() {
           )}
         </div>
 
-        {/* Add to List Widget - Desktop Only (shows below list on mobile) */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 mb-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Add Item</h2>
-          <div className="relative autocomplete-container">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Select existing or add new"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                value={newItem}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                onFocus={() => {
-                  const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                  setAutocompleteItems(availableItems);
-                  setShowAutocomplete(availableItems.length > 0);
-                }}
-              />
-              <button onClick={addNewItem} className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap">
-                Add
-              </button>
-            </div>
 
-            {/* Autocomplete dropdown */}
-            {showAutocomplete && autocompleteItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                {autocompleteItems.slice(0, 10).map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => {
-                      selectItem(item);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : 'Type to search existing items or add new ones'}
-          </p>
-        </div>
-
-          {/* Shopping List */}
-          {loading ? (
+        {/* Shopping List */}
+        {loading ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
             <p className="text-slate-500 mt-4">Loading Shopping List...</p>
-            </div>
-          ) : listItems.length > 0 ? (
+          </div>
+        ) : listItems.length > 0 ? (
           <>
             {/* List Items */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800">Your List ({listItems.filter((i) => !i.checked).length} items)</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                  Your List ({listItems.filter((i) => !i.checked).length} items)
+                </h2>
                 <div className="flex gap-2">
                   {/* Show/Hide Checked Items */}
                   {listItems.some((i) => i.checked) && (
@@ -1211,7 +1285,8 @@ export default function ShoppingList() {
                                         item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                       }`}
                                     >
-                                      {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                      {item.item_name}
+                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                     </button>
                                   </div>
 
@@ -1245,7 +1320,7 @@ export default function ShoppingList() {
                                 <button
                                   onClick={() => openStoreModal(item.item_name)}
                                   className={`cursor-pointer text-xl ml-1 transition ${
-                                    (storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO')
+                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                       ? 'text-indigo-600 hover:text-indigo-700'
                                       : 'text-gray-300 hover:text-gray-500'
                                   }`}
@@ -1312,12 +1387,13 @@ export default function ShoppingList() {
                                         item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                       }`}
                                     >
-                                      {item.item_name}{item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                      {item.item_name}
+                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                     </button>
                                   </div>
                                   <button
                                     onClick={() => openEditModal(item, 'price')}
-                                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
+                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
                                   >
                                     Add Price
                                   </button>
@@ -1327,7 +1403,7 @@ export default function ShoppingList() {
                                 <button
                                   onClick={() => openStoreModal(item.item_name)}
                                   className={`cursor-pointer ml-1 transition ${
-                                    (storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO')
+                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                       ? 'text-indigo-600 hover:text-indigo-700'
                                       : 'text-gray-300 hover:text-gray-500'
                                   }`}
@@ -1359,9 +1435,7 @@ export default function ShoppingList() {
 
               {/* Helper text */}
               <div className="mt-1 pt-1">
-                <p className="text-sm text-gray-500 text-left">
-                  Click an item to rename, update quantity or set the latest price.
-                </p>
+                <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
               </div>
 
               {/* Total (uses effective store for each item) */}
@@ -1383,9 +1457,12 @@ export default function ShoppingList() {
               </div>
             </div>
 
-            {/* Add to List Widget - Mobile Only, shown below list */}
-            <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mt-6">
-              <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+{/* Add to List Widget - Mobile Only, STORE mode only */}
+{isMobile && mobileMode === 'store' && (
+  <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mt-6">
+    <h2 className="text-xl font-bold mb-3 text-gray-800">
+      Add to List
+    </h2>
               <div className="relative autocomplete-container">
                 <input
                   ref={(el) => {
@@ -1425,21 +1502,17 @@ export default function ShoppingList() {
                     })}
                   </div>
                 )}
-                
-                <button 
-                  onClick={addNewItem} 
+
+                <button
+                  onClick={addNewItem}
                   className="w-full mt-3 bg-indigo-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition text-base"
                 >
                   Add to List
                 </button>
               </div>
-              {newItem.trim() && !items.includes(newItem.trim()) && (
-                <p className="text-xs text-gray-500 mt-2">
-                  "{newItem}" will be added as a new item
-                </p>
-              )}
+              {newItem.trim() && !items.includes(newItem.trim()) && <p className="text-xs text-gray-500 mt-2">"{newItem}" will be added as a new item</p>}
             </div>
-
+)}
             {/* Best Store Recommendation - Desktop Only */}
             {sortedStores.length > 0 && (
               <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6">
@@ -1450,7 +1523,10 @@ export default function ShoppingList() {
                     const isComplete = data.coverage === data.itemCount;
 
                     return (
-                      <div key={store} className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
+                      <div
+                        key={store}
+                        className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
@@ -1478,7 +1554,11 @@ export default function ShoppingList() {
                                         {item.item_name}: {formatMoney(price)}
                                         {item.quantity > 1 && ` × ${item.quantity}`}
                                         <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        {classification && <span className={`ml-1 font-semibold ${classification.color}`}>{classification.emoji} {classification.label}</span>}
+                                        {classification && (
+                                          <span className={`ml-1 font-semibold ${classification.color}`}>
+                                            {classification.emoji} {classification.label}
+                                          </span>
+                                        )}
                                       </p>
                                     );
                                   }
@@ -1496,7 +1576,9 @@ export default function ShoppingList() {
                         {idx === 0 &&
                           sortedStores.length > 1 &&
                           sortedStores[0][1].coverage === sortedStores[1][1].coverage && (
-                            <p className="text-sm text-green-700 mt-2">Save {formatMoney(sortedStores[1][1].total - data.total)} vs {sortedStores[1][0]}</p>
+                            <p className="text-sm text-green-700 mt-2">
+                              Save {formatMoney(sortedStores[1][1].total - data.total)} vs {sortedStores[1][0]}
+                            </p>
                           )}
                       </div>
                     );
@@ -1509,7 +1591,10 @@ export default function ShoppingList() {
           <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-lg mb-4">Your shopping list is empty</p>
             {favorites.length > 0 && (
-              <button onClick={addFavorites} className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2">
+              <button
+                onClick={addFavorites}
+                className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2"
+              >
                 <span className="text-xl">⭐</span>
                 Add Favorites to Get Started
               </button>
@@ -1586,16 +1671,12 @@ export default function ShoppingList() {
               {(() => {
                 const options = getStoreOptionsForItem(activeItemForStoreModal);
                 const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-                
+
                 // Find stores WITHOUT price data
-                const storesWithoutPrice = stores.filter(
-                  (store) => !options.find((opt) => opt.store === store)
-                );
+                const storesWithoutPrice = stores.filter((store) => !options.find((opt) => opt.store === store));
 
                 if (options.length === 0) {
-                  return (
-                    <p className="text-gray-500 text-sm">No stores with price data available.</p>
-                  );
+                  return <p className="text-gray-500 text-sm">No stores with price data available.</p>;
                 }
 
                 return (
@@ -1636,11 +1717,7 @@ export default function ShoppingList() {
                           >
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-gray-800">{store}</span>
-                              {isBestPrice && (
-                                <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                  Best Price
-                                </span>
-                              )}
+                              {isBestPrice && <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">Best Price</span>}
                             </div>
                             <span className="font-bold text-gray-800">{formatMoney(price)}</span>
                           </button>
@@ -1695,12 +1772,7 @@ export default function ShoppingList() {
             <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-bold text-gray-800">Edit Item</h3>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-300 hover:text-gray-500 text-xl"
-                  title="Close"
-                  aria-label="Close"
-                >
+                <button onClick={closeEditModal} className="text-gray-300 hover:text-gray-500 text-xl" title="Close" aria-label="Close">
                   ✖️
                 </button>
               </div>
@@ -1803,30 +1875,21 @@ export default function ShoppingList() {
           </div>
         )}
 
-          {/* Undo Toast */}
-          {undoItem && undoItem.item_name && (
-            <div key={undoItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+        {/* Undo Toast */}
+        {undoItem && (
+          <div key={undoItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">
-                {undoItem.item_name} removed.
-              </span>
-              <button
-                onClick={undoRemove}
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-              >
+              <span className="flex-1 font-medium">{undoItem.item_name} removed.</span>
+              <button onClick={undoRemove} className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap">
                 Undo
               </button>
               <button
                 onClick={async () => {
                   if (undoTimeout) clearTimeout(undoTimeout);
-                  
+
                   // Immediately delete from database
                   try {
-                    const { error } = await supabase
-                      .from('shopping_list')
-                      .delete()
-                      .eq('id', undoItem.id)
-                      .eq('user_id', SHARED_USER_ID);
+                    const { error } = await supabase.from('shopping_list').delete().eq('id', undoItem.id).eq('user_id', SHARED_USER_ID);
 
                     if (error) {
                       throw error;
@@ -1837,7 +1900,7 @@ export default function ShoppingList() {
                     setListItems((prev) => [...prev, undoItem]);
                     alert('Failed to remove item. Check your connection and try again.');
                   }
-                  
+
                   setUndoItem(null);
                   setUndoTimeout(null);
                 }}
@@ -1849,6 +1912,6 @@ export default function ShoppingList() {
           </div>
         )}
       </div>
-     </div> 
+    </div>
   );
 }

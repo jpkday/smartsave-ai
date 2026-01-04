@@ -31,6 +31,7 @@ function ItemsContent() {
 
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const isMasterAccount = householdCode === 'ASDF';
+  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
 
   // Combined search + add with autocomplete
   const [inputValue, setInputValue] = useState('');
