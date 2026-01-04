@@ -1247,8 +1247,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                 onClick={() => setSelectItemsFilter('ALL')}
                 className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
                   selectItemsFilter === 'ALL'
-                    ? 'bg-blue-500 text-white border-gray-400'
-                    : 'bg-white text-slate-600 border-gray-400 hover:bg-slate-50'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
                 }`}
               >
                 All Items ({buildModeAllCount})
@@ -1257,8 +1257,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                 onClick={() => setSelectItemsFilter('FAVORITES')}
                 className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
                   selectItemsFilter === 'FAVORITES'
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
                 }`}
               >
                 Favorites ({buildModeFavoritesCount})
@@ -1267,8 +1267,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
               onClick={() => setSelectItemsFilter('RECENT')}
               className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
                 selectItemsFilter === 'RECENT'
-                  ? 'bg-rose-500 text-white border-rose-600'
-                  : 'bg-white text-rose-500 border-rose-200 hover:bg-slate-50'
+                  ? 'font-bold bg-rose-600 text-white border-rose-600'
+                  : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
               }`}
             >
               Recent ({buildModeRecentCount})
