@@ -239,9 +239,10 @@ export default function TripsPage() {
       'Produce': 'bg-emerald-50 border-emerald-200 text-emerald-700',
       'Pantry': 'bg-amber-50 border-amber-200 text-amber-700',
       'Dairy': 'bg-purple-50 border-purple-200 text-purple-700',
-      'Beverage': 'bg-blue-50 border-blue-200 text-blue-700',
+      'Beverage': 'bg-pink-50 border-pink-200 text-pink-700',
       'Meat': 'bg-red-50 border-red-200 text-red-700',
       'Frozen': 'bg-cyan-50 border-cyan-200 text-cyan-700',
+      'Refrigerated': 'bg-blue-50 border-blue-200 text-blue-700',
       'Bakery': 'bg-orange-50 border-orange-200 text-orange-700',
       'Snacks': 'bg-yellow-50 border-yellow-200 text-yellow-700',
       'Health': 'bg-pink-50 border-pink-200 text-pink-700',
@@ -391,8 +392,9 @@ export default function TripsPage() {
 
                     {/* Trip items - collapsible */}
                     {isExpanded && trip.events.length > 0 && (
-                      <div className="relative">
-                        <div className="p-4 md:p-5 max-h-80 overflow-y-auto pb-20">
+                      <div className="border-t border-gray-200">
+                        {/* Scrollable items section */}
+                        <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
                           {categories.map(category => {
                             const categorySubtotal = eventsByCategory[category].reduce((sum, event) => {
                               if (event.price) {
@@ -442,17 +444,17 @@ export default function TripsPage() {
                               </div>
                             );
                           })}
+                        </div>
 
-                        {/* Trip total - positioned absolutely at bottom */}
+                        {/* Trip total - fixed at bottom, outside scroll container */}
                         {trip.totalCost > 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 px-4 md:px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                          <div className="bg-white border-t-2 border-gray-300 px-4 md:px-5 py-4">
                             <div className="flex justify-between items-center">
                               <span className="text-lg font-bold text-gray-800">Total</span>
                               <span className="text-2xl font-bold text-teal-600">{formatMoney(trip.totalCost)}</span>
                             </div>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -464,8 +466,8 @@ export default function TripsPage() {
 {/* Category Detail Modal */}
 {categoryModalOpen && selectedCategory && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden">
-              {/* Header - Fixed */}
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col min-h-0">
+            {/* Header - Fixed */}
               <div className="flex justify-between items-start p-6 pb-4 border-b border-gray-200">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">
@@ -521,7 +523,7 @@ export default function TripsPage() {
                 return (
                   <>
                     {/* Items - Scrollable */}
-                    <div className="flex-1 overflow-y-auto p-6 py-4">
+                    <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 pb-28">
                       <div className="space-y-2">
                         {categoryItems.map((item, idx) => (
                           <div
@@ -560,14 +562,11 @@ export default function TripsPage() {
                         ))}
                       </div>
                     </div>
-
                     {/* Total - Fixed at Bottom */}
-                    <div className={`p-4 border-t-2 ${getCategoryColor(selectedCategory)}`}>
+                    <div className={`shrink-0 p-4 border-t-2 bg-white ${getCategoryColor(selectedCategory)}`}>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold">Category Total</span>
-                        <span className="text-2xl font-bold">
-                          {formatMoney(total)}
-                        </span>
+                        <span className="text-2xl font-bold">{formatMoney(total)}</span>
                       </div>
                       <p className="text-xs opacity-75 mt-1 text-right">
                         {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'}
