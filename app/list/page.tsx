@@ -79,15 +79,11 @@ export default function ShoppingList() {
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
 
-  // UN-DO "REMOVE FROM" SHOPPING LIST
-  const [undoRemoveItem, setUndoRemoveItem] = useState<ListItem | null>(null);
-  const [undoRemoveTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  // UN-DO "ADD TO" SHOPPING LIST
-  const [undoAddItem, setUndoAddItem] = useState<ListItem | null>(null);
-  const [undoAddTimeout, setUndoAddTimeout] = useState<NodeJS.Timeout | null>(null);
+  // ITEM ADDED TO SHOPPING LIST (to feed toast notification)
+  const [addedToListToastItem, setUndoAddItem] = useState<ListItem | null>(null);
+  const [addedToListToastTimeout, setUndoAddTimeout] = useState<NodeJS.Timeout | null>(null);
   const showUndoAddToast = (item: ListItem) => {
-    if (undoAddTimeout) clearTimeout(undoAddTimeout);
+    if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
 
     setUndoAddItem(item);
 
@@ -100,15 +96,15 @@ export default function ShoppingList() {
   };
 
   const undoAdd = async () => {
-    if (!undoAddItem) return;
+    if (!addedToListToastItem) return;
 
-    if (undoAddTimeout) {
-      clearTimeout(undoAddTimeout);
+    if (addedToListToastTimeout) {
+      clearTimeout(addedToListToastTimeout);
       setUndoAddTimeout(null);
     }
 
     try {
-      const { error } = await supabase.from('shopping_list').delete().eq('id', undoAddItem.id).eq('user_id', SHARED_USER_ID);
+      const { error } = await supabase.from('shopping_list').delete().eq('id', addedToListToastItem.id).eq('user_id', SHARED_USER_ID);
       if (error) throw error;
       await loadData();
     } catch (e) {
@@ -118,6 +114,54 @@ export default function ShoppingList() {
       setUndoAddItem(null);
     }
   };
+
+   // ITEM REMOVED FROM SHOPPING LIST (to feed toast notification)
+   const [removedFromListToastItem, setUndoRemoveItem] = useState<ListItem | null>(null);
+   const [removedFromListToastTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
+   
+  // ITEM CHECKED OFF SHOPPING LIST (to feed toast notification)
+  const [checkedOffListToastItem, setUndoCheckItem] = useState<ListItem | null>(null);
+  const [checkedOffListToastTimeout, setUndoCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const showCheckedOffListToast = (item: ListItem) => {
+    if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
+
+    setUndoCheckItem(item);
+
+    const timeout = setTimeout(() => {
+      setUndoCheckItem(null);
+      setUndoCheckTimeout(null);
+    }, 5000);
+
+    setUndoCheckTimeout(timeout);
+  };
+
+  const undoCheck = async () => {
+    if (!checkedOffListToastItem) return;
+  
+    if (checkedOffListToastTimeout) {
+      clearTimeout(checkedOffListToastTimeout);
+      setUndoCheckTimeout(null);
+    }
+  
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .update({ checked: false })
+        .eq('id', checkedOffListToastItem.id)
+        .eq('user_id', SHARED_USER_ID);
+  
+      if (error) throw error;
+  
+      await loadData();
+    } catch (e) {
+      console.error('Error undoing check:', e);
+      alert('Failed to undo. Check your connection and try again.');
+    } finally {
+      setUndoCheckItem(null);
+    }
+  };
+  
 
   useEffect(() => {
     const stored = localStorage.getItem('last_price_store');
@@ -822,6 +866,9 @@ export default function ShoppingList() {
         if (!response.ok) throw new Error('Failed to check item');
 
         await loadData();
+          // 🔔 SHOW TOAST
+        showCheckedOffListToast(item);
+
       } else {
         const { error } = await supabase.from('shopping_list').update({ checked: false }).eq('id', id);
         if (error) throw error;
@@ -840,7 +887,7 @@ export default function ShoppingList() {
     setListItems(listItems.filter((li) => li.id !== id));
     setUndoRemoveItem(item);
 
-    if (undoRemoveTimeout) clearTimeout(undoRemoveTimeout);
+    if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
 
     const timeout = setTimeout(async () => {
       try {
@@ -860,14 +907,14 @@ export default function ShoppingList() {
   };
 
   const undoRemove = () => {
-    if (!undoRemoveItem) return;
+    if (!removedFromListToastItem) return;
 
-    if (undoRemoveTimeout) {
-      clearTimeout(undoRemoveTimeout);
+    if (removedFromListToastTimeout) {
+      clearTimeout(removedFromListToastTimeout);
       setUndoRemoveTimeout(null);
     }
 
-    setListItems((prev) => [...prev, undoRemoveItem]);
+    setListItems((prev) => [...prev, removedFromListToastItem]);
     setUndoRemoveItem(null);
   };
 
@@ -1261,11 +1308,6 @@ export default function ShoppingList() {
             </div>
           )}
         </div>
-
-        {/* ========================= */}
-        {/* Everything BELOW here is unchanged from your last file */}
-        {/* (Shopping list UI, store swap modal, edit modal, toasts, etc.) */}
-        {/* ========================= */}
 
         {/* Shopping List */}
         {loading ? (
@@ -1989,34 +2031,97 @@ export default function ShoppingList() {
         )}
 
         {/* ========================= */}
-        {/* Undo Remove Toast */}
+        {/* Item Removed from Shopping List Toast (with Undo button) */}
         {/* ========================= */}
-        {undoRemoveItem && (
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 z-50">
-            <span>Item removed</span>
+        {mounted && removedFromListToastItem && (
+        <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+          <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+            <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
+
             <button
               onClick={undoRemove}
-              className="underline font-semibold"
+              className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
             >
               Undo
             </button>
+
+            <button
+              onClick={() => {
+                if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
+                setUndoRemoveItem(null);
+                setUndoRemoveTimeout(null);
+              }}
+              className="text-gray-400 hover:text-white text-xl"
+              aria-label="Dismiss"
+            >
+              ✖
+            </button>
+          </div>
+        </div>
+      )}
+
+        {/* ========================= */}
+        {/* Item Added to Shopping List Toast (with Undo button) */}
+        {/* ========================= */}
+        {mounted && addedToListToastItem && (
+          <div key={addedToListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-medium">Added "{addedToListToastItem.item_name}" to your shopping list.</span>
+
+              <button
+                onClick={undoAdd}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+              >
+                Undo
+              </button>
+
+              <button
+                onClick={() => {
+                  if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
+                  setUndoAddItem(null);
+                  setUndoAddTimeout(null);
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+                aria-label="Dismiss"
+              >
+                ✖
+              </button>
+            </div>
           </div>
         )}
 
         {/* ========================= */}
-        {/* Undo Add Toast */}
+        {/* Checked Item Toast (with Undo button) */}
         {/* ========================= */}
-        {undoAddItem && (
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 z-50">
-            <span>Item added</span>
-            <button
-              onClick={undoAdd}
-              className="underline font-semibold"
-            >
-              Undo
-            </button>
+        {mounted && checkedOffListToastItem && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-medium">
+                Checked off "{checkedOffListToastItem.item_name}" from your shopping list!
+              </span>
+
+              <button
+                onClick={undoCheck}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+              >
+                Undo
+              </button>
+
+              <button
+                onClick={() => {
+                  if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
+                  setUndoCheckItem(null);
+                  setUndoCheckTimeout(null);
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+                aria-label="Dismiss"
+              >
+                ✖
+              </button>
+            </div>
           </div>
         )}
+
 
       </div>
     </div>
