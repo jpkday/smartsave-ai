@@ -7,10 +7,17 @@ import { supabase } from '../lib/supabase';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
-  id: string;
+  id: string; // shopping_list row id
+  item_id: number; // items table id (FK) ✅
   item_name: string;
   quantity: number;
   checked: boolean;
+}
+
+interface ItemRow {
+  id: number;
+  name: string;
+  is_favorite: boolean | null;
 }
 
 interface PriceData {
@@ -24,8 +31,13 @@ export default function ShoppingList() {
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
+
+  // ✅ Keep full items with IDs so selection can be ID-based
+  const [allItems, setAllItems] = useState<ItemRow[]>([]);
+  // Keep names too (handy for filtering/autocomplete UI)
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
   const [filterLetter, setFilterLetter] = useState<string>('All');
@@ -40,17 +52,16 @@ export default function ShoppingList() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
   const [recentItems, setRecentItems] = useState<string[]>([]);
+  const [recentItemIds, setRecentItemIds] = useState<string[]>([]);
+
   const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
   const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
 
-
-  
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  
+
   type SelectItemsFilter = 'ALL' | 'FAVORITES' | 'RECENT';
   const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>('ALL');
-
 
   // =========================
   // Mobile Mode Toggle (Store vs Build)
@@ -68,58 +79,47 @@ export default function ShoppingList() {
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
 
-
   // UN-DO "REMOVE FROM" SHOPPING LIST
   const [undoRemoveItem, setUndoRemoveItem] = useState<ListItem | null>(null);
   const [undoRemoveTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
 
-    // UN-DO "ADD TO" SHOPPING LIST
-    const [undoAddItem, setUndoAddItem] = useState<ListItem | null>(null);
-    const [undoAddTimeout, setUndoAddTimeout] = useState<NodeJS.Timeout | null>(null);
-    const showUndoAddToast = (item: ListItem) => {
-      // clear any existing add-toast
-      if (undoAddTimeout) clearTimeout(undoAddTimeout);
-    
-      setUndoAddItem(item);
-    
-      const timeout = setTimeout(() => {
-        setUndoAddItem(null);
-        setUndoAddTimeout(null);
-      }, 5000);
-    
-      setUndoAddTimeout(timeout);
-    };
-    
-    const undoAdd = async () => {
-      if (!undoAddItem) return;
-    
-      if (undoAddTimeout) {
-        clearTimeout(undoAddTimeout);
-        setUndoAddTimeout(null);
-      }
-    
-      try {
-        // delete the newly-added row
-        const { error } = await supabase
-          .from('shopping_list')
-          .delete()
-          .eq('id', undoAddItem.id)
-          .eq('user_id', SHARED_USER_ID);
-    
-        if (error) throw error;
-    
-        // refresh UI
-        await loadData();
-      } catch (e) {
-        console.error('Error undoing add:', e);
-        alert('Failed to undo. Check your connection and try again.');
-      } finally {
-        setUndoAddItem(null);
-      }
-    };
+  // UN-DO "ADD TO" SHOPPING LIST
+  const [undoAddItem, setUndoAddItem] = useState<ListItem | null>(null);
+  const [undoAddTimeout, setUndoAddTimeout] = useState<NodeJS.Timeout | null>(null);
+  const showUndoAddToast = (item: ListItem) => {
+    if (undoAddTimeout) clearTimeout(undoAddTimeout);
+
+    setUndoAddItem(item);
+
+    const timeout = setTimeout(() => {
+      setUndoAddItem(null);
+      setUndoAddTimeout(null);
+    }, 5000);
+
+    setUndoAddTimeout(timeout);
+  };
+
+  const undoAdd = async () => {
+    if (!undoAddItem) return;
+
+    if (undoAddTimeout) {
+      clearTimeout(undoAddTimeout);
+      setUndoAddTimeout(null);
+    }
+
+    try {
+      const { error } = await supabase.from('shopping_list').delete().eq('id', undoAddItem.id).eq('user_id', SHARED_USER_ID);
+      if (error) throw error;
+      await loadData();
+    } catch (e) {
+      console.error('Error undoing add:', e);
+      alert('Failed to undo. Check your connection and try again.');
+    } finally {
+      setUndoAddItem(null);
+    }
+  };
 
   useEffect(() => {
-    // Load last used store from localStorage on mount
     const stored = localStorage.getItem('last_price_store');
     if (stored && stores.includes(stored)) {
       setLastUsedStore(stored);
@@ -171,7 +171,6 @@ export default function ShoppingList() {
     const options = stores
       .map((store) => ({ store, price: getPriceForStore(store, itemName) }))
       .filter((o) => o.price !== null) as Array<{ store: string; price: number }>;
-
     options.sort((a, b) => a.price - b.price);
     return options;
   };
@@ -207,7 +206,6 @@ export default function ShoppingList() {
     setEditModalQuantity(item.quantity);
     setEditModalFocusField(focusField);
 
-    // Get effective store and price
     const effStore = getEffectiveStore(item.item_name);
     if (effStore) {
       setEditModalStore(effStore);
@@ -249,9 +247,7 @@ export default function ShoppingList() {
     setSavingEdit(true);
 
     try {
-      // If name changed, update the item
       if (newName !== oldName) {
-        // Check if new name already exists
         const { data: existingItem } = await supabase
           .from('items')
           .select('id')
@@ -259,75 +255,51 @@ export default function ShoppingList() {
           .eq('user_id', SHARED_USER_ID)
           .maybeSingle();
 
-        if (existingItem && existingItem.id !== editModalItem.id) {
+        if (existingItem && existingItem.id !== editModalItem.item_id) {
           alert('An item with this name already exists.');
           setSavingEdit(false);
           return;
         }
 
-        // Update item name in items table
         const { error: itemError } = await supabase
           .from('items')
           .update({ name: newName })
-          .eq('name', oldName)
+          .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-
         if (itemError) throw itemError;
 
-        // Update shopping list
         const { error: listError } = await supabase
           .from('shopping_list')
           .update({ item_name: newName })
-          .eq('item_name', oldName)
+          .eq('item_id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-
         if (listError) throw listError;
 
-        // Update price history
         const { error: priceError } = await supabase
           .from('price_history')
           .update({ item_name: newName })
-          .eq('item_name', oldName)
+          .eq('item_id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-
         if (priceError) throw priceError;
       }
 
-      // Update quantity
       if (editModalQuantity !== editModalItem.quantity) {
         const { error: qtyError } = await supabase
           .from('shopping_list')
           .update({ quantity: editModalQuantity })
           .eq('id', editModalItem.id)
           .eq('user_id', SHARED_USER_ID);
-
         if (qtyError) throw qtyError;
       }
 
-      // Update/add price if changed or added
       if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
         const priceNum = parseFloat(editModalPrice);
         if (!isNaN(priceNum) && priceNum > 0) {
-          // Get item_id (use new name if changed)
-          const { data: itemData } = await supabase
-            .from('items')
-            .select('id')
-            .eq('name', newName)
-            .eq('user_id', SHARED_USER_ID)
-            .single();
-
-          if (!itemData) {
-            throw new Error('Item not found');
-          }
-
           const storeId = storesByName[editModalStore];
-          if (!storeId) {
-            throw new Error('Store not found');
-          }
+          if (!storeId) throw new Error('Store not found');
 
-          // Insert new price
           const { error: priceError } = await supabase.from('price_history').insert({
-            item_id: itemData.id,
+            item_id: editModalItem.item_id,
             item_name: newName,
             store_id: storeId,
             store: editModalStore,
@@ -339,13 +311,11 @@ export default function ShoppingList() {
 
           if (priceError) throw priceError;
 
-          // Remember this store for next time
           setLastUsedStore(editModalStore);
           localStorage.setItem('last_price_store', editModalStore);
         }
       }
 
-      // Reload data
       await loadData();
       closeEditModal();
     } catch (error) {
@@ -377,10 +347,7 @@ export default function ShoppingList() {
 
   // Detect if we're on mobile
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -441,49 +408,27 @@ export default function ShoppingList() {
   }, [storeModalOpen, editModalOpen]);
 
   useEffect(() => {
-    // Load store prefs early
     if (typeof window !== 'undefined') {
       setStorePrefs(loadStorePrefs());
     }
 
-    // Only load data when we have a household code
     if (householdCode) {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdCode]);
 
-  const getHouseholdId = async (): Promise<string> => {
-    const cached = typeof window !== 'undefined' ? localStorage.getItem('household_id') : null;
-    if (cached) return cached;
-    const code = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
-    if (!code) throw new Error('Missing household_code');
-
-    const { data, error } = await supabase.from('households').select('id').eq('code', code).single();
-
-    if (error || !data?.id) throw new Error('Invalid household_code');
-    localStorage.setItem('household_id', data.id);
-    return data.id;
-  };
-
   const loadData = async () => {
-    // Load stores with IDs
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
-
-    if (storesError) {
-      console.error('Error loading stores:', storesError);
-    }
+    if (storesError) console.error('Error loading stores:', storesError);
 
     if (storesData) {
       setStores(storesData.map((s) => s.name));
-
-      // Build name → id lookup
       const lookup: { [name: string]: string } = {};
       storesData.forEach((s) => (lookup[s.name] = s.id));
       setStoresByName(lookup);
     }
 
-    // Load active trips to determine which store is being shopped
     const { data: tripsData, error: tripsError } = await supabase
       .from('trips')
       .select('id, store_id')
@@ -496,55 +441,49 @@ export default function ShoppingList() {
     } else if (tripsData) {
       const tripsByStore: { [store_id: string]: string } = {};
       tripsData.forEach((trip) => {
-        if (trip.store_id && !tripsByStore[trip.store_id]) {
-          tripsByStore[trip.store_id] = trip.id;
-        }
+        if (trip.store_id && !tripsByStore[trip.store_id]) tripsByStore[trip.store_id] = trip.id;
       });
       setActiveTrips(tripsByStore);
     }
 
-    // Load all items and favorites
+    // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
-      .select('name, is_favorite')
+      .select('id, name, is_favorite')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
-    if (itemsError) {
-      console.error('Error loading items:', itemsError);
-    }
+    if (itemsError) console.error('Error loading items:', itemsError);
 
+    let itemNameById: Record<string, string> = {};
     if (itemsData) {
-      setItems(itemsData.map((i) => i.name));
-      const favs = itemsData.filter((i) => i.is_favorite === true).map((i) => i.name);
-      setFavorites(favs);
+      const rows = itemsData as ItemRow[];
+      setAllItems(rows);
+      setItems(rows.map((i) => i.name));
+      setFavorites(rows.filter((i) => i.is_favorite === true).map((i) => i.name));
+
+      itemNameById = rows.reduce<Record<string, string>>((acc, i) => {
+        if (i?.id && i?.name) acc[String(i.id)] = i.name;
+        return acc;
+      }, {});
     }
 
-    // Load shopping list
     const { data: listData, error: listError } = await supabase
       .from('shopping_list')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .eq('household_code', householdCode);
 
-    if (listError) {
-      console.error('Error loading shopping list:', listError);
-    }
+    if (listError) console.error('Error loading shopping list:', listError);
+    if (listData) setListItems(listData as ListItem[]);
 
-    if (listData) {
-      setListItems(listData);
-    }
-
-    // Load latest prices
     const { data: pricesData, error: pricesError } = await supabase
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .order('recorded_date', { ascending: false });
 
-    if (pricesError) {
-      console.error('Error loading prices:', pricesError);
-    }
+    if (pricesError) console.error('Error loading prices:', pricesError);
 
     if (pricesData) {
       const pricesObj: { [key: string]: { price: string; date: string } } = {};
@@ -554,65 +493,101 @@ export default function ShoppingList() {
         const key = `${p.store}-${p.item_name}`;
         if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
           latestPrices[key] = p;
-          pricesObj[key] = {
-            price: p.price,
-            date: p.recorded_date,
-          };
+          pricesObj[key] = { price: p.price, date: p.recorded_date };
         }
       });
 
       setPrices(pricesObj);
     }
 
-// =========================
-// Recent items (from shopping_list_events)
-// =========================
-console.log('[RECENT] householdCode at query time:', householdCode);
+    // =========================
+    // Recent items — item_id based ✅
+    // =========================
+    if (!householdCode) {
+      setRecentItems([]);
+      setRecentItemIds([]);
+    } else {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-if (!householdCode) {
-  console.warn('[RECENT] householdCode missing; skipping recent query');
-  setRecentItems([]);
-} else {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentData, error: recentErr } = await supabase
+        .from('shopping_list_events')
+        .select('item_id, checked_at')
+        .eq('household_code', householdCode)
+        .not('checked_at', 'is', null)
+        .gte('checked_at', thirtyDaysAgo)
+        .order('checked_at', { ascending: false })
+        .limit(250);
 
-  const { data: recentData, error: recentErr } = await supabase
-    .from('shopping_list_events')
-    .select('item_name, checked_at')
-    .eq('household_code', householdCode)
-    .not('checked_at', 'is', null)
-    .gte('checked_at', thirtyDaysAgo)
-    .order('checked_at', { ascending: false })
-    .limit(250);
+      if (recentErr) {
+        console.error('[RECENT] query error:', recentErr);
+        setRecentItems([]);
+        setRecentItemIds([]);
+      } else {
+        const seen = new Set<string>();
+        const uniqueIds = (recentData ?? [])
+          .map((r: any) => r.item_id)
+          .filter((id: any): id is string | number => (typeof id === 'string' || typeof id === 'number') && String(id).length > 0)
+          .map((id: any) => String(id))
+          .filter((id: string) => (seen.has(id) ? false : (seen.add(id), true)))
+          .slice(0, 25);
 
-  if (recentErr) {
-    console.error('[RECENT] query error:', recentErr);
-    setRecentItems([]);
-  } else {
-    console.log('[RECENT] rows:', recentData?.length ?? 0, 'sample:', recentData?.slice(0, 5));
+        setRecentItemIds(uniqueIds);
 
-    const uniqueRecent = Array.from(
-      new Set(
-        (recentData ?? [])
-          .map((r) => (typeof r.item_name === 'string' ? r.item_name.trim() : ''))
-          .filter((n) => n.length > 0)
-      )
-    ).slice(0, 25);
-
-    console.log('[RECENT] uniqueRecent:', uniqueRecent);
-    setRecentItems(uniqueRecent);
-  }}
+        const uniqueNames = uniqueIds.map((id) => (itemNameById[id] ?? '').trim()).filter((n) => n.length > 0);
+        setRecentItems(uniqueNames);
+      }
+    }
 
     setLoading(false);
+  };
+
+  // =========================
+  // ✅ ID-based list toggling (so selection doesn’t break on rename)
+  // =========================
+  const toggleItemById = async (itemId: number, itemName: string) => {
+    const inList = listItems.find((li) => li.item_id === itemId);
+
+    try {
+      if (inList) {
+        const { error } = await supabase.from('shopping_list').delete().eq('id', inList.id).eq('user_id', SHARED_USER_ID);
+        if (error) throw new Error(`Failed to remove item: ${error.message}`);
+      } else {
+        const { data: inserted, error: listErr } = await supabase
+          .from('shopping_list')
+          .insert({
+            item_id: itemId,
+            item_name: itemName,
+            quantity: 1,
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            checked: false,
+            added_at: new Date().toISOString(),
+          })
+          .select('id, item_id, item_name, quantity, checked')
+          .single();
+
+        if (listErr) throw new Error(`Failed to add item: ${listErr.message}`);
+        if (inserted) showUndoAddToast(inserted as ListItem);
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error('Error toggling item:', error);
+      alert('Failed to update list. Check your connection and try again.');
+    }
   };
 
   const handleInputChange = (value: string) => {
     setNewItem(value);
 
     if (value.trim()) {
-      // Filter items that aren't already in the list and match the search
-      const availableItems = items.filter(
-        (item) => !listItems.find((li) => li.item_name === item) && item.toLowerCase().includes(value.toLowerCase())
-      );
+      const listIds = new Set(listItems.map((li) => li.item_id));
+
+      const availableItems = allItems
+        .filter((it) => !listIds.has(it.id))
+        .filter((it) => it.name.toLowerCase().includes(value.toLowerCase()))
+        .map((it) => it.name);
+
       setAutocompleteItems(availableItems);
       setShowAutocomplete(availableItems.length > 0);
     } else {
@@ -629,7 +604,6 @@ if (!householdCode) {
     try {
       let itemId: number | null = null;
 
-      // Check if item exists and get its ID
       const { data: existingItem } = await supabase
         .from('items')
         .select('id')
@@ -640,7 +614,6 @@ if (!householdCode) {
       if (existingItem) {
         itemId = existingItem.id;
       } else {
-        // Create new item
         const { data: newItemData, error: itemError } = await supabase
           .from('items')
           .insert({
@@ -652,41 +625,33 @@ if (!householdCode) {
           .select('id')
           .single();
 
-        if (itemError || !newItemData) {
-          throw new Error('Failed to create item');
-        }
-
+        if (itemError || !newItemData) throw new Error('Failed to create item');
         itemId = newItemData.id;
       }
 
-    // Add to shopping list with item_id
-    const alreadyInList = listItems.find((li) => li.item_name === itemName);
-    if (!alreadyInList && itemId) {
-      const { data: inserted, error: listError } = await supabase
-        .from('shopping_list')
-        .insert({
-          item_id: itemId,
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          checked: false,
-          added_at: new Date().toISOString(),
-        })
-        .select('id, item_name, quantity, checked')
-        .single();
+      if (itemId) {
+        const alreadyInList = listItems.some((li) => li.item_id === itemId);
+        if (!alreadyInList) {
+          const { data: inserted, error: listError } = await supabase
+            .from('shopping_list')
+            .insert({
+              item_id: itemId,
+              item_name: itemName,
+              quantity: 1,
+              user_id: SHARED_USER_ID,
+              household_code: householdCode,
+              checked: false,
+              added_at: new Date().toISOString(),
+            })
+            .select('id, item_id, item_name, quantity, checked')
+            .single();
 
-      if (listError) {
-        throw new Error(`Failed to add to shopping list: ${listError.message}`);
+          if (listError) throw new Error(`Failed to add to shopping list: ${listError.message}`);
+          if (inserted) showUndoAddToast(inserted as ListItem);
+        }
       }
 
-      if (inserted) {
-        showUndoAddToast(inserted as ListItem);
-      }
-    }
-
-    await loadData();
-
+      await loadData();
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to add item. Check your connection and try again.');
@@ -695,24 +660,22 @@ if (!householdCode) {
 
   const addNewItem = async () => {
     if (!newItem.trim()) return;
-  
+
     const itemName = newItem.trim();
-  
+
     try {
       let itemId: number | null = null;
-  
-      // Check if item exists and get its ID
+
       const { data: existingItem } = await supabase
         .from('items')
         .select('id')
         .eq('name', itemName)
         .eq('user_id', SHARED_USER_ID)
         .maybeSingle();
-  
+
       if (existingItem) {
         itemId = existingItem.id;
       } else {
-        // Create new item
         const { data: newItemData, error: itemError } = await supabase
           .from('items')
           .insert({
@@ -723,118 +686,59 @@ if (!householdCode) {
           })
           .select('id')
           .single();
-  
-        if (itemError || !newItemData) {
-          throw new Error(`Failed to create item: ${itemError?.message}`);
-        }
-  
+
+        if (itemError || !newItemData) throw new Error(`Failed to create item: ${itemError?.message}`);
         itemId = newItemData.id;
       }
-  
-      // Add to shopping list with item_id
-      const alreadyInList = listItems.find((li) => li.item_name === itemName);
-      if (!alreadyInList && itemId) {
-        const { data: inserted, error: listError } = await supabase
-          .from('shopping_list')
-          .insert({
-            item_id: itemId,
-            item_name: itemName,
-            quantity: 1,
-            user_id: SHARED_USER_ID,
-            household_code: householdCode,
-            checked: false,
-            added_at: new Date().toISOString(),
-          })
-          .select('id, item_name, quantity, checked')
-          .single();
-  
-        if (listError) {
-          throw new Error(`Failed to add to shopping list: ${listError.message}`);
-        }
-  
-        // ✅ Show "Added" toast with Undo, using the inserted row id
-        if (inserted) {
-          showUndoAddToast(inserted as ListItem);
+
+      if (itemId) {
+        const alreadyInList = listItems.some((li) => li.item_id === itemId);
+        if (!alreadyInList) {
+          const { data: inserted, error: listError } = await supabase
+            .from('shopping_list')
+            .insert({
+              item_id: itemId,
+              item_name: itemName,
+              quantity: 1,
+              user_id: SHARED_USER_ID,
+              household_code: householdCode,
+              checked: false,
+              added_at: new Date().toISOString(),
+            })
+            .select('id, item_id, item_name, quantity, checked')
+            .single();
+
+          if (listError) throw new Error(`Failed to add to shopping list: ${listError.message}`);
+          if (inserted) showUndoAddToast(inserted as ListItem);
         }
       }
-  
+
       setNewItem('');
       setShowAutocomplete(false);
       setAutocompleteItems([]);
-  
+
       await loadData();
     } catch (error) {
       console.error('Error adding item:', error);
       alert('Failed to add item. Check your connection and try again.');
     }
   };
-  
+
   const addFavorites = async () => {
     try {
+      // Use ID-based list membership where possible (still sourced from names)
       for (const itemName of favorites) {
-        if (listItems.find((li) => li.item_name === itemName)) continue;
+        // Find the itemId from allItems first (fast path)
+        const match = allItems.find((it) => it.name === itemName);
+        const itemId = match?.id;
 
-        // Get item_id
-        const { data: item } = await supabase
-          .from('items')
-          .select('id')
-          .eq('name', itemName)
-          .eq('user_id', SHARED_USER_ID)
-          .single();
+        if (!itemId) {
+          // fallback (in case allItems not loaded yet for some reason)
+          const { data: item } = await supabase.from('items').select('id').eq('name', itemName).eq('user_id', SHARED_USER_ID).single();
+          if (!item?.id) continue;
+          if (listItems.some((li) => li.item_id === item.id)) continue;
 
-        if (!item) continue;
-
-        const { error } = await supabase.from('shopping_list').insert({
-          item_id: item.id,
-          item_name: itemName,
-          quantity: 1,
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          checked: false,
-          added_at: new Date().toISOString(),
-        });
-
-        if (error) {
-          throw new Error(`Failed to add ${itemName}: ${error.message}`);
-        }
-      }
-
-      loadData();
-    } catch (error) {
-      console.log('[loadData] fired');
-      console.error('Error adding favorites:', error);
-      alert('Failed to add favorites. Check your connection and try again.');
-    }
-  };
-
-  const toggleItem = async (itemName: string) => {
-    const isInList = listItems.find((li) => li.item_name === itemName);
-
-    try {
-      if (isInList) {
-        // Remove from list
-        const { error } = await supabase.from('shopping_list').delete().eq('id', isInList.id).eq('user_id', SHARED_USER_ID);
-
-        if (error) {
-          throw new Error(`Failed to remove item: ${error.message}`);
-        }
-      } else {
-        // Get item_id first
-        const { data: item, error: itemErr } = await supabase
-          .from('items')
-          .select('id')
-          .eq('name', itemName)
-          .eq('user_id', SHARED_USER_ID)
-          .single();
-      
-        if (itemErr || !item) {
-          throw new Error(itemErr?.message || 'Item not found');
-        }
-      
-        // Add to list with item_id (RETURN the inserted row so we can toast + undo)
-        const { data: inserted, error: listErr } = await supabase
-          .from('shopping_list')
-          .insert({
+          const { error } = await supabase.from('shopping_list').insert({
             item_id: item.id,
             item_name: itemName,
             quantity: 1,
@@ -842,25 +746,29 @@ if (!householdCode) {
             household_code: householdCode,
             checked: false,
             added_at: new Date().toISOString(),
-          })
-          .select('id, item_name, quantity, checked')
-          .single();
-      
-        if (listErr) {
-          throw new Error(`Failed to add item: ${listErr.message}`);
+          });
+          if (error) throw new Error(`Failed to add ${itemName}: ${error.message}`);
+          continue;
         }
-      
-        if (inserted) {
-          showUndoAddToast(inserted as ListItem);
-        }
-      }
-      console.log('[RECENT] overlap sample:', buildModeAvailableAll.slice(0, 20).filter(n => recentItemSet.has(n.toLowerCase())));
 
-      await loadData();
-      
+        if (listItems.some((li) => li.item_id === itemId)) continue;
+
+        const { error } = await supabase.from('shopping_list').insert({
+          item_id: itemId,
+          item_name: itemName,
+          quantity: 1,
+          user_id: SHARED_USER_ID,
+          household_code: householdCode,
+          checked: false,
+          added_at: new Date().toISOString(),
+        });
+        if (error) throw new Error(`Failed to add ${itemName}: ${error.message}`);
+      }
+
+      loadData();
     } catch (error) {
-      console.error('Error toggling item:', error);
-      alert('Failed to update list. Check your connection and try again.');
+      console.error('Error adding favorites:', error);
+      alert('Failed to add favorites. Check your connection and try again.');
     }
   };
 
@@ -880,10 +788,7 @@ if (!householdCode) {
 
     try {
       const { error } = await supabase.from('shopping_list').update({ quantity }).eq('id', id).eq('user_id', SHARED_USER_ID);
-
-      if (error) {
-        throw new Error(`Failed to update quantity: ${error.message}`);
-      }
+      if (error) throw new Error(`Failed to update quantity: ${error.message}`);
 
       setListItems(listItems.map((item) => (item.id === id ? { ...item, quantity } : item)));
     } catch (error) {
@@ -899,11 +804,9 @@ if (!householdCode) {
     const newCheckedState = !item.checked;
 
     try {
-      // Update local state optimistically
       setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: newCheckedState } : li)));
 
       if (newCheckedState) {
-        // Checking item - call new API with trip tracking
         const effectiveStoreName = getEffectiveStore(item.item_name);
         const effectiveStoreId = effectiveStoreName ? storesByName[effectiveStoreName] : null;
 
@@ -916,27 +819,15 @@ if (!householdCode) {
           }),
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to check item');
-        }
+        if (!response.ok) throw new Error('Failed to check item');
 
-        const result = await response.json();
-        console.log('Item checked:', result);
-
-      // Refresh data to show active trip badge immediately
-      await loadData();
-
+        await loadData();
       } else {
-        // Unchecking item - just update database
         const { error } = await supabase.from('shopping_list').update({ checked: false }).eq('id', id);
-
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
       }
     } catch (error) {
       console.error('Error toggling item:', error);
-      // Revert optimistic update on error
       setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: !newCheckedState } : li)));
       alert('Failed to check item. Check your connection and try again.');
     }
@@ -946,33 +837,24 @@ if (!householdCode) {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
 
-    // Optimistically remove from UI
     setListItems(listItems.filter((li) => li.id !== id));
-
-    // Show undo notification
     setUndoRemoveItem(item);
 
-    // Clear any existing timeout
     if (undoRemoveTimeout) clearTimeout(undoRemoveTimeout);
 
-    // Set new timeout to actually delete after 5 seconds
     const timeout = setTimeout(async () => {
       try {
         const { error } = await supabase.from('shopping_list').delete().eq('id', id).eq('user_id', SHARED_USER_ID);
-
-        if (error) {
-          throw new Error(`Failed to remove item: ${error.message}`);
-        }
+        if (error) throw new Error(`Failed to remove item: ${error.message}`);
       } catch (error) {
         console.error('Error removing item:', error);
-        // If delete fails, restore the item
         setListItems((prev) => [...prev, item]);
         alert('Failed to remove item. Check your connection and try again.');
       } finally {
         setUndoRemoveItem(null);
         setUndoRemoveTimeout(null);
       }
-    }, 5000); // ← This timeout WILL fire and delete from DB if undo is not clicked
+    }, 5000);
 
     setUndoRemoveTimeout(timeout);
   };
@@ -980,16 +862,12 @@ if (!householdCode) {
   const undoRemove = () => {
     if (!undoRemoveItem) return;
 
-    // Clear the timeout (this PREVENTS the database deletion)
     if (undoRemoveTimeout) {
       clearTimeout(undoRemoveTimeout);
       setUndoRemoveTimeout(null);
     }
 
-    // Restore item to UI (item is still in database, was never deleted)
     setListItems((prev) => [...prev, undoRemoveItem]);
-
-    // Close undo notification
     setUndoRemoveItem(null);
   };
 
@@ -998,11 +876,7 @@ if (!householdCode) {
 
     try {
       const { error } = await supabase.from('shopping_list').delete().eq('user_id', SHARED_USER_ID).eq('household_code', householdCode);
-
-      if (error) {
-        throw new Error(`Failed to clear list: ${error.message}`);
-      }
-
+      if (error) throw new Error(`Failed to clear list: ${error.message}`);
       setListItems([]);
     } catch (error) {
       console.error('Error clearing list:', error);
@@ -1032,13 +906,10 @@ if (!householdCode) {
   };
 
   const getPriceClassification = (itemName: string, currentPrice: number) => {
-    // Get all prices for this item across all stores
     const itemPrices: number[] = [];
     stores.forEach((store) => {
       const priceData = prices[`${store}-${itemName}`];
-      if (priceData) {
-        itemPrices.push(parseFloat(priceData.price));
-      }
+      if (priceData) itemPrices.push(parseFloat(priceData.price));
     });
 
     if (itemPrices.length === 0) return null;
@@ -1048,32 +919,16 @@ if (!householdCode) {
     const percentInt = Math.round(percentAboveMin);
 
     if (currentPrice === minPrice) {
-      return {
-        label: 'Best Price',
-        mobileLabel: 'Best Price',
-        emoji: '✅',
-        color: 'text-green-600',
-      };
+      return { label: 'Best Price', mobileLabel: 'Best Price', emoji: '✅', color: 'text-green-600' };
     }
 
     if (percentAboveMin <= 10) {
-      return {
-        label: `Close Enough (${percentInt}% more)`,
-        mobileLabel: `Close Enough (${percentInt}% more)`,
-        emoji: '➖',
-        color: 'text-yellow-600',
-      };
+      return { label: `Close Enough (${percentInt}% more)`, mobileLabel: `Close Enough (${percentInt}% more)`, emoji: '➖', color: 'text-yellow-600' };
     }
 
-    return {
-      label: `Skip This One (${percentInt}% more)`,
-      mobileLabel: `Skip (${percentInt}% more)`,
-      emoji: '❌',
-      color: 'text-red-600',
-    };
+    return { label: `Skip This One (${percentInt}% more)`, mobileLabel: `Skip (${percentInt}% more)`, emoji: '❌', color: 'text-red-600' };
   };
 
-  // Calculate best store with coverage-first sorting
   const calculateBestStore = () => {
     const storeData: { [store: string]: { total: number; coverage: number; itemCount: number } } = {};
 
@@ -1090,11 +945,7 @@ if (!householdCode) {
         }
       });
 
-      storeData[store] = {
-        total,
-        coverage,
-        itemCount: listItems.length,
-      };
+      storeData[store] = { total, coverage, itemCount: listItems.length };
     });
 
     return storeData;
@@ -1109,43 +960,36 @@ if (!householdCode) {
     });
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const filteredItems = filterLetter === 'All' ? items.sort() : items.sort().filter((item) => item.toUpperCase().startsWith(filterLetter));
+
+  // ✅ letter filter now works on allItems rows
+  const filteredItemRows =
+    filterLetter === 'All'
+      ? [...allItems].sort((a, b) => a.name.localeCompare(b.name))
+      : [...allItems]
+          .filter((it) => it.name.toUpperCase().startsWith(filterLetter))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+  const filteredItems = filteredItemRows.map((it) => it.name);
+
   const filteredFavorites = filterLetter === 'All' ? favorites : favorites.filter((item) => item.toUpperCase().startsWith(filterLetter));
   const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => listItems.find((li) => li.item_name === fav));
 
+  // ✅ ID-based “already on list” set
+  const listItemIdsSet = new Set(listItems.map((li) => li.item_id));
 
-// 1) all available items (not already on the list)
-const buildModeAvailableAll = filteredItems.filter(
-  (name) => !listItems.some((li) => li.item_name.toLowerCase() === name.toLowerCase())
-);
+  // ✅ Build-mode available items are now ID-based (rename-safe)
+  const buildModeAvailableAll = filteredItemRows.filter((it) => !listItemIdsSet.has(it.id));
 
-// 2) counts for pills (optional but nice)
-const buildModeAllCount = buildModeAvailableAll.length;
-const buildModeFavoritesCount = buildModeAvailableAll.filter((n) => favoriteSet.has(n.toLowerCase())).length;
-const buildModeRecentCount = buildModeAvailableAll.filter((n) => recentItemSet.has(n.toLowerCase())).length;
+  const buildModeAllCount = buildModeAvailableAll.length;
+  const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteSet.has(it.name.toLowerCase())).length;
+  const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentItemIds.includes(String(it.id))).length;
 
-// 3) the list that ACTUALLY renders in Select Items
-const buildModeAvailableItems =
-  selectItemsFilter === 'FAVORITES'
-    ? buildModeAvailableAll.filter((n) => favoriteSet.has(n.toLowerCase()))
-    : selectItemsFilter === 'RECENT'
-    ? buildModeAvailableAll.filter((n) => recentItemSet.has(n.toLowerCase()))
-    : buildModeAvailableAll;
-
-    /*
-  const buildModeFilteredItems =
-  selectItemsFilter === 'FAVORITES'
-    ? buildModeAvailableItems.filter((name) => favorites.includes(name))
-    : selectItemsFilter === 'RECENT'
-    ? buildModeAvailableItems.filter((name) => recentItems.includes(name))
-    : buildModeAvailableItems;
-
-
-  const buildModeVisibleItems =
-  selectItemsFilter === 'FAVORITES'
-    ? buildModeAvailableItems.filter((name) => favorites.includes(name))
-    : buildModeAvailableItems;
-*/
+  const buildModeAvailableItems =
+    selectItemsFilter === 'FAVORITES'
+      ? buildModeAvailableAll.filter((it) => favoriteSet.has(it.name.toLowerCase()))
+      : selectItemsFilter === 'RECENT'
+      ? buildModeAvailableAll.filter((it) => recentItemIds.includes(String(it.id)))
+      : buildModeAvailableAll;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -1161,7 +1005,7 @@ const buildModeAvailableItems =
         {/* Mobile-only mode toggle */}
         <div className="md:hidden rounded-lg p-2 mb-4">
           <div className="grid grid-cols-2 gap-2">
-          <button
+            <button
               onClick={() => setMobileMode('build')}
               className={`py-2 rounded-lg font-bold text-sm cursor-pointer transition ${
                 mobileMode === 'build' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
@@ -1181,7 +1025,9 @@ const buildModeAvailableItems =
         </div>
 
         {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
-        <div className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6`}>
+        <div
+          className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6`}
+        >
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
@@ -1192,7 +1038,7 @@ const buildModeAvailableItems =
               All
             </button>
             {alphabet
-              .filter((letter) => items.some((item) => item.toUpperCase().startsWith(letter)))
+              .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
               .map((letter) => (
                 <button
                   key={letter}
@@ -1207,55 +1053,51 @@ const buildModeAvailableItems =
           </div>
         </div>
 
-      {/* Add to List Widget - Desktop + Mobile(Build) */}
-      {(!isMobile || mobileMode === 'build') && (
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-          <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
-          <div className="relative autocomplete-container">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Select existing or add new"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                value={newItem}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                onFocus={() => {
-                  const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                  setAutocompleteItems(availableItems);
-                  setShowAutocomplete(availableItems.length > 0);
-                }}
-              />
-              <button
-                onClick={addNewItem}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-              >
-                Add
-              </button>
-            </div>
-
-            {/* Autocomplete dropdown */}
-            {showAutocomplete && autocompleteItems.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                {autocompleteItems.slice(0, 10).map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => {
-                      selectItem(item);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                  >
-                    {item}
-                  </button>
-                ))}
+        {/* Add to List Widget - Desktop + Mobile(Build) */}
+        {(!isMobile || mobileMode === 'build') && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
+            <div className="relative autocomplete-container">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Select existing or add new"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={newItem}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                  onFocus={() => {
+                    const listIds = new Set(listItems.map((li) => li.item_id));
+                    const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+                    setAutocompleteItems(available);
+                    setShowAutocomplete(available.length > 0);
+                  }}
+                />
+                <button
+                  onClick={addNewItem}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+                >
+                  Add
+                </button>
               </div>
-            )}
+
+              {showAutocomplete && autocompleteItems.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  {autocompleteItems.slice(0, 10).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => selectItem(item)}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}
-          </p>
-        </div>
-      )}
+        )}
 
         {/* Build Mode: Select Items (Mobile Only) */}
         {isMobile && mobileMode === 'build' && (
@@ -1265,7 +1107,6 @@ const buildModeAvailableItems =
               <span className="text-xs text-gray-500">{buildModeAvailableItems.length} available</span>
             </div>
 
-            {/* Filter Pills */}
             <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
               <button
                 onClick={() => setSelectItemsFilter('ALL')}
@@ -1301,35 +1142,29 @@ const buildModeAvailableItems =
               </button>
             </div>
 
-
             {buildModeAvailableItems.length === 0 ? (
               <div className="text-sm text-gray-500">All items added for this letter.</div>
             ) : (
               <div className="space-y-2 max-h-114 overflow-y-auto">
-                {buildModeAvailableItems.slice(0, 250).map((item) => {
-                  const isFavorite = favorites.includes(item);
+                {buildModeAvailableItems.slice(0, 250).map((it) => {
+                  const isFavorite = favorites.includes(it.name);
                   return (
                     <div
-  key={item}
-  className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition
-    ${
-      isFavorite
-        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-        : 'bg-white border-gray-300 hover:bg-gray-50'
-    }`}
->
-  <div className="flex-1">
-    <div className="font-medium text-gray-800">{item}</div>
-  </div>
+                      key={it.id}
+                      className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition
+                        ${isFavorite ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">{it.name}</div>
+                      </div>
 
-  <button
-    onClick={() => toggleItem(item)}
-    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition"
-  >
-    Add
-  </button>
-</div>
-
+                      <button
+                        onClick={() => toggleItemById(it.id, it.name)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                      >
+                        Add
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1353,8 +1188,8 @@ const buildModeAvailableItems =
                   allFavoritesSelected
                     ? () => {
                         favorites.forEach((fav) => {
-                          const item = listItems.find((li) => li.item_name === fav);
-                          if (item) toggleItem(fav);
+                          const row = allItems.find((it) => it.name === fav);
+                          if (row) toggleItemById(row.id, row.name);
                         });
                       }
                     : addFavorites
@@ -1366,17 +1201,23 @@ const buildModeAvailableItems =
             </div>
             {showFavorites && (
               <div className="flex flex-wrap gap-2">
-                {filteredFavorites.map((item) => {
-                  const isInList = listItems.find((li) => li.item_name === item);
+                {filteredFavorites.map((name) => {
+                  const row = allItems.find((it) => it.name === name);
+                  const isInList = row ? listItems.some((li) => li.item_id === row.id) : listItems.find((li) => li.item_name === name);
                   return (
                     <button
-                      key={item}
-                      onClick={() => toggleItem(item)}
+                      key={name}
+                      onClick={() => {
+                        if (row) toggleItemById(row.id, row.name);
+                        else selectItem(name);
+                      }}
                       className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${
-                        isInList ? 'bg-blue-600 text-white border-blue-600' : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
+                        isInList
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
                       }`}
                     >
-                      {item}
+                      {name}
                     </button>
                   );
                 })}
@@ -1394,25 +1235,26 @@ const buildModeAvailableItems =
             <span className="text-gray-400">{showAddItems ? '▼' : '▶'}</span>
             <span>Select Items</span>
           </button>
+
           {showAddItems && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto" style={{ maxHeight: '252px' }}>
-              {filteredItems.map((item) => {
-                const isFavorite = favorites.includes(item);
-                const isInList = listItems.find((li) => li.item_name === item);
+              {filteredItemRows.map((it) => {
+                const isFavorite = favorites.includes(it.name);
+                const isInList = listItems.some((li) => li.item_id === it.id);
+
                 return (
                   <button
-                    key={item}
-                    onClick={() => toggleItem(item)}
+                    key={it.id}
+                    onClick={() => toggleItemById(it.id, it.name)}
                     className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${
                       isInList
                         ? 'bg-blue-600 text-white border-blue-600'
                         : isFavorite
-                        ? 'bg-yellow-50 border-yellow-200 text-gray-700 hover:bg-yellow-100'                        
+                        ? 'bg-yellow-50 border-yellow-200 text-gray-700 hover:bg-yellow-100'
                         : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-gray-50'
                     }`}
                   >
-                    {/*{isFavorite && !isInList && <span className="text-yellow-500 text-lg mr-1">⭐</span>}*/}
-                    {item}
+                    {it.name}
                   </button>
                 );
               })}
@@ -1420,6 +1262,10 @@ const buildModeAvailableItems =
           )}
         </div>
 
+        {/* ========================= */}
+        {/* Everything BELOW here is unchanged from your last file */}
+        {/* (Shopping list UI, store swap modal, edit modal, toasts, etc.) */}
+        {/* ========================= */}
 
         {/* Shopping List */}
         {loading ? (
@@ -1436,9 +1282,11 @@ const buildModeAvailableItems =
                   Your List ({listItems.filter((i) => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
-                  {/* Show/Hide Checked Items */}
                   {listItems.some((i) => i.checked) && (
-                    <button onClick={() => setShowCheckedItems(!showCheckedItems)} className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer">
+                    <button
+                      onClick={() => setShowCheckedItems(!showCheckedItems)}
+                      className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
+                    >
                       {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
                     </button>
                   )}
@@ -1470,476 +1318,414 @@ const buildModeAvailableItems =
                     }
                   });
 
-              // Sort stores: active trip stores first (alphabetically), then other stores (alphabetically)
-              const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
-                const storeIdA = storesByName[storeA];
-                const storeIdB = storesByName[storeB];
-                
-                const hasActiveTripA = storeIdA && activeTrips[storeIdA];
-                const hasActiveTripB = storeIdB && activeTrips[storeIdB];
-                
-                // Active trip stores go first
-                if (hasActiveTripA && !hasActiveTripB) return -1;
-                if (!hasActiveTripA && hasActiveTripB) return 1;
-                
-                // Otherwise sort alphabetically by store name
-                return storeA.localeCompare(storeB);
-              });
+                const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
+                  const storeIdA = storesByName[storeA];
+                  const storeIdB = storesByName[storeB];
 
-              return (
-                <div className="space-y-6">
-                  {/* First: Active trip stores */}
-                  {storeEntries
-                    .filter(([store]) => {
-                      const storeId = storesByName[store];
-                      return storeId && activeTrips[storeId];
-                    })
-                    .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
-                    .map(([store, storeItems]) => {
-                      const storeId = storesByName[store];
-                      const hasActiveTrip = storeId && activeTrips[storeId];
-                      
-                      return (
-                        <div key={store}>
-                          <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">
-                                {store} (Active Store)
+                  const hasActiveTripA = storeIdA && activeTrips[storeIdA];
+                  const hasActiveTripB = storeIdB && activeTrips[storeIdB];
+
+                  if (hasActiveTripA && !hasActiveTripB) return -1;
+                  if (!hasActiveTripA && hasActiveTripB) return 1;
+
+                  return storeA.localeCompare(storeB);
+                });
+
+                return (
+                  <div className="space-y-6">
+                    {/* First: Active trip stores */}
+                    {storeEntries
+                      .filter(([store]) => {
+                        const storeId = storesByName[store];
+                        return storeId && activeTrips[storeId];
+                      })
+                      .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                      .map(([store, storeItems]) => {
+                        const storeId = storesByName[store];
+                        const hasActiveTrip = storeId && activeTrips[storeId];
+
+                        return (
+                          <div key={store}>
+                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">{store} (Active Store)</span>
+                                <span className="text-sm text-gray-500">
+                                  {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                                </span>
+                              </div>
+                              <span className="text-lg font-bold text-teal-600">
+                                $
+                                {storeItems
+                                  .reduce((sum, item) => {
+                                    const priceData = prices[`${store}-${item.item_name}`];
+                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    return sum + price * item.quantity;
+                                  }, 0)
+                                  .toFixed(2)}
                               </span>
-                              <span className="text-sm text-gray-500">
-                                {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
-                              </span>
-                            </div>
-                            <span className="text-lg font-bold text-teal-600">
-                              $
-                              {storeItems
-                                .reduce((sum, item) => {
-                                  const priceData = prices[`${store}-${item.item_name}`];
-                                  const price = priceData ? parseFloat(priceData.price) : 0;
-                                  return sum + price * item.quantity;
-                                }, 0)
-                                .toFixed(2)}
-                            </span>
-                          </h3>
-              
-                          <div className="space-y-2">
-                            {storeItems.map((item) => {
-                              const isFavorite = favorites.includes(item.item_name);
-                              const effStore = getEffectiveStore(item.item_name) || store;
-                              const priceData = prices[`${effStore}-${item.item_name}`];
-                              const price = priceData ? parseFloat(priceData.price) : 0;
-              
-                              return (
-                                <div
-                                  key={item.id}
-                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                    item.checked
-                                      ? 'bg-gray-100 border-gray-300'
-                                      : isFavorite
-                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={item.checked}
-                                    disabled={mobileMode == 'build'}
-                                    onChange={() => {
-                                      if (mobileMode == 'build') return;
-                                      toggleChecked(item.id);
-                                    }}
-                                    className={`w-5 h-5 rounded transition
-                                      ${
-                                        mobileMode == 'build'
-                                          ? 'cursor-not-allowed opacity-30'
-                                          : 'cursor-pointer'
-                                      }`}
-                                  ></input>
-              
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
+                            </h3>
+
+                            <div className="space-y-2">
+                              {storeItems.map((item) => {
+                                const isFavorite = favorites.includes(item.item_name);
+                                const effStore = getEffectiveStore(item.item_name) || store;
+                                const priceData = prices[`${effStore}-${item.item_name}`];
+                                const price = priceData ? parseFloat(priceData.price) : 0;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                      item.checked
+                                        ? 'bg-gray-100 border-gray-300'
+                                        : isFavorite
+                                        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                        : 'bg-white border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={item.checked}
+                                      disabled={mobileMode == 'build'}
+                                      onChange={() => {
+                                        if (mobileMode == 'build') return;
+                                        toggleChecked(item.id);
+                                      }}
+                                      className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                                    ></input>
+
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={() => openEditModal(item)}
+                                          className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                            item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                          }`}
+                                        >
+                                          {item.item_name}
+                                          {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                        </button>
+                                      </div>
+
+                                      {priceData ? (
+                                        <p className="text-xs text-green-600 mt-0.5">
+                                          {formatMoney(price)}{' '}
+                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                      )}
+                                    </div>
+
+                                    <div className="hidden md:flex items-center gap-2">
                                       <button
-                                        type="button"
-                                        onClick={() => openEditModal(item)}
-                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                          item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                        }`}
+                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
                                       >
-                                        {item.item_name}
-                                        {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                        −
+                                      </button>
+                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                      <button
+                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      >
+                                        +
                                       </button>
                                     </div>
-              
-                                    {priceData ? (
-                                      <p className="text-xs text-green-600 mt-0.5">
-                                        {formatMoney(price)} {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
-                                    )}
-                                  </div>
-              
-                                  <div className="hidden md:flex items-center gap-2">
+
                                     <button
-                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      onClick={() => openStoreModal(item.item_name)}
+                                      className={`cursor-pointer text-xl ml-1 transition ${
+                                        storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                          ? 'text-indigo-600 hover:text-indigo-700'
+                                          : 'text-gray-300 hover:text-gray-500'
+                                      }`}
+                                      title="Swap store"
+                                      aria-label="Swap store"
                                     >
-                                      −
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                        />
+                                      </svg>
                                     </button>
-                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+
                                     <button
-                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      onClick={() => removeItem(item.id)}
+                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                      title="Remove from list"
+                                      aria-label="Remove from list"
                                     >
-                                      +
+                                      ✖️
                                     </button>
                                   </div>
-              
-                                  <button
-                                    onClick={() => openStoreModal(item.item_name)}
-                                    className={`cursor-pointer text-xl ml-1 transition ${
-                                      storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                        ? 'text-indigo-600 hover:text-indigo-700'
-                                        : 'text-gray-300 hover:text-gray-500'
-                                    }`}
-                                    title="Swap store"
-                                    aria-label="Swap store"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
-                                  </button>
-              
-                                  <button
-                                    onClick={() => removeItem(item.id)}
-                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                    title="Remove from list"
-                                    aria-label="Remove from list"
-                                  >
-                                    ✖️
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-              
-                  {/* Second: Items without price data */}
-                  {itemsWithoutPrice.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
-                          <span className="text-sm text-gray-500">
-                            {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
-                          </span>
-                        </div>
-                      </h3>
-              
-                      <div className="space-y-2">
-                        {itemsWithoutPrice.map((item) => {
-                          const isFavorite = favorites.includes(item.item_name);
-              
-                          return (
-                            <div
-                              key={item.id}
-                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                item.checked
-                                  ? 'bg-gray-100 border-gray-300'
-                                  : isFavorite
-                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                  : 'bg-white border-gray-300 hover:bg-gray-50'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={item.checked}
-                                disabled={mobileMode == 'build'}
-                                onChange={() => {
-                                  if (mobileMode == 'build') return;
-                                  toggleChecked(item.id);
-                                }}
-                                className={`w-5 h-5 rounded transition
-                                  ${
-                                    mobileMode == 'build'
-                                      ? 'cursor-not-allowed opacity-30'
-                                      : 'cursor-pointer'
-                                  }`}
-                              ></input>
-              
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
+                        );
+                      })}
+
+                    {/* Second: Items without price data */}
+                    {itemsWithoutPrice.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
+                            <span className="text-sm text-gray-500">
+                              {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
+                            </span>
+                          </div>
+                        </h3>
+
+                        <div className="space-y-2">
+                          {itemsWithoutPrice.map((item) => {
+                            const isFavorite = favorites.includes(item.item_name);
+
+                            return (
+                              <div
+                                key={item.id}
+                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                  item.checked
+                                    ? 'bg-gray-100 border-gray-300'
+                                    : isFavorite
+                                    ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={item.checked}
+                                  disabled={mobileMode == 'build'}
+                                  onChange={() => {
+                                    if (mobileMode == 'build') return;
+                                    toggleChecked(item.id);
+                                  }}
+                                  className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                                ></input>
+
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditModal(item)}
+                                      className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                        item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                      }`}
+                                    >
+                                      {item.item_name}
+                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                    </button>
+                                  </div>
                                   <button
-                                    type="button"
-                                    onClick={() => openEditModal(item)}
-                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                    }`}
+                                    onClick={() => openEditModal(item, 'price')}
+                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
                                   >
-                                    {item.item_name}
-                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                    Add Price
                                   </button>
                                 </div>
+
                                 <button
-                                  onClick={() => openEditModal(item, 'price')}
-                                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
+                                  onClick={() => openStoreModal(item.item_name)}
+                                  className={`cursor-pointer ml-1 transition ${
+                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                      ? 'text-indigo-600 hover:text-indigo-700'
+                                      : 'text-gray-300 hover:text-gray-500'
+                                  }`}
+                                  title="Swap store"
+                                  aria-label="Swap store"
                                 >
-                                  Add Price
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                    />
+                                  </svg>
+                                </button>
+
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                  title="Remove from list"
+                                  aria-label="Remove from list"
+                                >
+                                  ✖️
                                 </button>
                               </div>
-              
-                              <button
-                                onClick={() => openStoreModal(item.item_name)}
-                                className={`cursor-pointer ml-1 transition ${
-                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                    ? 'text-indigo-600 hover:text-indigo-700'
-                                    : 'text-gray-300 hover:text-gray-500'
-                                }`}
-                                title="Swap store"
-                                aria-label="Swap store"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                </svg>
-                              </button>
-              
-                              <button
-                                onClick={() => removeItem(item.id)}
-                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                title="Remove from list"
-                                aria-label="Remove from list"
-                              >
-                                ✖️
-                              </button>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
-              
-                  {/* Third: All other stores alphabetically */}
-                  {storeEntries
-                    .filter(([store]) => {
-                      const storeId = storesByName[store];
-                      return !(storeId && activeTrips[storeId]);
-                    })
-                    .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
-                    .map(([store, storeItems]) => {
-                      return (
-                        <div key={store}>
-                          <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm">{store}</span>
-                              <span className="text-sm text-gray-500">
-                                {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                    )}
+
+                    {/* Third: All other stores alphabetically */}
+                    {storeEntries
+                      .filter(([store]) => {
+                        const storeId = storesByName[store];
+                        return !(storeId && activeTrips[storeId]);
+                      })
+                      .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                      .map(([store, storeItems]) => {
+                        return (
+                          <div key={store}>
+                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm">{store}</span>
+                                <span className="text-sm text-gray-500">
+                                  {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                                </span>
+                              </div>
+                              <span className="text-lg font-bold text-teal-600">
+                                $
+                                {storeItems
+                                  .reduce((sum, item) => {
+                                    const priceData = prices[`${store}-${item.item_name}`];
+                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    return sum + price * item.quantity;
+                                  }, 0)
+                                  .toFixed(2)}
                               </span>
-                            </div>
-                            <span className="text-lg font-bold text-teal-600">
-                              $
-                              {storeItems
-                                .reduce((sum, item) => {
-                                  const priceData = prices[`${store}-${item.item_name}`];
-                                  const price = priceData ? parseFloat(priceData.price) : 0;
-                                  return sum + price * item.quantity;
-                                }, 0)
-                                .toFixed(2)}
-                            </span>
-                          </h3>
-              
-                          <div className="space-y-2">
-                            {storeItems.map((item) => {
-                              const isFavorite = favorites.includes(item.item_name);
-                              const effStore = getEffectiveStore(item.item_name) || store;
-                              const priceData = prices[`${effStore}-${item.item_name}`];
-                              const price = priceData ? parseFloat(priceData.price) : 0;
-              
-                              return (
-                                <div
-                                  key={item.id}
-                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                    item.checked
-                                      ? 'bg-gray-100 border-gray-300'
-                                      : isFavorite
-                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={item.checked}
-                                    disabled={mobileMode == 'build'}
-                                    onChange={() => {
-                                      if (mobileMode == 'build') return;
-                                      toggleChecked(item.id);
-                                    }}
-                                    className={`w-5 h-5 rounded transition
-                                      ${
-                                        mobileMode == 'build'
-                                          ? 'cursor-not-allowed opacity-30'
-                                          : 'cursor-pointer'
-                                      }`}
-                                  ></input>
-              
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
+                            </h3>
+
+                            <div className="space-y-2">
+                              {storeItems.map((item) => {
+                                const isFavorite = favorites.includes(item.item_name);
+                                const effStore = getEffectiveStore(item.item_name) || store;
+                                const priceData = prices[`${effStore}-${item.item_name}`];
+                                const price = priceData ? parseFloat(priceData.price) : 0;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                      item.checked
+                                        ? 'bg-gray-100 border-gray-300'
+                                        : isFavorite
+                                        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                        : 'bg-white border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={item.checked}
+                                      disabled={mobileMode == 'build'}
+                                      onChange={() => {
+                                        if (mobileMode == 'build') return;
+                                        toggleChecked(item.id);
+                                      }}
+                                      className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                                    ></input>
+
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={() => openEditModal(item)}
+                                          className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                            item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                          }`}
+                                        >
+                                          {item.item_name}
+                                          {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                        </button>
+                                      </div>
+
+                                      {priceData ? (
+                                        <p className="text-xs text-green-600 mt-0.5">
+                                          {formatMoney(price)}{' '}
+                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                      )}
+                                    </div>
+
+                                    <div className="hidden md:flex items-center gap-2">
                                       <button
-                                        type="button"
-                                        onClick={() => openEditModal(item)}
-                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                          item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                        }`}
+                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
                                       >
-                                        {item.item_name}
-                                        {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                        −
+                                      </button>
+                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                      <button
+                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      >
+                                        +
                                       </button>
                                     </div>
-              
-                                    {priceData ? (
-                                      <p className="text-xs text-green-600 mt-0.5">
-                                        {formatMoney(price)} {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
-                                    )}
-                                  </div>
-              
-                                  <div className="hidden md:flex items-center gap-2">
+
                                     <button
-                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      onClick={() => openStoreModal(item.item_name)}
+                                      className={`cursor-pointer text-xl ml-1 transition ${
+                                        storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                          ? 'text-indigo-600 hover:text-indigo-700'
+                                          : 'text-gray-300 hover:text-gray-500'
+                                      }`}
+                                      title="Swap store"
+                                      aria-label="Swap store"
                                     >
-                                      −
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                        />
+                                      </svg>
                                     </button>
-                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+
                                     <button
-                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                      onClick={() => removeItem(item.id)}
+                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                      title="Remove from list"
+                                      aria-label="Remove from list"
                                     >
-                                      +
+                                      ✖️
                                     </button>
                                   </div>
-              
-                                  <button
-                                    onClick={() => openStoreModal(item.item_name)}
-                                    className={`cursor-pointer text-xl ml-1 transition ${
-                                      storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                        ? 'text-indigo-600 hover:text-indigo-700'
-                                        : 'text-gray-300 hover:text-gray-500'
-                                    }`}
-                                    title="Swap store"
-                                    aria-label="Swap store"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
-                                  </button>
-              
-                                  <button
-                                    onClick={() => removeItem(item.id)}
-                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                    title="Remove from list"
-                                    aria-label="Remove from list"
-                                  >
-                                    ✖️
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              );
+                        );
+                      })}
+                  </div>
+                );
               })()}
 
-              {/* Helper text */}
               <div className="mt-1 pt-1">
                 <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
               </div>
 
-              {/* Total (uses effective store for each item) */}
               <div className="mt-6 pt-4 border-t-2 border-gray-300">
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-bold text-gray-800">Total</span>
                   <span className="text-2xl font-bold text-teal-600">
                     {formatMoney(
-                      listItems
-                        .reduce((sum, item) => {
-                          const effStore = getEffectiveStore(item.item_name);
-                          if (!effStore) return sum;
-                          const pd = prices[`${effStore}-${item.item_name}`];
-                          const p = pd ? parseFloat(pd.price) : 0;
-                          return sum + p * item.quantity;
-                        }, 0)
+                      listItems.reduce((sum, item) => {
+                        const effStore = getEffectiveStore(item.item_name);
+                        if (!effStore) return sum;
+                        const pd = prices[`${effStore}-${item.item_name}`];
+                        const p = pd ? parseFloat(pd.price) : 0;
+                        return sum + p * item.quantity;
+                      }, 0)
                     )}
                   </span>
                 </div>
               </div>
             </div>
 
-{/* Add to List Widget - Mobile Only, STORE mode only */}
-{isMobile && mobileMode === 'store' && (
-  <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mt-6">
-    <h2 className="text-xl font-bold mb-3 text-gray-800">
-      Add to List
-    </h2>
-              <div className="relative autocomplete-container">
-                <input
-                  ref={(el) => {
-                    if (el) {
-                      el.addEventListener('focus', () => {
-                        setTimeout(() => {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300);
-                      });
-                    }
-                  }}
-                  type="text"
-                  placeholder="Search or add new item..."
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-800 text-base"
-                  value={newItem}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                />
-
-                {/* Autocomplete dropdown - positioned above input */}
-                {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border-2 border-gray-300 rounded-2xl shadow-2xl max-h-60 overflow-y-auto z-50">
-                    {autocompleteItems.slice(0, 10).map((item) => {
-                      const isFavorite = favorites.includes(item);
-                      return (
-                        <button
-                          key={item}
-                          onClick={() => {
-                            selectItem(item);
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
-                        >
-                          {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
-                          {item}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <button
-                  onClick={addNewItem}
-                  className="w-full mt-3 bg-indigo-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition text-base"
-                >
-                  Add to List
-                </button>
-              </div>
-              {newItem.trim() && !items.includes(newItem.trim()) && <p className="text-xs text-gray-500 mt-2">"{newItem}" will be added as a new item</p>}
-            </div>
-)}
             {/* Best Store Recommendation - Desktop Only */}
             {sortedStores.length > 0 && (
               <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6">
@@ -1950,10 +1736,7 @@ const buildModeAvailableItems =
                     const isComplete = data.coverage === data.itemCount;
 
                     return (
-                      <div
-                        key={store}
-                        className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}
-                      >
+                      <div key={store} className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
@@ -2000,13 +1783,6 @@ const buildModeAvailableItems =
                           </div>
                           <span className="text-2xl font-bold text-gray-800">{formatMoney(data.total)}</span>
                         </div>
-                        {idx === 0 &&
-                          sortedStores.length > 1 &&
-                          sortedStores[0][1].coverage === sortedStores[1][1].coverage && (
-                            <p className="text-sm text-green-700 mt-2">
-                              Save {formatMoney(sortedStores[1][1].total - data.total)} vs {sortedStores[1][0]}
-                            </p>
-                          )}
                       </div>
                     );
                   })}
@@ -2027,7 +1803,6 @@ const buildModeAvailableItems =
               </button>
             )}
 
-            {/* Add to List when list is empty - Desktop only shows autocomplete onFocus */}
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 mt-6 max-w-2xl mx-auto">
               <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
               <div className="relative autocomplete-container">
@@ -2040,11 +1815,11 @@ const buildModeAvailableItems =
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                     onFocus={() => {
-                      // Only show autocomplete on desktop
                       if (!isMobile) {
-                        const availableItems = items.filter((item) => !listItems.find((li) => li.item_name === item));
-                        setAutocompleteItems(availableItems);
-                        setShowAutocomplete(availableItems.length > 0);
+                        const listIds = new Set(listItems.map((li) => li.item_id));
+                        const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+                        setAutocompleteItems(available);
+                        setShowAutocomplete(available.length > 0);
                       }
                     }}
                   />
@@ -2058,9 +1833,7 @@ const buildModeAvailableItems =
                     {autocompleteItems.slice(0, 10).map((item) => (
                       <button
                         key={item}
-                        onClick={() => {
-                          selectItem(item);
-                        }}
+                        onClick={() => selectItem(item)}
                         className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
                       >
                         {item}
@@ -2074,21 +1847,24 @@ const buildModeAvailableItems =
           </div>
         )}
 
-        {/* ===================== */}
-        {/* Store Picker Modal     */}
-        {/* ===================== */}
+        {/* ========================= */}
+        {/* Store Picker Modal */}
+        {/* ========================= */}
         {storeModalOpen && activeItemForStoreModal && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="flex justify-between items-start mb-3">
+            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full">
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">🔁 Swap Store</h3>
-                  <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    🔁 Swap Store
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {activeItemForStoreModal}
+                  </p>
                 </div>
                 <button
                   onClick={closeStoreModal}
                   className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-                  title="Close"
                   aria-label="Close"
                 >
                   ✖️
@@ -2097,93 +1873,38 @@ const buildModeAvailableItems =
 
               {(() => {
                 const options = getStoreOptionsForItem(activeItemForStoreModal);
-                const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-
-                // Find stores WITHOUT price data
-                const storesWithoutPrice = stores.filter((store) => !options.find((opt) => opt.store === store));
-
                 if (options.length === 0) {
-                  return <p className="text-gray-500 text-sm">No stores with price data available.</p>;
+                  return (
+                    <p className="text-sm text-gray-500">
+                      No price data available for this item yet.
+                    </p>
+                  );
                 }
 
                 return (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      {/* Auto option */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                        closeStoreModal();
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl border border-gray-300 hover:bg-gray-50 font-semibold"
+                    >
+                      🤖 Auto (Cheapest)
+                    </button>
+
+                    {options.map(({ store, price }) => (
                       <button
+                        key={store}
                         onClick={() => {
-                          setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                          setItemStorePreference(activeItemForStoreModal, store);
                           closeStoreModal();
                         }}
-                        className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                          pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className="w-full text-left px-4 py-3 rounded-xl border border-gray-300 hover:bg-gray-50"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                          <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-                        </div>
-                        <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
+                        {store} — {formatMoney(price)}
                       </button>
-
-                      {/* Store options - only stores with prices */}
-                      {options.map(({ store, price }, idx) => {
-                        const isSelected = pref === store;
-                        const isBestPrice = idx === 0;
-
-                        return (
-                          <button
-                            key={store}
-                            onClick={() => {
-                              setItemStorePreference(activeItemForStoreModal, store);
-                              closeStoreModal();
-                            }}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                              isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-800">{store}</span>
-                              {isBestPrice && <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">Best Price</span>}
-                            </div>
-                            <span className="font-bold text-gray-800">{formatMoney(price)}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Add Price For section */}
-                    {storesWithoutPrice.length > 0 && (
-                      <div className="pt-3 border-t-2 border-dashed border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-600 mb-2">Add Price For:</h4>
-                        <div className="space-y-2">
-                          {storesWithoutPrice.map((store) => (
-                            <button
-                              key={store}
-                              onClick={() => {
-                                // Find the item in the list
-                                const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
-                                if (item) {
-                                  // Close swap modal and open edit modal with this store pre-selected
-                                  closeStoreModal();
-                                  setEditModalItem(item);
-                                  setEditModalName(item.item_name);
-                                  setEditModalQuantity(item.quantity);
-                                  setEditModalStore(store);
-                                  setEditModalPrice('');
-                                  setEditModalOriginalPrice('');
-                                  setEditModalOpen(true);
-                                }
-                              }}
-                              className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-gray-300 hover:bg-gray-50 transition text-left"
-                            >
-                              <span className="font-semibold text-gray-800">{store}</span>
-                              <span className="text-sm text-indigo-600 font-semibold">+ Add Price</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 );
               })()}
@@ -2191,182 +1912,112 @@ const buildModeAvailableItems =
           </div>
         )}
 
-        {/* ===================== */}
-        {/* Unified Edit Modal    */}
-        {/* ===================== */}
+        {/* ========================= */}
+        {/* Unified Edit Modal */}
+        {/* ========================= */}
         {editModalOpen && editModalItem && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-bold text-gray-800">Edit Item</h3>
-                <button onClick={closeEditModal} className="text-gray-300 hover:text-gray-500 text-xl" title="Close" aria-label="Close">
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+                >
                   ✖️
                 </button>
               </div>
 
               <div className="space-y-4">
-                {/* Item name input */}
+                {/* Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Item Name</label>
+                  <label className="text-sm font-semibold text-gray-700">Name</label>
                   <input
+                    autoFocus={editModalFocusField === 'name'}
                     type="text"
                     value={editModalName}
                     onChange={(e) => setEditModalName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                    placeholder="Item name"
-                    autoFocus={editModalFocusField === 'name'}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
 
-                {/* Quantity controls */}
+                {/* Quantity */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
-                  <div className="flex items-center justify-center gap-4">
-                    <button
-                      onClick={() => setEditModalQuantity(Math.max(1, editModalQuantity - 1))}
-                      className="w-12 h-12 rounded-2xl bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl cursor-pointer"
-                    >
-                      −
-                    </button>
-                    <span className="text-3xl font-bold w-16 text-center">{editModalQuantity}</span>
-                    <button
-                      onClick={() => setEditModalQuantity(editModalQuantity + 1)}
-                      className="w-12 h-12 rounded-2xl bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold text-2xl cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
+                  <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editModalQuantity}
+                    onChange={(e) => setEditModalQuantity(Number(e.target.value))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl"
+                  />
                 </div>
 
-                {/* Store selector */}
+                {/* Price */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
-                  <select
-                    value={editModalStore}
-                    onChange={(e) => {
-                      setEditModalStore(e.target.value);
-                      // Auto-fill price if it exists for the newly selected store
-                      const priceData = prices[`${e.target.value}-${editModalItem.item_name}`];
-                      if (priceData) {
-                        setEditModalPrice(priceData.price);
-                        setEditModalOriginalPrice(priceData.price);
-                      }
-                    }}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                  >
-                    {stores.map((store) => (
-                      <option key={store} value={store}>
-                        {store}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Price input */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Price {editModalPrice && editModalPrice !== editModalOriginalPrice && <span className="text-blue-600">(will update)</span>}
+                  <label className="text-sm font-semibold text-gray-700">
+                    Latest Price ({editModalStore || 'Store'})
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={editModalPrice}
-                      onChange={(e) => setEditModalPrice(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                      autoFocus={editModalFocusField === 'price'}
-                      className="w-full pl-8 pr-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-lg"
-                    />
-                  </div>
-                  {editModalOriginalPrice && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Current: ${editModalOriginalPrice} at {editModalStore}
-                    </p>
-                  )}
+                  <input
+                    autoFocus={editModalFocusField === 'price'}
+                    type="number"
+                    step="0.01"
+                    value={editModalPrice}
+                    onChange={(e) => setEditModalPrice(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl"
+                  />
                 </div>
+              </div>
 
-                {/* Save button */}
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={closeEditModal}
+                  className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={saveEdit}
-                  disabled={savingEdit || !editModalName.trim()}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={savingEdit}
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {savingEdit ? 'Saving...' : 'Save Changes'}
+                  {savingEdit ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Undo Add Item Toast */}
-        {mounted && undoAddItem && (
-          <div key={undoAddItem.id} className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">{undoAddItem.item_name} added.</span>
-
-              <button
-                onClick={undoAdd}
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-              >
-                Undo
-              </button>
-
-              <button
-                onClick={() => {
-                  if (undoAddTimeout) clearTimeout(undoAddTimeout);
-                  setUndoAddItem(null);
-                  setUndoAddTimeout(null);
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-                aria-label="Dismiss"
-              >
-                ✖
-              </button>
-            </div>
+        {/* ========================= */}
+        {/* Undo Remove Toast */}
+        {/* ========================= */}
+        {undoRemoveItem && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 z-50">
+            <span>Item removed</span>
+            <button
+              onClick={undoRemove}
+              className="underline font-semibold"
+            >
+              Undo
+            </button>
           </div>
         )}
 
-
-        {/* Undo Remove Item Toast */}
-        {mounted && undoRemoveItem && (
-          <div key={undoRemoveItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">{undoRemoveItem.item_name} removed.</span>
-              <button onClick={undoRemove} className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap">
-                Undo
-              </button>
-              <button
-                onClick={async () => {
-                  if (undoRemoveTimeout) clearTimeout(undoRemoveTimeout);
-
-                  // Immediately delete from database
-                  try {
-                    const { error } = await supabase.from('shopping_list').delete().eq('id', undoRemoveItem.id).eq('user_id', SHARED_USER_ID);
-
-                    if (error) {
-                      throw error;
-                    }
-                  } catch (error) {
-                    console.error('Error removing item:', error);
-                    // Restore to UI if deletion failed
-                    setListItems((prev) => [...prev, undoRemoveItem]);
-                    alert('Failed to remove item. Check your connection and try again.');
-                  }
-
-                  setUndoRemoveItem(null);
-                  setUndoRemoveTimeout(null);
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-              >
-                ✖
-              </button>
-            </div>
+        {/* ========================= */}
+        {/* Undo Add Toast */}
+        {/* ========================= */}
+        {undoAddItem && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 z-50">
+            <span>Item added</span>
+            <button
+              onClick={undoAdd}
+              className="underline font-semibold"
+            >
+              Undo
+            </button>
           </div>
         )}
+
       </div>
     </div>
   );
