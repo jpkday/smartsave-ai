@@ -32,11 +32,13 @@ export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
 
-  // ✅ Keep full items with IDs so selection can be ID-based
+
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
-  // Keep names too (handy for filtering/autocomplete UI)
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [recentItems, setRecentItems] = useState<string[]>([]);
+  const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
+  const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
 
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
@@ -51,8 +53,8 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
-  const [recentItems, setRecentItems] = useState<string[]>([]);
-  const [recentItemIds, setRecentItemIds] = useState<string[]>([]);
+  
+
 
   // const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
   const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
@@ -90,7 +92,7 @@ export default function ShoppingList() {
     const timeout = setTimeout(() => {
       setUndoAddItem(null);
       setUndoAddTimeout(null);
-    }, 5000);
+    }, 2500);
 
     setUndoAddTimeout(timeout);
   };
@@ -131,7 +133,7 @@ export default function ShoppingList() {
     const timeout = setTimeout(() => {
       setUndoCheckItem(null);
       setUndoCheckTimeout(null);
-    }, 5000);
+    }, 2500);
 
     setUndoCheckTimeout(timeout);
   };
@@ -527,15 +529,16 @@ const showTripCompleteToast = (storeName: string) => {
 
     let itemNameById: Record<string, string> = {};
     if (itemsData) {
-      const rows = itemsData as ItemRow[];
-      setAllItems(rows);
-      setItems(rows.map((i) => i.name));
-      setFavorites(rows.filter((i) => i.is_favorite === true).map((i) => i.name));
-
-      itemNameById = rows.reduce<Record<string, string>>((acc, i) => {
-        if (i?.id && i?.name) acc[String(i.id)] = i.name;
-        return acc;
-      }, {});
+      setAllItems(itemsData as ItemRow[]);
+    
+      // keep your existing name arrays if other parts of the page still depend on them
+      setItems(itemsData.map((i) => i.name));
+    
+      const favIds = itemsData.filter((i) => i.is_favorite === true).map((i) => i.id);
+      setFavoritesIds(favIds);
+    
+      // keep old favorites by name too (optional)
+      setFavorites(itemsData.filter((i) => i.is_favorite === true).map((i) => i.name));
     }
 
     const { data: listData, error: listError } = await supabase
@@ -570,43 +573,41 @@ const showTripCompleteToast = (storeName: string) => {
       setPrices(pricesObj);
     }
 
-    // =========================
-    // Recent items — item_id based ✅
-    // =========================
-    if (!householdCode) {
-      setRecentItems([]);
-      setRecentItemIds([]);
-    } else {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+// =========================
+// Recent items (ID-based; preserves checked_at desc order)
+// =========================
+if (!householdCode) {
+  setRecentItemIds([]);
+} else {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: recentData, error: recentErr } = await supabase
-        .from('shopping_list_events')
-        .select('item_id, checked_at')
-        .eq('household_code', householdCode)
-        .not('checked_at', 'is', null)
-        .gte('checked_at', thirtyDaysAgo)
-        .order('checked_at', { ascending: false })
-        .limit(250);
+  const { data: recentData, error: recentErr } = await supabase
+    .from('shopping_list_events')
+    .select('item_id, checked_at')
+    .eq('household_code', householdCode)
+    .not('checked_at', 'is', null)
+    .gte('checked_at', thirtyDaysAgo)
+    .order('checked_at', { ascending: false })
+    .limit(250);
 
-      if (recentErr) {
-        console.error('[RECENT] query error:', recentErr);
-        setRecentItems([]);
-        setRecentItemIds([]);
-      } else {
-        const seen = new Set<string>();
-        const uniqueIds = (recentData ?? [])
-          .map((r: any) => r.item_id)
-          .filter((id: any): id is string | number => (typeof id === 'string' || typeof id === 'number') && String(id).length > 0)
-          .map((id: any) => String(id))
-          .filter((id: string) => (seen.has(id) ? false : (seen.add(id), true)))
-          .slice(0, 25);
+  if (recentErr) {
+    console.error('[RECENT] query error:', recentErr);
+    setRecentItemIds([]);
+  } else {
+    const seen = new Set<number>();
+    const uniqueRecentIds = (recentData ?? [])
+      .map((r) => r.item_id)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+      .filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .slice(0, 25);
 
-        setRecentItemIds(uniqueIds);
-
-        const uniqueNames = uniqueIds.map((id) => (itemNameById[id] ?? '').trim()).filter((n) => n.length > 0);
-        setRecentItems(uniqueNames);
-      }
-    }
+    setRecentItemIds(uniqueRecentIds);
+  }
+}
 
     setLoading(false);
   };
@@ -651,7 +652,7 @@ const showTripCompleteToast = (storeName: string) => {
     setNewItem(value);
 
     if (value.trim()) {
-      const listIds = new Set(listItems.map((li) => li.item_id));
+      const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
 
       const availableItems = allItems
         .filter((it) => !listIds.has(it.id))
@@ -944,7 +945,7 @@ const showTripCompleteToast = (storeName: string) => {
         setUndoRemoveItem(null);
         setUndoRemoveTimeout(null);
       }
-    }, 5000);
+    }, 2500);
 
     setUndoRemoveTimeout(timeout);
   };
@@ -1067,19 +1068,39 @@ const showTripCompleteToast = (storeName: string) => {
   // ✅ ID-based “already on list” set
   const listItemIdsSet = new Set(listItems.map((li) => li.item_id));
 
-  // ✅ Build-mode available items are now ID-based (rename-safe)
-  const buildModeAvailableAll = filteredItemRows.filter((it) => !listItemIdsSet.has(it.id));
+// =========================
+// Build Mode (ID-based)
+// =========================
 
-  const buildModeAllCount = buildModeAvailableAll.length;
-  const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteSet.has(it.name.toLowerCase())).length;
-  const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentItemIds.includes(String(it.id))).length;
+// 1) IDs already on the shopping list
+const listIds = new Set<number>(
+  listItems
+    .map((li) => li.item_id)
+    .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+);
 
-  const buildModeAvailableItems =
-    selectItemsFilter === 'FAVORITES'
-      ? buildModeAvailableAll.filter((it) => favoriteSet.has(it.name.toLowerCase()))
-      : selectItemsFilter === 'RECENT'
-      ? buildModeAvailableAll.filter((it) => recentItemIds.includes(String(it.id)))
-      : buildModeAvailableAll;
+// 2) available items = all items minus what’s already on the list
+const buildModeAvailableAll = allItems.filter((it) => !listIds.has(it.id));
+
+// 3) recent ranking (0 = most recent)
+const recentRank = new Map<number, number>();
+recentItemIds.forEach((id, idx) => recentRank.set(id, idx));
+
+// 4) filter pills logic
+const favoriteIdSet = new Set<number>(favoritesIds);
+
+const buildModeAllCount = buildModeAvailableAll.length;
+const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id)).length;
+const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
+
+const buildModeAvailableItems =
+  selectItemsFilter === 'FAVORITES'
+    ? buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id))
+    : selectItemsFilter === 'RECENT'
+    ? buildModeAvailableAll
+        .filter((it) => recentRank.has(it.id))
+        .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity))
+    : buildModeAvailableAll;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -1157,7 +1178,7 @@ const showTripCompleteToast = (storeName: string) => {
                   onChange={(e) => handleInputChange(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                   onFocus={() => {
-                    const listIds = new Set(listItems.map((li) => li.item_id));
+                    const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
                     const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
                     setAutocompleteItems(available);
                     setShowAutocomplete(available.length > 0);
@@ -1900,8 +1921,8 @@ const showTripCompleteToast = (storeName: string) => {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
                     onFocus={() => {
-                      if (!isMobile) {
-                        const listIds = new Set(listItems.map((li) => li.item_id));
+                      {
+                        const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
                         const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
                         setAutocompleteItems(available);
                         setShowAutocomplete(available.length > 0);
@@ -2170,8 +2191,8 @@ const showTripCompleteToast = (storeName: string) => {
       {/* ========================= */}
       {mounted && tripCompleteToastStore && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-          <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-            <span className="flex-1 font-semibold text-lg">
+          <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+            <span className="flex-1 font-semibold text-xl">
               <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
             </span>
 
