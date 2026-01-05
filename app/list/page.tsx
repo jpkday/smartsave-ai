@@ -54,7 +54,7 @@ export default function ShoppingList() {
   const [recentItems, setRecentItems] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<string[]>([]);
 
-  const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
+  // const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
   const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
 
   const [mounted, setMounted] = useState(false);
@@ -1097,16 +1097,16 @@ const showTripCompleteToast = (storeName: string) => {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMobileMode('build')}
-              className={`py-2 rounded-lg font-bold text-sm cursor-pointer transition ${
-                mobileMode === 'build' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
+              className={`py-2 rounded-lg text-sm cursor-pointer transition ${
+                mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold' : 'bg-gray-50 text-gray-300'
               }`}
             >
               Build Mode
             </button>
             <button
               onClick={() => setMobileMode('store')}
-              className={`py-2 rounded-lg font-bold text-sm cursor-pointer transition ${
-                mobileMode === 'store' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'
+              className={`py-2 rounded-lg text-sm cursor-pointer transition ${
+                mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold' : 'bg-gray-50 text-gray-300'
               }`}
             >
               Store Mode
