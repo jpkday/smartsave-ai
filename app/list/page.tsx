@@ -1131,9 +1131,8 @@ const buildModeAvailableItems =
     : selectItemsFilter === 'RECENT'
     ? buildModeAvailableAll.filter((n) => recentItemSet.has(n.toLowerCase()))
     : buildModeAvailableAll;
-// Add this debug line:
-console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCount:', buildModeAvailableItems.length, 'recentItems:', recentItems, 'recentItemSet size:', recentItemSet.size);
-/*
+
+    /*
   const buildModeFilteredItems =
   selectItemsFilter === 'FAVORITES'
     ? buildModeAvailableItems.filter((name) => favorites.includes(name))
@@ -1267,7 +1266,7 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
               <button
                 onClick={() => setSelectItemsFilter('ALL')}
                 className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
@@ -1277,8 +1276,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                 }`}
               >
                 All Items
-                {/* ({buildModeAllCount}) */}
               </button>
+
               <button
                 onClick={() => setSelectItemsFilter('FAVORITES')}
                 className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
@@ -1288,20 +1287,20 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                 }`}
               >
                 Favorites
-                {/* ({buildModeFavoritesCount}) */}
               </button>
+
               <button
-              onClick={() => setSelectItemsFilter('RECENT')}
-              className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                selectItemsFilter === 'RECENT'
-                  ? 'font-bold bg-rose-600 text-white border-rose-600'
-                  : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
-              }`}
-            >
-              Recent
-              {/* ({buildModeRecentCount}) */}
-            </button>
+                onClick={() => setSelectItemsFilter('RECENT')}
+                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                  selectItemsFilter === 'RECENT'
+                    ? 'bg-rose-600 text-white border-rose-600'
+                    : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
+                }`}
+              >
+                Recent
+              </button>
             </div>
+
 
             {buildModeAvailableItems.length === 0 ? (
               <div className="text-sm text-gray-500">All items added for this letter.</div>
