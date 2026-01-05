@@ -1276,7 +1276,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                     : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
                 }`}
               >
-                All Items ({buildModeAllCount})
+                All Items
+                {/* ({buildModeAllCount}) */}
               </button>
               <button
                 onClick={() => setSelectItemsFilter('FAVORITES')}
@@ -1286,7 +1287,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                     : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
                 }`}
               >
-                Favorites ({buildModeFavoritesCount})
+                Favorites
+                {/* ({buildModeFavoritesCount}) */}
               </button>
               <button
               onClick={() => setSelectItemsFilter('RECENT')}
@@ -1296,7 +1298,8 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                   : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
               }`}
             >
-              Recent ({buildModeRecentCount})
+              Recent
+              {/* ({buildModeRecentCount}) */}
             </button>
             </div>
 
