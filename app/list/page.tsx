@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
@@ -162,6 +162,32 @@ export default function ShoppingList() {
     }
   };
   
+  // TRIP COMPLETE toast (all items for a store are checked)
+const [tripCompleteToastStore, setTripCompleteToastStore] = useState<string | null>(null);
+const [tripCompleteToastTimeout, setTripCompleteToastTimeout] = useState<NodeJS.Timeout | null>(null);
+const TRIP_COMPLETE_DELAY_MS = 5000;
+
+// Prevent double-firing for the same store while the toast is visible
+const tripCompleteToastLockRef = useRef<string | null>(null);
+
+const showTripCompleteToast = (storeName: string) => {
+  // lock per-store so we don't fire twice due to re-renders / loadData
+  if (tripCompleteToastLockRef.current === storeName) return;
+
+  if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+
+  tripCompleteToastLockRef.current = storeName;
+  setTripCompleteToastStore(storeName);
+
+  const t = setTimeout(() => {
+    setTripCompleteToastStore(null);
+    setTripCompleteToastTimeout(null);
+    tripCompleteToastLockRef.current = null;
+  }, 5000);
+
+  setTripCompleteToastTimeout(t);
+};
+
 
   useEffect(() => {
     const stored = localStorage.getItem('last_price_store');
@@ -848,10 +874,27 @@ export default function ShoppingList() {
     const newCheckedState = !item.checked;
 
     try {
-      setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: newCheckedState } : li)));
-
+      const nextListItems = listItems.map((li) =>
+        li.id === id ? { ...li, checked: newCheckedState } : li
+      );
+      setListItems(nextListItems);
+      
       if (newCheckedState) {
-        const effectiveStoreName = getEffectiveStore(item.item_name);
+        const effectiveStoreName = getEffectiveStore(item.item_name); // store grouping used in UI
+
+        if (effectiveStoreName) {
+          const uncheckedRemainingForStore = nextListItems.some((li) => {
+            const s = getEffectiveStore(li.item_name);
+            return s === effectiveStoreName && !li.checked;
+          });
+      
+          if (!uncheckedRemainingForStore) {
+            setTimeout(() => {
+              showTripCompleteToast(effectiveStoreName);
+            }, TRIP_COMPLETE_DELAY_MS);            
+          }
+        }
+
         const effectiveStoreId = effectiveStoreName ? storesByName[effectiveStoreName] : null;
 
         const response = await fetch('/api/shopping-list/check-item', {
@@ -2122,7 +2165,31 @@ export default function ShoppingList() {
           </div>
         )}
 
+      {/* ========================= */}
+      {/* Trip Complete Toast */}
+      {/* ========================= */}
+      {mounted && tripCompleteToastStore && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+          <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+            <span className="flex-1 font-semibold text-lg">
+              <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
+            </span>
 
+            <button
+              onClick={() => {
+                if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+                setTripCompleteToastStore(null);
+                setTripCompleteToastTimeout(null);
+                tripCompleteToastLockRef.current = null;
+              }}
+              className="text-gray-400 hover:text-white text-xl"
+              aria-label="Dismiss"
+            >
+              ✖
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
