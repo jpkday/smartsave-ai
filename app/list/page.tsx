@@ -1098,7 +1098,7 @@ const showTripCompleteToast = (storeName: string) => {
             <button
               onClick={() => setMobileMode('build')}
               className={`py-2 rounded-lg text-sm cursor-pointer transition ${
-                mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold' : 'bg-gray-50 text-gray-300'
+                mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-300 text-base'
               }`}
             >
               Build Mode
@@ -1106,7 +1106,7 @@ const showTripCompleteToast = (storeName: string) => {
             <button
               onClick={() => setMobileMode('store')}
               className={`py-2 rounded-lg text-sm cursor-pointer transition ${
-                mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold' : 'bg-gray-50 text-gray-300'
+                mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-300 text-base'
               }`}
             >
               Store Mode
