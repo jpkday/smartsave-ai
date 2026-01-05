@@ -502,10 +502,11 @@ export default function TripsPage() {
                     });
                 });
 
-                // Sort alphabetically by item name
-                categoryItems.sort((a, b) => 
-                  a.item_name.localeCompare(b.item_name)
-                );
+                categoryItems.sort((a, b) => {
+                  const aTime = a.checked_at ? new Date(a.checked_at).getTime() : 0;
+                  const bTime = b.checked_at ? new Date(b.checked_at).getTime() : 0;
+                  return bTime - aTime; // DESC
+                });
 
                 if (categoryItems.length === 0) {
                   return (
