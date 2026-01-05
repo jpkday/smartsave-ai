@@ -21,6 +21,7 @@ interface PriceData {
 type StoreChoice = 'AUTO' | string;
 
 export default function ShoppingList() {
+  const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
   const [items, setItems] = useState<string[]>([]);
@@ -31,7 +32,7 @@ export default function ShoppingList() {
   const [showFavorites, setShowFavorites] = useState(true);
   const [showAddItems, setShowAddItems] = useState(true);
   const [newItem, setNewItem] = useState('');
-  const [showCheckedItems, setShowCheckedItems] = useState(false);
+  const [showCheckedItems, setShowCheckedItems] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
@@ -482,6 +483,26 @@ export default function ShoppingList() {
       setStoresByName(lookup);
     }
 
+    // Load active trips to determine which store is being shopped
+    const { data: tripsData, error: tripsError } = await supabase
+      .from('trips')
+      .select('id, store_id')
+      .eq('household_code', householdCode)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false });
+
+    if (tripsError) {
+      console.error('Error loading trips:', tripsError);
+    } else if (tripsData) {
+      const tripsByStore: { [store_id: string]: string } = {};
+      tripsData.forEach((trip) => {
+        if (trip.store_id && !tripsByStore[trip.store_id]) {
+          tripsByStore[trip.store_id] = trip.id;
+        }
+      });
+      setActiveTrips(tripsByStore);
+    }
+
     // Load all items and favorites
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
@@ -901,6 +922,10 @@ if (!householdCode) {
 
         const result = await response.json();
         console.log('Item checked:', result);
+
+      // Refresh data to show active trip badge immediately
+      await loadData();
+
       } else {
         // Unchecking item - just update database
         const { error } = await supabase.from('shopping_list').update({ checked: false }).eq('id', id);
@@ -1443,47 +1468,190 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                     }
                   });
 
-                return (                  
-                  <div className="space-y-6">
-                    {Object.entries(itemsByStore).map(([store, storeItems]) => (
-                      <div key={store}>
-                        <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm">{store}</span>
-                            <span className="text-sm text-gray-500">
-                              {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+              // Sort stores: active trip stores first (alphabetically), then other stores (alphabetically)
+              const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
+                const storeIdA = storesByName[storeA];
+                const storeIdB = storesByName[storeB];
+                
+                const hasActiveTripA = storeIdA && activeTrips[storeIdA];
+                const hasActiveTripB = storeIdB && activeTrips[storeIdB];
+                
+                // Active trip stores go first
+                if (hasActiveTripA && !hasActiveTripB) return -1;
+                if (!hasActiveTripA && hasActiveTripB) return 1;
+                
+                // Otherwise sort alphabetically by store name
+                return storeA.localeCompare(storeB);
+              });
+
+              return (
+                <div className="space-y-6">
+                  {/* First: Active trip stores */}
+                  {storeEntries
+                    .filter(([store]) => {
+                      const storeId = storesByName[store];
+                      return storeId && activeTrips[storeId];
+                    })
+                    .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                    .map(([store, storeItems]) => {
+                      const storeId = storesByName[store];
+                      const hasActiveTrip = storeId && activeTrips[storeId];
+                      
+                      return (
+                        <div key={store}>
+                          <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">
+                                {store} (Active Store)
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                              </span>
+                            </div>
+                            <span className="text-lg font-bold text-teal-600">
+                              $
+                              {storeItems
+                                .reduce((sum, item) => {
+                                  const priceData = prices[`${store}-${item.item_name}`];
+                                  const price = priceData ? parseFloat(priceData.price) : 0;
+                                  return sum + price * item.quantity;
+                                }, 0)
+                                .toFixed(2)}
                             </span>
+                          </h3>
+              
+                          <div className="space-y-2">
+                            {storeItems.map((item) => {
+                              const isFavorite = favorites.includes(item.item_name);
+                              const effStore = getEffectiveStore(item.item_name) || store;
+                              const priceData = prices[`${effStore}-${item.item_name}`];
+                              const price = priceData ? parseFloat(priceData.price) : 0;
+              
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                    item.checked
+                                      ? 'bg-gray-100 border-gray-300'
+                                      : isFavorite
+                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                      : 'bg-white border-gray-300 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={item.checked}
+                                    disabled={mobileMode == 'build'}
+                                    onChange={() => {
+                                      if (mobileMode == 'build') return;
+                                      toggleChecked(item.id);
+                                    }}
+                                    className={`w-5 h-5 rounded transition
+                                      ${
+                                        mobileMode == 'build'
+                                          ? 'cursor-not-allowed opacity-30'
+                                          : 'cursor-pointer'
+                                      }`}
+                                  ></input>
+              
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal(item)}
+                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                          item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                        }`}
+                                      >
+                                        {item.item_name}
+                                        {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                      </button>
+                                    </div>
+              
+                                    {priceData ? (
+                                      <p className="text-xs text-green-600 mt-0.5">
+                                        {formatMoney(price)} {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                    )}
+                                  </div>
+              
+                                  <div className="hidden md:flex items-center gap-2">
+                                    <button
+                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                    >
+                                      −
+                                    </button>
+                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+              
+                                  <button
+                                    onClick={() => openStoreModal(item.item_name)}
+                                    className={`cursor-pointer text-xl ml-1 transition ${
+                                      storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                        ? 'text-indigo-600 hover:text-indigo-700'
+                                        : 'text-gray-300 hover:text-gray-500'
+                                    }`}
+                                    title="Swap store"
+                                    aria-label="Swap store"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                  </button>
+              
+                                  <button
+                                    onClick={() => removeItem(item.id)}
+                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                    title="Remove from list"
+                                    aria-label="Remove from list"
+                                  >
+                                    ✖️
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <span className="text-lg font-bold text-teal-600">
-                            $
-                            {storeItems
-                              .reduce((sum, item) => {
-                                const priceData = prices[`${store}-${item.item_name}`];
-                                const price = priceData ? parseFloat(priceData.price) : 0;
-                                return sum + price * item.quantity;
-                              }, 0)
-                              .toFixed(2)}
+                        </div>
+                      );
+                    })}
+              
+                  {/* Second: Items without price data */}
+                  {itemsWithoutPrice.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
+                          <span className="text-sm text-gray-500">
+                            {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
                           </span>
-                        </h3>
-
-                        <div className="space-y-2">
-                          {storeItems.map((item) => {
-                            const isFavorite = favorites.includes(item.item_name);
-                            const effStore = getEffectiveStore(item.item_name) || store;
-                            const priceData = prices[`${effStore}-${item.item_name}`];
-                            const price = priceData ? parseFloat(priceData.price) : 0;
-
-                            return (
-                              <div
-                                key={item.id}
-                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                  item.checked
-                                    ? 'bg-gray-100 border-gray-300'
-                                    : isFavorite
-                                    ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                    : 'bg-white border-gray-300 hover:bg-gray-50'
-                                }`}
-                              >
+                        </div>
+                      </h3>
+              
+                      <div className="space-y-2">
+                        {itemsWithoutPrice.map((item) => {
+                          const isFavorite = favorites.includes(item.item_name);
+              
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                item.checked
+                                  ? 'bg-gray-100 border-gray-300'
+                                  : isFavorite
+                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                  : 'bg-white border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={item.checked}
@@ -1499,176 +1667,194 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                                       : 'cursor-pointer'
                                   }`}
                               ></input>
-
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(item)}
-                                      className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                        item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                      }`}
-                                    >
-                                      {item.item_name}
-                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                    </button>
-                                  </div>
-
-                                  {priceData ? (
-                                    <p className="text-xs text-green-600 mt-0.5">
-                                      {formatMoney(price)} {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                    </p>
-                                  ) : (
-                                    <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
-                                  )}
-                                </div>
-
-                                <div className="hidden md:flex items-center gap-2">
+              
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
                                   <button
-                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                    type="button"
+                                    onClick={() => openEditModal(item)}
+                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                    }`}
                                   >
-                                    −
-                                  </button>
-                                  <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                  >
-                                    +
+                                    {item.item_name}
+                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                   </button>
                                 </div>
-
-                                {/* Swap store icon */}
                                 <button
-                                  onClick={() => openStoreModal(item.item_name)}
-                                  className={`cursor-pointer text-xl ml-1 transition ${
-                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                      ? 'text-indigo-600 hover:text-indigo-700'
-                                      : 'text-gray-300 hover:text-gray-500'
-                                  }`}
-                                  title="Swap store"
-                                  aria-label="Swap store"
+                                  onClick={() => openEditModal(item, 'price')}
+                                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                  </svg>
-                                </button>
-
-                                {/* Remove item icon */}
-                                <button
-                                  onClick={() => removeItem(item.id)}
-                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                  title="Remove from list"
-                                  aria-label="Remove from list"
-                                >
-                                  ✖️
+                                  Add Price
                                 </button>
                               </div>
-                            );
-                          })}
-                        </div>
+              
+                              <button
+                                onClick={() => openStoreModal(item.item_name)}
+                                className={`cursor-pointer ml-1 transition ${
+                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                    ? 'text-indigo-600 hover:text-indigo-700'
+                                    : 'text-gray-300 hover:text-gray-500'
+                                }`}
+                                title="Swap store"
+                                aria-label="Swap store"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                              </button>
+              
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                title="Remove from list"
+                                aria-label="Remove from list"
+                              >
+                                ✖️
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-
-                    {/* Items without price data */}
-                    {itemsWithoutPrice.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
-                            <span className="text-sm text-gray-500">
-                              {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
+                    </div>
+                  )}
+              
+                  {/* Third: All other stores alphabetically */}
+                  {storeEntries
+                    .filter(([store]) => {
+                      const storeId = storesByName[store];
+                      return !(storeId && activeTrips[storeId]);
+                    })
+                    .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                    .map(([store, storeItems]) => {
+                      return (
+                        <div key={store}>
+                          <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm">{store}</span>
+                              <span className="text-sm text-gray-500">
+                                {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                              </span>
+                            </div>
+                            <span className="text-lg font-bold text-teal-600">
+                              $
+                              {storeItems
+                                .reduce((sum, item) => {
+                                  const priceData = prices[`${store}-${item.item_name}`];
+                                  const price = priceData ? parseFloat(priceData.price) : 0;
+                                  return sum + price * item.quantity;
+                                }, 0)
+                                .toFixed(2)}
                             </span>
-                          </div>
-                        </h3>
-
-                        <div className="space-y-2">
-                          {itemsWithoutPrice.map((item) => {
-                            const isFavorite = favorites.includes(item.item_name);
-
-                            return (
-                              <div
-                                key={item.id}
-                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                  item.checked
-                                    ? 'bg-gray-100 border-gray-300'
-                                    : isFavorite
-                                    ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                    : 'bg-white border-gray-300 hover:bg-gray-50'
-                                }`}
-                              >
-                              <input
-                                type="checkbox"
-                                checked={item.checked}
-                                disabled={mobileMode == 'build'}
-                                onChange={() => {
-                                  if (mobileMode == 'build') return;
-                                  toggleChecked(item.id);
-                                }}
-                                className={`w-5 h-5 rounded transition
-                                  ${
-                                    mobileMode == 'build'
-                                      ? 'cursor-not-allowed opacity-30'
-                                      : 'cursor-pointer'
+                          </h3>
+              
+                          <div className="space-y-2">
+                            {storeItems.map((item) => {
+                              const isFavorite = favorites.includes(item.item_name);
+                              const effStore = getEffectiveStore(item.item_name) || store;
+                              const priceData = prices[`${effStore}-${item.item_name}`];
+                              const price = priceData ? parseFloat(priceData.price) : 0;
+              
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                    item.checked
+                                      ? 'bg-gray-100 border-gray-300'
+                                      : isFavorite
+                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                      : 'bg-white border-gray-300 hover:bg-gray-50'
                                   }`}
-                              ></input>
-
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(item)}
-                                      className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                        item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={item.checked}
+                                    disabled={mobileMode == 'build'}
+                                    onChange={() => {
+                                      if (mobileMode == 'build') return;
+                                      toggleChecked(item.id);
+                                    }}
+                                    className={`w-5 h-5 rounded transition
+                                      ${
+                                        mobileMode == 'build'
+                                          ? 'cursor-not-allowed opacity-30'
+                                          : 'cursor-pointer'
                                       }`}
+                                  ></input>
+              
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal(item)}
+                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                          item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                        }`}
+                                      >
+                                        {item.item_name}
+                                        {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                      </button>
+                                    </div>
+              
+                                    {priceData ? (
+                                      <p className="text-xs text-green-600 mt-0.5">
+                                        {formatMoney(price)} {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                    )}
+                                  </div>
+              
+                                  <div className="hidden md:flex items-center gap-2">
+                                    <button
+                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
                                     >
-                                      {item.item_name}
-                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                      −
+                                    </button>
+                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                    >
+                                      +
                                     </button>
                                   </div>
+              
                                   <button
-                                    onClick={() => openEditModal(item, 'price')}
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
+                                    onClick={() => openStoreModal(item.item_name)}
+                                    className={`cursor-pointer text-xl ml-1 transition ${
+                                      storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                        ? 'text-indigo-600 hover:text-indigo-700'
+                                        : 'text-gray-300 hover:text-gray-500'
+                                    }`}
+                                    title="Swap store"
+                                    aria-label="Swap store"
                                   >
-                                    Add Price
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                  </button>
+              
+                                  <button
+                                    onClick={() => removeItem(item.id)}
+                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                    title="Remove from list"
+                                    aria-label="Remove from list"
+                                  >
+                                    ✖️
                                   </button>
                                 </div>
-
-                                {/* Swap store icon */}
-                                <button
-                                  onClick={() => openStoreModal(item.item_name)}
-                                  className={`cursor-pointer ml-1 transition ${
-                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                      ? 'text-indigo-600 hover:text-indigo-700'
-                                      : 'text-gray-300 hover:text-gray-500'
-                                  }`}
-                                  title="Swap store"
-                                  aria-label="Swap store"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={() => removeItem(item.id)}
-                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                  title="Remove from list"
-                                  aria-label="Remove from list"
-                                >
-                                  ✖️
-                                </button>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
+                      );
+                    })}
+                </div>
+              );
               })()}
 
               {/* Helper text */}
@@ -1682,13 +1868,14 @@ console.log('[DEBUG RENDER] selectItemsFilter:', selectItemsFilter, 'filteredCou
                   <span className="text-xl font-bold text-gray-800">Total</span>
                   <span className="text-2xl font-bold text-teal-600">
                     {formatMoney(
-                      listItems.reduce((sum, item) => {
-                        const effStore = getEffectiveStore(item.item_name);
-                        if (!effStore) return sum;
-                        const pd = prices[`${effStore}-${item.item_name}`];
-                        const p = pd ? parseFloat(pd.price) : 0;
-                        return sum + p * item.quantity;
-                      }, 0)
+                      listItems
+                        .reduce((sum, item) => {
+                          const effStore = getEffectiveStore(item.item_name);
+                          if (!effStore) return sum;
+                          const pd = prices[`${effStore}-${item.item_name}`];
+                          const p = pd ? parseFloat(pd.price) : 0;
+                          return sum + p * item.quantity;
+                        }, 0)
                     )}
                   </span>
                 </div>

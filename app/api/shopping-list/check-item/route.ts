@@ -129,36 +129,53 @@ export async function POST(request: NextRequest) {
       // Don't fail the request - item is already checked
     }
 
-// 8. Check if there are any remaining unchecked items for this store
-    // Get items that have prices at this store (potential items for this trip)
-    const { data: itemsAtStore } = await supabase
-      .from('price_history')
-      .select('item_id')
-      .eq('store_id', store_id)
-      .eq('user_id', SHARED_USER_ID);
-
+// 8. Check if ALL items for this store are now checked
+    // CRITICAL: Only count items CURRENTLY on the shopping list (not removed with X)
+    
     let tripEnded = false;
 
-    if (itemsAtStore && itemsAtStore.length > 0) {
-      const itemIdsAtStore = [...new Set(itemsAtStore.map(i => i.item_id))];
-      
-      // Check if there are any unchecked items in the shopping list for this store
-      const { count: uncheckedCount } = await supabase
-        .from('shopping_list')
-        .select('*', { count: 'exact', head: true })
-        .eq('household_code', listItem.household_code)
-        .eq('user_id', SHARED_USER_ID)
-        .in('item_id', itemIdsAtStore)
-        .eq('checked', false);
+    // Get ALL unchecked items still on the shopping list for this household
+    const { data: allUncheckedItems, error: uncheckedError } = await supabase
+      .from('shopping_list')
+      .select('item_id, item_name')
+      .eq('household_code', listItem.household_code)
+      .eq('user_id', SHARED_USER_ID)
+      .eq('checked', false);
 
-      // If no more items for this store, end the trip
-      if (uncheckedCount === 0) {
-        await supabase
-          .from('trips')
-          .update({ ended_at: new Date().toISOString() })
-          .eq('id', trip.id);
+    if (uncheckedError) {
+      console.error('Error checking remaining items:', uncheckedError);
+    } else if (allUncheckedItems) {
+      // Get all item_ids that have prices at this store
+      const { data: storeItemPrices } = await supabase
+        .from('price_history')
+        .select('item_id')
+        .eq('store_id', store_id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (storeItemPrices) {
+        const storeItemIds = new Set(storeItemPrices.map(p => p.item_id));
         
-        tripEnded = true;
+        // Count unchecked items that belong to this store
+        const uncheckedForThisStore = allUncheckedItems.filter(item => 
+          storeItemIds.has(item.item_id)
+        );
+
+        console.log(`[TRIP CHECK] Store: ${storeName}, Unchecked items for this store: ${uncheckedForThisStore.length}`);
+
+        // If no unchecked items remain for this store, close the trip
+        if (uncheckedForThisStore.length === 0) {
+          const { error: updateError } = await supabase
+            .from('trips')
+            .update({ ended_at: new Date().toISOString() })
+            .eq('id', trip.id);
+
+          if (updateError) {
+            console.error('Failed to close trip:', updateError);
+          } else {
+            tripEnded = true;
+            console.log(`[TRIP CLOSED] Trip ${trip.id} for ${storeName} - all items checked or removed`);
+          }
+        }
       }
     }
 
