@@ -36,7 +36,7 @@ export default function ShoppingList() {
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [recentItems, setRecentItems] = useState<string[]>([]);
+  //const [recentItems, setRecentItems] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
 
@@ -57,7 +57,7 @@ export default function ShoppingList() {
 
 
   // const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
-  const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
+  // const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -603,7 +603,7 @@ if (!householdCode) {
         seen.add(id);
         return true;
       })
-      .slice(0, 25);
+      .slice(0, 50);
 
     setRecentItemIds(uniqueRecentIds);
   }
