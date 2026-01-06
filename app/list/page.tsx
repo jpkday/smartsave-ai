@@ -2179,7 +2179,7 @@ HIDDEN UNTIL WE REFACTOR MODALS
           </div>
         )}
 
-        {/* Store Picker Modal     */}
+        {/* STORE PICKER MODAL     */}
         {/* ===================== */}
         {storeModalOpen && activeItemForStoreModal && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -2304,7 +2304,7 @@ HIDDEN UNTIL WE REFACTOR MODALS
         )}
 
         {/* ========================= */}
-        {/* Unified Edit Modal */}
+        {/* EDIT MODAL */}
         {/* ========================= */}
         {editModalOpen && editModalItem && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -2438,9 +2438,12 @@ HIDDEN UNTIL WE REFACTOR MODALS
           </div>
         )}
 
-        {/* ========================= */}
-        {/* Item Removed from Shopping List Toast (with Undo button) */}
-        {/* ========================= */}
+        {/* =========================
+        TOAST NOTIFICATION
+
+        ITEM REMOVED FROM SHOPPING LIST
+        (WITH UNDO BUTTON)
+        ========================= */}
         {mounted && removedFromListToastItem && (
         <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
           <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
@@ -2468,9 +2471,12 @@ HIDDEN UNTIL WE REFACTOR MODALS
         </div>
       )}
 
-        {/* ========================= */}
-        {/* Item Added to Shopping List Toast (with Undo button) */}
-        {/* ========================= */}
+        {/* =========================
+        TOAST NOTIFICATION
+        
+        ITEM ADDED TO SHOPPING LIST
+        (WITH UNDO BUTTON)
+        ========================= */}
         {mounted && addedToListToastItem && (
           <div key={addedToListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
@@ -2498,9 +2504,12 @@ HIDDEN UNTIL WE REFACTOR MODALS
           </div>
         )}
 
-        {/* ========================= */}
-        {/* Checked Item Toast (with Undo button) */}
-        {/* ========================= */}
+        {/* =========================
+        TOAST NOTIFICATION
+        
+        CHECKED ITEM OFF SHOPPING LIST
+        (WITH UNDO BUTTON)
+        ========================= */}
         {mounted && checkedOffListToastItem && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
@@ -2530,9 +2539,12 @@ HIDDEN UNTIL WE REFACTOR MODALS
           </div>
         )}
 
-      {/* ========================= */}
-      {/* Trip Complete Toast */}
-      {/* ========================= */}
+        {/* =========================
+        TOAST NOTIFICATION
+        
+        TRIP COMPLETE AT ACTIVE STORE
+        ========================= */}
+
       {mounted && tripCompleteToastStore && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
           <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">

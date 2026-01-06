@@ -64,6 +64,20 @@ function ItemsContent() {
   const [selectItemsFilter, setSelectItemsFilter] =
   useState<'ALL' | 'FAVORITES'>('ALL');
 
+  // Put this near your other constants
+const CATEGORY_OPTIONS: string[] = [
+  'Produce',
+  'Pantry',
+  'Dairy',
+  'Beverage',
+  'Meat',
+  'Frozen',
+  'Refrigerated',
+  'Other',
+];
+
+// Put this near your other useState hooks
+const [editCategory, setEditCategory] = useState<string>('Other');
 
   useEffect(() => {
     loadItems();
@@ -770,74 +784,94 @@ function ItemsContent() {
         </div>
       </div>
 
-      {/* Bottom sheet (mobile only) */}
-      {sheetOpen && selected && (
-        <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
-          <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
+{/* EDIT ITEM bottom-slideup (mobile only) */}
+{sheetOpen && selected && (
+  <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
+    <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
 
-          <div
-            className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
-            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+    <div
+      className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
+      style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="max-h-[85vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex items-center justify-between mb-3">
+          <button
+            type="button"
+            onClick={closeSheet}
+            className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+            aria-label="Close"
+            disabled={saving}
           >
-            <div className="max-h-[85vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  aria-label="Close"
-                  disabled={saving}
-                >
-                  ✕
-                </button>
+            ✕
+          </button>
 
-                <div className="font-semibold text-gray-800">Edit item</div>
+          <div className="font-semibold text-gray-800">Edit item</div>
 
-                {canDeleteItem(selected) && (
-                  <button
-                    type="button"
-                    onClick={() => deleteItem(selected.name)}
-                    className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
-                    disabled={saving}
-                  >
-                    Delete
-                  </button>
-                )}
-                {!canDeleteItem(selected) && <div className="w-16"></div>}
-              </div>
-
-              <input
-                id="item-rename-input"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && saveRename()}
-                className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
-                placeholder="e.g., Grapefruit (ct)"
-              />
-
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => toggleFavorite(selected.name)}
-                  className="py-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-800 font-semibold"
-                  disabled={saving}
-                >
-                  {selected.is_favorite ? 'Unfavorite' : 'Favorite'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={saveRename}
-                  className="py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
-                  disabled={saving}
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </div>
+          {canDeleteItem(selected) && (
+            <button
+              type="button"
+              onClick={() => deleteItem(selected.name)}
+              className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
+              disabled={saving}
+            >
+              Delete
+            </button>
+          )}
+          {!canDeleteItem(selected) && <div className="w-16"></div>}
         </div>
-      )}
+
+        {/* Name */}
+        <div>
+          <input
+            id="item-rename-input"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+            className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
+            placeholder="e.g., Grapefruit (ct)"
+          />
+        </div>
+
+        {/* Category (new) */}
+        <div className="mt-3">
+          <label className="text-sm font-semibold text-gray-700">Category</label>
+          <select
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+            className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
+          >
+            {CATEGORY_OPTIONS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => toggleFavorite(selected.name)}
+            className="py-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-800 font-semibold"
+            disabled={saving}
+          >
+            {selected.is_favorite ? 'Unfavorite' : 'Favorite'}
+          </button>
+
+          <button
+            type="button"
+            onClick={saveRename}
+            className="py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   </div>
 </div>
