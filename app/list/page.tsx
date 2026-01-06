@@ -28,7 +28,6 @@ export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
 
-
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -51,11 +50,43 @@ export default function ShoppingList() {
 
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
   const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
-  const itemsWithoutCategory = listItems.filter(item => {
-    const cat = itemCategoryByName[item.item_name];
-    return !cat || cat === 'Other' || cat.trim() === '';
-  });
+  //const itemsWithoutCategory = listItems.filter(item => {const cat = itemCategoryByName[item.item_name];return !cat || cat === 'Other' || cat.trim() === '';});
   
+  const CATEGORY_ORDER = [
+    'Produce',
+    'Meat',
+    'Dairy',
+    'Bakery',
+    'Frozen',
+    'Refrigerated',
+    'Pantry',
+    'Snacks',
+    'Beverage',
+    'Health',
+    'Other',
+  ];
+  
+  const categoryRank = (cat: string) => {
+    const idx = CATEGORY_ORDER.indexOf(cat);
+    return idx === -1 ? 999 : idx;
+  };
+  
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      'Produce': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+      'Pantry': 'bg-yellow-50 border-yellow-200 text-yellow-700',
+      'Dairy': 'bg-purple-50 border-purple-200 text-purple-700',
+      'Beverage': 'bg-orange-50 border-orange-200 text-orange-700',
+      'Meat': 'bg-red-50 border-red-200 text-red-700',
+      'Frozen': 'bg-cyan-50 border-cyan-200 text-cyan-700',
+      'Refrigerated': 'bg-blue-50 border-blue-200 text-blue-700',
+      'Bakery': 'bg-orange-50 border-orange-200 text-orange-700',
+      'Snacks': 'bg-yellow-50 border-yellow-200 text-yellow-700',
+      'Health': 'bg-pink-50 border-pink-200 text-pink-700',
+      'Other': 'bg-slate-50 border-slate-200 text-slate-700',
+    };
+    return colors[category] || 'bg-slate-50 border-slate-200 text-slate-700';
+  };
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -1490,10 +1521,11 @@ const buildModeAvailableItems =
 
                   return storeA.localeCompare(storeB);
                 });
-
+                
                 return (
                   <div className="space-y-6">
-                    {/* First: Active trip stores */}
+                    
+                    {/* Show First: Active trip stores */}
                     {storeEntries
                       .filter(([store]) => {
                         const storeId = storesByName[store];
@@ -1502,13 +1534,15 @@ const buildModeAvailableItems =
                       .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
                       .map(([store, storeItems]) => {
                         const storeId = storesByName[store];
-                        const hasActiveTrip = storeId && activeTrips[storeId];
+                        const hasActiveTrip = !!(storeId && activeTrips[storeId]);
 
                         return (
                           <div key={store}>
                             <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">{store} (Active Store)</span>
+                                <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">
+                                  {store} (Active Store)
+                                </span>
                                 <span className="text-sm text-gray-500">
                                   {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
                                 </span>
@@ -1525,111 +1559,164 @@ const buildModeAvailableItems =
                               </span>
                             </h3>
 
-                            <div className="space-y-2">
-                              {storeItems.map((item) => {
-                                const isFavorite = favorites.includes(item.item_name);
-                                const effStore = getEffectiveStore(item.item_name) || store;
-                                const priceData = prices[`${effStore}-${item.item_name}`];
-                                const price = priceData ? parseFloat(priceData.price) : 0;
+                            {/* ONE cohesive store panel, categories are sections inside */}
+                            <div className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm p-3 space-y-4">
+                              {Object.entries(
+                                storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
+                                  const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                  (acc[cat] ||= []).push(item);
+                                  return acc;
+                                }, {})
+                              )
+                                // Sort categories by your preferred rank (e.g. Produce first)
+                                .sort(([catA], [catB]) => {
+                                  const ra = categoryRank(catA);
+                                  const rb = categoryRank(catB);
+                                  if (ra !== rb) return ra - rb;
+                                  return catA.localeCompare(catB);
+                                })
+                                .map(([category, categoryItems]) => {
+                                  // Items within category: unchecked first, then alpha
+                                  categoryItems.sort((a, b) => {
+                                    if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                                    return a.item_name.localeCompare(b.item_name);
+                                  });
 
-                                return (
-                                  <div
-                                    key={item.id}
-                                    className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                      item.checked
-                                        ? 'bg-gray-100 border-gray-300'
-                                        : isFavorite
-                                        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                        : 'bg-white border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={item.checked}
-                                      disabled={mobileMode == 'build'}
-                                      onChange={() => {
-                                        if (mobileMode == 'build') return;
-                                        toggleChecked(item.id);
-                                      }}
-                                      className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
-                                    ></input>
+                                  const categoryTotal = categoryItems.reduce((sum, item) => {
+                                    const effStore = getEffectiveStore(item.item_name) || store;
+                                    const priceData = prices[`${effStore}-${item.item_name}`];
+                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    return sum + price * item.quantity;
+                                  }, 0);
 
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <button
-                                          type="button"
-                                          onClick={() => openEditModal(item)}
-                                          className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                            item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                          }`}
-                                        >
-                                          {item.item_name}
-                                          {item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                        </button>
+                                  return (
+                                    <div key={category} className="space-y-2">
+                                      {/* Category header bar (tinted), NOT a separate card */}
+                                      <div
+                                        className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
+                                          category
+                                        )}`}
+                                      >
+                                        <div className="font-bold text-gray-700">{category}</div>
+                                        <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
                                       </div>
 
-                                      {priceData ? (
-                                        <p className="text-xs text-green-600 mt-0.5">
-                                          {formatMoney(price)}{' '}
-                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
-                                      )}
+                                      {/* Items */}
+                                      <div className="space-y-2">
+                                        {categoryItems.map((item) => {
+                                          const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
+                                          const effStore = getEffectiveStore(item.item_name) || store;
+                                          const priceData = prices[`${effStore}-${item.item_name}`];
+                                          const price = priceData ? parseFloat(priceData.price) : 0;
+
+                                          return (
+                                            <div
+                                              key={item.id}
+                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                                item.checked
+                                                  ? 'bg-gray-100 border-gray-300'
+                                                  : isFavorite
+                                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                                  : 'bg-white border-gray-300 hover:bg-gray-50'
+                                              }`}
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={item.checked}
+                                                disabled={mobileMode == 'build'}
+                                                onChange={() => {
+                                                  if (mobileMode == 'build') return;
+                                                  toggleChecked(item.id);
+                                                }}
+                                                className={`w-5 h-5 rounded transition ${
+                                                  mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                }`}
+                                              />
+
+                                              <div className="flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(item)}
+                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                    }`}
+                                                  >
+                                                    {item.item_name}
+                                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                                  </button>
+                                                </div>
+
+                                                {priceData ? (
+                                                  <p className="text-xs text-green-600 mt-0.5">
+                                                    {formatMoney(price)}{' '}
+                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                    <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                  </p>
+                                                ) : (
+                                                  <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                                )}
+                                              </div>
+
+                                              <div className="hidden md:flex items-center gap-2">
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  −
+                                                </button>
+                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  +
+                                                </button>
+                                              </div>
+
+                                              <button
+                                                onClick={() => openStoreModal(item.item_name)}
+                                                className={`cursor-pointer text-xl ml-1 transition ${
+                                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                    ? 'text-indigo-600 hover:text-indigo-700'
+                                                    : 'text-gray-300 hover:text-gray-500'
+                                                }`}
+                                                title="Swap store"
+                                                aria-label="Swap store"
+                                              >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                  />
+                                                </svg>
+                                              </button>
+
+                                              <button
+                                                onClick={() => removeItem(item.id)}
+                                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                title="Remove from list"
+                                                aria-label="Remove from list"
+                                              >
+                                                ✖️
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* Divider between categories */}
+                                      <div className="h-px bg-gray-200/70 mt-2" />
                                     </div>
-
-                                    <div className="hidden md:flex items-center gap-2">
-                                      <button
-                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                      >
-                                        −
-                                      </button>
-                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                      <button
-                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-
-                                    <button
-                                      onClick={() => openStoreModal(item.item_name)}
-                                      className={`cursor-pointer text-xl ml-1 transition ${
-                                        storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                          ? 'text-indigo-600 hover:text-indigo-700'
-                                          : 'text-gray-300 hover:text-gray-500'
-                                      }`}
-                                      title="Swap store"
-                                      aria-label="Swap store"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                        />
-                                      </svg>
-                                    </button>
-
-                                    <button
-                                      onClick={() => removeItem(item.id)}
-                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                      title="Remove from list"
-                                      aria-label="Remove from list"
-                                    >
-                                      ✖️
-                                    </button>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
                             </div>
                           </div>
                         );
                       })}
+
 
                     {/* Second: Items without price data */}
                     {itemsWithoutPrice.length > 0 && (
