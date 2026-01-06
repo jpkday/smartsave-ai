@@ -590,7 +590,7 @@ function ItemsContent() {
         </div>
 
 <div className="px-2 md:px-6 py-0">
-<div className="max-w-5xl mx-auto space-y-4">
+<div className="max-w-5xl mx-auto space-y-3">
 
  {/* Alphabet Filter */}
  <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-1 md:mb-6">
@@ -630,7 +630,7 @@ function ItemsContent() {
 
         <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-0">
           <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="text-lg font-semibold text-gray-700 mb-2">Search Items</div>
+            <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Search Items</div>
 
             <div className="relative autocomplete-container">
               <div className="flex gap-2">
@@ -702,11 +702,11 @@ function ItemsContent() {
 
               const listClassMobile = 'max-h-[520px] overflow-y-auto';
               const listClassDesktop = 'max-h-[520px] overflow-y-auto';
-              const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto'; // ~10 rows
+              const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto';
 
               return (
                 <>
-                  {/* Filters (top) */}
+                  {/* Filters - All Items and Favorites */}
                   <div className="flex justify-between items-center mb-3">
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
                       {isFavoritesView ? 'Favorites' : 'All Items'}
