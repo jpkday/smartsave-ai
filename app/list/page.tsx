@@ -1385,7 +1385,7 @@ const buildModeAvailableItems =
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                  Your List ({listItems.filter((i) => !i.checked).length} items)
+                  Shopping List ({listItems.filter((i) => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
                   {listItems.some((i) => i.checked) && (
@@ -1831,6 +1831,52 @@ const buildModeAvailableItems =
                 </div>
               </div>
             </div>
+
+        {/* Quick Add to List Widget - Mobile(Store Mode only) */}
+        {(!isMobile || mobileMode === 'store') && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            <h2 className="text-xl font-semibold mb-3 text-gray-800">Quick Add To List</h2>
+            <div className="relative autocomplete-container">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Select existing or add new"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={newItem}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                  onFocus={() => {
+                    const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
+                    const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+                    setAutocompleteItems(available);
+                    setShowAutocomplete(available.length > 0);
+                  }}
+                />
+                <button
+                  onClick={addNewItem}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+                >
+                  Add
+                </button>
+              </div>
+
+              {showAutocomplete && autocompleteItems.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  {autocompleteItems.slice(0, 10).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => selectItem(item)}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
+          </div>
+        )}
 
             {/* Best Store Recommendation - Desktop Only */}
             {sortedStores.length > 0 && (
