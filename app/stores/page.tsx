@@ -151,10 +151,9 @@ export default function Stores() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
-      <div className="max-w-3xl mx-auto">
-        {/* White Header Box */}
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Stores</h1>

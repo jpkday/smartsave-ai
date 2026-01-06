@@ -573,10 +573,9 @@ function ItemsContent() {
   const itemExists = items.some((i) => i.name.toLowerCase() === inputValue.trim().toLowerCase());
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400">
-      <div className="max-w-3xl mx-auto p-1 sm:p-4 pb-24">
-        {/* Top header */}
-        <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 mb-3">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div className="min-w-0 hidden sm:block">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
@@ -586,8 +585,7 @@ function ItemsContent() {
           </div>
         </div>
 
-        {/* Sticky combined search + add */}
-        <div className="sticky top-0 z-10 -mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-3 bg-gradient-to-br from-blue-500 to-green-400">
+        <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-3 bg-gradient-to-br from-blue-500 to-green-400">
           <div className="bg-white rounded-xl shadow-lg p-3">
             <div className="text-lg font-semibold text-gray-700 mb-2">Manage Items</div>
 
