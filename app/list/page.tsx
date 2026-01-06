@@ -7,7 +7,7 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
   id: string; // shopping_list row id
-  item_id: number; // items table id (FK) ✅
+  item_id: number; // items table id (FK)
   item_name: string;
   quantity: number;
   checked: boolean;
