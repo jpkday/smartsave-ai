@@ -54,8 +54,9 @@ export default function ShoppingList() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
   
-
-
+  const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
+  const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
+  
   // const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
   // const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
 
@@ -266,6 +267,7 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalItem, setEditModalItem] = useState<ListItem | null>(null);
   const [editModalName, setEditModalName] = useState('');
+  const [editModalCategory, setEditModalCategory] = useState('');
   const [editModalQuantity, setEditModalQuantity] = useState(1);
   const [editModalStore, setEditModalStore] = useState('');
   const [editModalPrice, setEditModalPrice] = useState('');
@@ -275,6 +277,7 @@ const showTripCompleteToast = (storeName: string) => {
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
+    setEditModalCategory(itemCategoryByName[item.item_name] || 'Other');
     setEditModalQuantity(item.quantity);
     setEditModalFocusField(focusField);
 
@@ -303,91 +306,113 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalOpen(false);
     setEditModalItem(null);
     setEditModalName('');
+    setEditModalCategory('');
     setEditModalQuantity(1);
     setEditModalStore('');
     setEditModalPrice('');
     setEditModalOriginalPrice('');
     setSavingEdit(false);
   };
+  
 
   const saveEdit = async () => {
     if (!editModalItem || !editModalName.trim()) return;
-
+  
     const newName = editModalName.trim();
     const oldName = editModalItem.item_name;
-
+  
     setSavingEdit(true);
-
+  
     try {
+      // 1) Rename + category update (items table)
       if (newName !== oldName) {
-        const { data: existingItem } = await supabase
+        const { data: existingItem, error: existingErr } = await supabase
           .from('items')
           .select('id')
           .eq('name', newName)
           .eq('user_id', SHARED_USER_ID)
           .maybeSingle();
-
+  
+        if (existingErr) throw existingErr;
+  
         if (existingItem && existingItem.id !== editModalItem.item_id) {
           alert('An item with this name already exists.');
           setSavingEdit(false);
           return;
         }
-
+  
         const { error: itemError } = await supabase
           .from('items')
-          .update({ name: newName })
+          .update({ name: newName, category: editModalCategory || 'Other' })
           .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
+  
         if (itemError) throw itemError;
-
+  
         const { error: listError } = await supabase
           .from('shopping_list')
           .update({ item_name: newName })
           .eq('item_id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
+  
         if (listError) throw listError;
-
-        const { error: priceError } = await supabase
+  
+        const { error: phError } = await supabase
           .from('price_history')
           .update({ item_name: newName })
           .eq('item_id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-        if (priceError) throw priceError;
+  
+        if (phError) throw phError;
+      } else {
+        // no rename — just update category
+        const { error: catErr } = await supabase
+          .from('items')
+          .update({ category: editModalCategory || 'Other' })
+          .eq('id', editModalItem.item_id)
+          .eq('user_id', SHARED_USER_ID);
+  
+        if (catErr) throw catErr;
       }
-
+  
+      // 2) Quantity update
       if (editModalQuantity !== editModalItem.quantity) {
         const { error: qtyError } = await supabase
           .from('shopping_list')
           .update({ quantity: editModalQuantity })
           .eq('id', editModalItem.id)
           .eq('user_id', SHARED_USER_ID);
+  
         if (qtyError) throw qtyError;
       }
-
+  
+      // 3) Price insert
       if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
         const priceNum = parseFloat(editModalPrice);
         if (!isNaN(priceNum) && priceNum > 0) {
           const storeId = storesByName[editModalStore];
           if (!storeId) throw new Error('Store not found');
-
+  
+          const recordedDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  
           const { error: priceError } = await supabase.from('price_history').insert({
             item_id: editModalItem.item_id,
-            item_name: newName,
+            item_name: newName, // safe (same as oldName if no rename)
             store_id: storeId,
             store: editModalStore,
             price: priceNum.toFixed(2),
             user_id: SHARED_USER_ID,
             household_code: householdCode,
-            recorded_date: new Date().toISOString(),
+            recorded_date: recordedDate,
           });
-
+  
           if (priceError) throw priceError;
-
+  
           setLastUsedStore(editModalStore);
           localStorage.setItem('last_price_store', editModalStore);
         }
       }
-
+  
       await loadData();
       closeEditModal();
     } catch (error) {
@@ -396,6 +421,7 @@ const showTripCompleteToast = (storeName: string) => {
       setSavingEdit(false);
     }
   };
+  
 
   // =========================
   // Store picker modal state
@@ -521,9 +547,15 @@ const showTripCompleteToast = (storeName: string) => {
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
-      .select('id, name, is_favorite')
+      .select('id, name, is_favorite, category')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
+
+      if (itemsData) {
+        const map: Record<string, string> = {};
+        itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
+        setItemCategoryByName(map);
+      }
 
     if (itemsError) console.error('Error loading items:', itemsError);
 
@@ -2070,57 +2102,102 @@ const buildModeAvailableItems =
         {editModalOpen && editModalItem && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-800">Edit Item</h3>
+              <div className="flex justify-between items-start mb-5">
+              <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Edit Item
+              </h3>
                 <button
                   onClick={closeEditModal}
-                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                  aria-label="Close"
                 >
                   ✖️
                 </button>
               </div>
 
               <div className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">Name</label>
-                  <input
-                    autoFocus={editModalFocusField === 'name'}
-                    type="text"
-                    value={editModalName}
-                    onChange={(e) => setEditModalName(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200"
-                  />
+                {/* Details Section */}
+                <div className="rounded-2xl border border-gray-100 bg-indigo-100 p-4">
+
+
+                  <div className="space-y-3">
+                    {/* Name */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">Name</label>
+                      <input
+                        autoFocus={editModalFocusField === 'name'}
+                        type="text"
+                        value={editModalName}
+                        onChange={(e) => setEditModalName(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                      />
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">Category</label>
+                      <select
+                        value={editModalCategory}
+                        onChange={(e) => setEditModalCategory(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                      >
+                        {CATEGORY_OPTIONS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Quantity */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                      <input
+                        type="number"
+                        min={0.01}
+                        step={0.01}
+                        value={editModalQuantity}
+                        onChange={(e) => setEditModalQuantity(Number(e.target.value))}
+                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Quantity */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={editModalQuantity}
-                    onChange={(e) => setEditModalQuantity(Number(e.target.value))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl"
-                  />
-                </div>
+                {/* Price Section */}
+                <div className="rounded-2xl border border-blue-100 bg-blue-100 p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-semibold text-gray-700">
+                      Latest Price
+                    </div>
+                    {!!editModalStore && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                        {editModalStore}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Price */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    Latest Price ({editModalStore || 'Store'})
-                  </label>
-                  <input
-                    autoFocus={editModalFocusField === 'price'}
-                    type="number"
-                    step="0.01"
-                    value={editModalPrice}
-                    onChange={(e) => setEditModalPrice(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl"
-                  />
+                  <div className="mt-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-semibold">$</span>
+                    <input
+                      autoFocus={editModalFocusField === 'price'}
+                      type="number"
+                      step="0.01"
+                      value={editModalPrice}
+                      onChange={(e) => setEditModalPrice(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  {editModalOriginalPrice && editModalPrice !== editModalOriginalPrice && (
+                    <p className="text-xs text-gray-700 mt-2">
+                      Was <span className="font-semibold">${editModalOriginalPrice}</span>
+                    </p>
+                  )}
                 </div>
               </div>
-
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={closeEditModal}
@@ -2131,7 +2208,7 @@ const buildModeAvailableItems =
                 <button
                   onClick={saveEdit}
                   disabled={savingEdit}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {savingEdit ? 'Saving…' : 'Save'}
                 </button>
