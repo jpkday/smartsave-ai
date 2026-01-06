@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
-
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
@@ -13,18 +12,15 @@ interface ListItem {
   quantity: number;
   checked: boolean;
 }
-
 interface ItemRow {
   id: number;
   name: string;
   is_favorite: boolean | null;
 }
-
 interface PriceData {
   price: string;
   date: string;
 }
-
 type StoreChoice = 'AUTO' | string;
 
 export default function ShoppingList() {
@@ -32,11 +28,9 @@ export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
 
-
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  //const [recentItems, setRecentItems] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
 
@@ -52,14 +46,16 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
-  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price'>('name');
-  
+  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
+
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
   const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
+  const itemsWithoutCategory = listItems.filter(item => {
+    const cat = itemCategoryByName[item.item_name];
+    return !cat || cat === 'Other' || cat.trim() === '';
+  });
   
-  // const recentItemSet = new Set(recentItems.map((s) => s.toLowerCase()));
-  // const favoriteSet = new Set(favorites.map((s) => s.toLowerCase()));
-
+  
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -274,7 +270,7 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const openEditModal = (item: ListItem, focusField: 'name' | 'price' = 'name') => {
+  const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
     setEditModalCategory(itemCategoryByName[item.item_name] || 'Other');
@@ -1667,6 +1663,20 @@ const buildModeAvailableItems =
                                   >
                                     Add Price
                                   </button>
+                                  {(() => {
+                                    const cat = itemCategoryByName[item.item_name];
+                                    const missing = !cat || cat === 'Other' || cat.trim() === '';
+                                    if (!missing) return null;
+
+                                    return (
+                                      <button
+                                        onClick={() => openEditModal(item, 'category')}
+                                        className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-2"
+                                      >
+                                        Add Category
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
 
                                 <button
@@ -2140,6 +2150,7 @@ const buildModeAvailableItems =
                     <div>
                       <label className="text-sm font-semibold text-gray-700">Category</label>
                       <select
+                        autoFocus={editModalFocusField === 'category'}
                         value={editModalCategory}
                         onChange={(e) => setEditModalCategory(e.target.value)}
                         className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
