@@ -61,6 +61,10 @@ function ItemsContent() {
   // Desktop inline edit
   const editRowRef = useRef<HTMLDivElement | null>(null);
 
+  const [selectItemsFilter, setSelectItemsFilter] =
+  useState<'ALL' | 'FAVORITES'>('ALL');
+
+
   useEffect(() => {
     loadItems();
   }, []);
@@ -575,7 +579,7 @@ function ItemsContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
+        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-3">
           <div className="flex justify-between items-start">
             <div className="min-w-0 hidden sm:block">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
@@ -585,9 +589,48 @@ function ItemsContent() {
           </div>
         </div>
 
-        <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-3 bg-gradient-to-br from-blue-500 to-green-400">
+<div className="px-2 md:px-6 py-0">
+<div className="max-w-5xl mx-auto space-y-4">
+
+ {/* Alphabet Filter */}
+ <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-1 md:mb-6">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
+            <button
+              type="button"
+              onClick={() => setFilterLetter('All')}
+              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                filterLetter === 'All'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+
+            {alphabet
+              .filter((letter) => items.some((it) => it.name.toUpperCase().startsWith(letter)))
+              .map((letter) => (
+                <button
+                  key={letter}
+                  type="button"
+                  onClick={() => toggleLetter(letter)}
+                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
+                    filterLetter === letter
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {letter}
+                </button>
+              ))}
+          </div>
+        </div>
+
+      {/* SEARCH ITEMS MODAL */}
+
+        <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-0">
           <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="text-lg font-semibold text-gray-700 mb-2">Manage Items</div>
+            <div className="text-lg font-semibold text-gray-700 mb-2">Search Items</div>
 
             <div className="relative autocomplete-container">
               <div className="flex gap-2">
@@ -608,7 +651,6 @@ function ItemsContent() {
                 </button>
               </div>
 
-              {/* Autocomplete dropdown */}
               {showAutocomplete && autocompleteItems.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                   {autocompleteItems.slice(0, 10).map((item) => {
@@ -643,89 +685,87 @@ function ItemsContent() {
           </div>
         </div>
 
-        {/* Alphabet Filter */}
-        <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
-          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-            <button
-              type="button"
-              onClick={() => setFilterLetter('All')}
-              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                filterLetter === 'All'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-
-            {alphabet
-              .filter((letter) => items.some((it) => it.name.toUpperCase().startsWith(letter)))
-              .map((letter) => (
-                <button
-                  key={letter}
-                  type="button"
-                  onClick={() => toggleLetter(letter)}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                    filterLetter === letter
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {letter}
-                </button>
-              ))}
-          </div>
-        </div>
-
-{/* List */}
-<div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
+        {/* ALL ITEMS MODAL */}
+        <div className="bg-white rounded-xl shadow-lg p-3 pt-2 sm:p-4">
           {loading ? (
             <div className="text-gray-600 text-sm">Loading items…</div>
           ) : (
-            <>
-              {/* Favorites */}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                  <span className="text-2xl">⭐</span>
-                  Favorites ({favorites.length})
-                </h2>
-              </div>
+            (() => {
+              const isFavoritesView = selectItemsFilter === 'FAVORITES';
 
-              {favorites.length === 0 ? (
-                <div className="text-sm text-gray-500 mb-4 italic">
-                  Favorite your high-frequency items to keep them on top.
-                </div>
-              ) : (
+              // One unified list:
+              // - ALL: favorites + regular, but sorted alphabetically (no favorites-on-top)
+              // - FAVORITES: favorites only
+              const unifiedItems = (isFavoritesView ? favorites : [...favorites, ...regular])
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+              const listClassMobile = 'max-h-[520px] overflow-y-auto';
+              const listClassDesktop = 'max-h-[520px] overflow-y-auto';
+              const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto'; // ~10 rows
+
+              return (
                 <>
-                  <div className="md:hidden space-y-2 mb-4 max-h-55 overflow-y-auto">
-                    {favorites.map((item) => renderMobileRow(item, true))}
+                  {/* Filters (top) */}
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                      {isFavoritesView ? 'Favorites' : 'All Items'}
+                    </h2>
+                    <span className="text-xs text-gray-500">{unifiedItems.length} shown</span>
                   </div>
-                  <div className="hidden md:block space-y-2 mb-4 max-h-55 overflow-y-auto">
-                    {favorites.map((item) => renderDesktopRow(item, true))}
-                  </div>
-                </>
-              )}
 
-              {/* All items */}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold text-gray-700">
-                  All Items ({regular.length})
-                </h2>
-              </div>
+                  <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+                    <button
+                      onClick={() => setSelectItemsFilter('ALL')}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                        selectItemsFilter === 'ALL'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      All Items
+                    </button>
 
-              {regular.length === 0 ? (
-                <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
-              ) : (
-                <>
-                  <div className="md:hidden space-y-2 max-h-110 overflow-y-auto">
-                    {regular.map((item) => renderMobileRow(item, false))}
+                    <button
+                      onClick={() => setSelectItemsFilter('FAVORITES')}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+                        selectItemsFilter === 'FAVORITES'
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+                      }`}
+                    >
+                      Favorites
+                    </button>
                   </div>
-                  <div className="hidden md:block space-y-2 max-h-110 overflow-y-auto">
-                    {regular.map((item) => renderDesktopRow(item, false))}
-                  </div>
+
+                  {/* Empty states */}
+                  {isFavoritesView && favorites.length === 0 ? (
+                    <div className="text-sm text-gray-500 italic">
+                      Favorite your high-frequency items to keep them on top.
+                    </div>
+                  ) : !isFavoritesView && unifiedItems.length === 0 ? (
+                    <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
+                  ) : (
+                    <>
+                      {/* ONE list (mobile + desktop), preserves favorite styling + star behavior */}
+                      <div className={`md:hidden space-y-2 ${LIST_MAX}`}>
+                        {unifiedItems.map((item) => {
+                          const isFavorite = favorites.some((f) => f.name === item.name);
+                          return renderMobileRow(item, isFavorite);
+                        })}
+                      </div>
+
+                      <div className={`hidden md:block space-y-2 ${LIST_MAX}`}>
+                        {unifiedItems.map((item) => {
+                          const isFavorite = favorites.includes(item);
+                          return renderDesktopRow(item, isFavorite);
+                        })}
+                      </div>
+                    </>
+                  )}
                 </>
-              )}
-            </>
+              );
+            })()
           )}
         </div>
       </div>
@@ -799,6 +839,8 @@ function ItemsContent() {
         </div>
       )}
     </div>
+  </div>
+</div>
   );
 }
 
