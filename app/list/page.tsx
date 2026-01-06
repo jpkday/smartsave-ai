@@ -28,6 +28,7 @@ export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
 
+
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -269,6 +270,7 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalPrice, setEditModalPrice] = useState('');
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name): [];
 
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
     setEditModalItem(item);
@@ -279,7 +281,7 @@ const showTripCompleteToast = (storeName: string) => {
 
     const effStore = getEffectiveStore(item.item_name);
     if (effStore) {
-      setEditModalStore(effStore);
+      setEditModalStore(effStore || lastUsedStore || '');
       const priceData = prices[`${effStore}-${item.item_name}`];
       if (priceData) {
         setEditModalPrice(priceData.price);
@@ -310,7 +312,7 @@ const showTripCompleteToast = (storeName: string) => {
     setSavingEdit(false);
   };
   
-
+// SAVE EDIT FUNCTION
   const saveEdit = async () => {
     if (!editModalItem || !editModalName.trim()) return;
   
@@ -511,6 +513,30 @@ const showTripCompleteToast = (storeName: string) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdCode]);
+
+  // IN EDIT ITEM, WHEN STORE SELECTED, UPDATE PRICE IMMEDIATELY
+  useEffect(() => {
+    if (!editModalOpen || !editModalItem) return;
+  
+    // No store selected → clear price context
+    if (!editModalStore) {
+      setEditModalOriginalPrice('');
+      setEditModalPrice('');
+      return;
+    }
+  
+    const key = `${editModalStore}-${editModalItem.item_name}`;
+    const priceData = prices[key];
+  
+    if (priceData) {
+      setEditModalPrice(priceData.price);
+      setEditModalOriginalPrice(priceData.price);
+    } else {
+      setEditModalPrice('');
+      setEditModalOriginalPrice('');
+    }
+  }, [editModalStore, editModalOpen, editModalItem, prices]);
+  
 
   const loadData = async () => {
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
@@ -2127,12 +2153,10 @@ const buildModeAvailableItems =
                   ✖️
                 </button>
               </div>
-
+              
               <div className="space-y-4">
                 {/* Details Section */}
                 <div className="rounded-2xl border border-gray-100 bg-indigo-100 p-4">
-
-
                   <div className="space-y-3">
                     {/* Name */}
                     <div>
@@ -2176,23 +2200,34 @@ const buildModeAvailableItems =
                   </div>
                 </div>
 
-                {/* Price Section */}
+                {/* Store Selection */}
+
                 <div className="rounded-2xl border border-blue-100 bg-blue-100 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <label className="text-sm font-semibold text-gray-700">Store</label>
-                      <select
-                        value={editModalStore}
-                        onChange={(e) => setEditModalStore(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"                      >
-                        <option value="">Select a store</option>
-                        {stores.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                    <label className="text-sm font-semibold text-gray-700">Store</label>
+                    <select
+                      value={editModalStore}
+                      onChange={(e) => {
+                        const newStore = e.target.value;
+                        setEditModalStore(newStore);
+
+                        // 🔁 store preference should follow store dropdown
+                        if (editModalItem && newStore) {
+                          setItemStorePreference(editModalItem.item_name, newStore);
+                        }
+                      }}
+                      className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
+                    >
+                      <option value="">Select a store</option>
+                      {stores.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                     </div>
                   </div>
 
+                {/* Price Section */}
                   <div className="mt-1 relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-semibold">$</span>
                     <input
