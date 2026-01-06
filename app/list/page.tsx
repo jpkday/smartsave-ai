@@ -289,7 +289,7 @@ const showTripCompleteToast = (storeName: string) => {
         setEditModalOriginalPrice('');
       }
     } else {
-      setEditModalStore(lastUsedStore || stores[0] || '');
+      setEditModalStore('');
       setEditModalPrice('');
       setEditModalOriginalPrice('');
     }
@@ -2179,14 +2179,18 @@ const buildModeAvailableItems =
                 {/* Price Section */}
                 <div className="rounded-2xl border border-blue-100 bg-blue-100 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-semibold text-gray-700">
-                      Latest Price
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">Store</label>
+                      <select
+                        value={editModalStore}
+                        onChange={(e) => setEditModalStore(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"                      >
+                        <option value="">Select a store</option>
+                        {stores.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </div>
-                    {!!editModalStore && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                        {editModalStore}
-                      </span>
-                    )}
                   </div>
 
                   <div className="mt-1 relative">
