@@ -295,7 +295,7 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalItem, setEditModalItem] = useState<ListItem | null>(null);
   const [editModalName, setEditModalName] = useState('');
   const [editModalCategory, setEditModalCategory] = useState('');
-  const [editModalQuantity, setEditModalQuantity] = useState(1);
+  const [editModalQuantity, setEditModalQuantity] = useState<string>('1');
   const [editModalStore, setEditModalStore] = useState('');
   const [editModalPrice, setEditModalPrice] = useState('');
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
@@ -312,7 +312,7 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
     setEditModalCategory(itemCategoryByName[item.item_name] || 'Other');
-    setEditModalQuantity(item.quantity);
+    setEditModalQuantity(String(item.quantity ?? 1));
     setEditModalFocusField(focusField);
     setEditModalPriceDirty(false);
     setNeedsStoreHint(false);
@@ -343,7 +343,7 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalItem(null);
     setEditModalName('');
     setEditModalCategory('');
-    setEditModalQuantity(1);
+    setEditModalQuantity('1');
     setEditModalStore('');
     setEditModalPrice('');
     setEditModalOriginalPrice('');
@@ -414,15 +414,20 @@ const saveEdit = async () => {
     }
 
     // 2) Quantity update
-    if (editModalQuantity !== editModalItem.quantity) {
-      const { error: qtyError } = await supabase
-        .from('shopping_list')
-        .update({ quantity: editModalQuantity })
-        .eq('id', editModalItem.id)
-        .eq('user_id', SHARED_USER_ID);
+      const qtyNum = parseFloat(editModalQuantity || '0');
+      const a = Math.round((qtyNum || 0) * 1000) / 1000;
+      const b = Math.round((editModalItem.quantity || 0) * 1000) / 1000;
 
-      if (qtyError) throw qtyError;
-    }
+      if (!isNaN(qtyNum) && qtyNum !== editModalItem.quantity) {
+        const { error: qtyError } = await supabase
+          .from('shopping_list')
+          .update({ quantity: qtyNum })
+          .eq('id', editModalItem.id)
+          .eq('user_id', SHARED_USER_ID);
+      
+        if (qtyError) throw qtyError;
+      }
+    
 
     // ✅ GUARD: Price changed but no store selected → show modal instead of crashing
     const priceChanged = !!editModalPrice && editModalPrice !== editModalOriginalPrice;
@@ -1776,7 +1781,11 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                     }`}
                                                   >
                                                     {item.item_name}
-                                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                                    {item.quantity > 1 && (
+                                                      <span className="ml-1 font-semibold text-indigo-600">
+                                                        (Qty: {item.quantity})
+                                                      </span>
+                                                    )}
                                                   </button>
                                                 </div>
 
@@ -1786,8 +1795,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                         {formatMoney(price)}{' '}
                                                         {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
                                                         {priceData?.date ? (
-  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-) : null}                                                      </p>
+                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                        ) : null}                                                      
+                                                      </p>
                                                   
                                                 {/* Add Category button */}
                                                     {missingCategory && (
@@ -2067,8 +2077,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           {formatMoney(price)}{' '}
                                           {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
                                           {priceData?.date ? (
-  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-) : null}                                        </p>
+                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                          ) : null}                                                      
+                                        </p>
                                      
                                   {/* Add Category button */}
                                       {missingCategory && (
@@ -2245,8 +2256,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         {item.item_name}: {formatMoney(price)}
                                         {item.quantity > 1 && ` × ${item.quantity}`}
                                         {priceData?.date ? (
-  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-) : null}                                        {classification && (
+                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                        ) : null}                                        
+                                        {classification && (
                                           <span className={`ml-1 font-semibold ${classification.color}`}>
                                             {classification.emoji} {classification.label}
                                           </span>
@@ -2445,7 +2457,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                   closeStoreModal();
                                   setEditModalItem(item);
                                   setEditModalName(item.item_name);
-                                  setEditModalQuantity(item.quantity);
+                                  setEditModalQuantity(String(item.quantity ?? 1));
                                   setEditModalStore(store);
                                   setEditModalPrice('');
                                   setEditModalOriginalPrice('');
@@ -2492,7 +2504,15 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
               
               <div className="space-y-4">
                 {/* Details Section */}
-                <div className="rounded-2xl border border-gray-100 bg-indigo-100 p-4">
+                  <div
+                    className={`rounded-2xl p-4 border transition-colors ${
+                      getCategoryColor(editModalCategory)
+                        .split(' ')
+                        .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
+                        .join(' ')
+                    }`}
+                  >
+
                   <div className="space-y-3">
                     {/* Name */}
                     <div>
@@ -2521,28 +2541,35 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       </select>
                     </div>
 
-                    {/* Quantity */}
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                      <input
-                        type="number"
-                        min={0.01}
-                        step={0.01}
-                        value={editModalQuantity}
-                        onChange={(e) => setEditModalQuantity(Number(e.target.value))}
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white"
-                      />
-                    </div>
-                  </div>
+                {/* Quantity */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="1"
+                    value={editModalQuantity}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*\.?\d*$/.test(val)) {
+                        setEditModalQuantity(val);
+                      }
+                    }}
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
+                              font-semibold text-gray-800
+                              focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+                  />
                 </div>
+              </div>
+            </div>
 
                 {/* Price Section */}
-                <div className="rounded-2xl border border-blue-100 bg-blue-100 p-4 shadow-sm">
+                <div className="rounded-2xl border border-blue-300 bg-blue-100 p-4 shadow-sm">
                   <div className="space-y-3">
                     <div>
                     <label className="text-sm font-semibold text-gray-700">Price</label>
                     <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
-                      <span className="text-gray-700 font-semibold mr-1">$</span>
+                      <span className="text-gray-600 font-semibold mr-1">$</span>
 
                       <input
                         autoFocus={editModalFocusField === 'price'}
@@ -2576,7 +2603,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                             }
                           }
                         }}                        
-                        className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                        className="w-full text-right font-semibold text-gray-600 focus:outline-none"
                         aria-label="Price"
                       />
                     </div>
@@ -2618,7 +2645,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                     </p>
                   )}
                 </div>
-              </div>
+              
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={closeEditModal}
@@ -2636,7 +2663,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
               </div>
             </div>
           </div>
-        )}
+        )
         
 {/* ========================= */}
 {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
@@ -2692,6 +2719,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
       </div>
     </div>
   </div>
+)}
+</div>
 )}
 
 
