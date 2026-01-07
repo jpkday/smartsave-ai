@@ -47,6 +47,9 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
+  const storeSelectRef = useRef<HTMLSelectElement | null>(null);
+  const [needsStoreHint, setNeedsStoreHint] = useState(false);
+  const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
 
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
   const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
@@ -344,113 +347,122 @@ const showTripCompleteToast = (storeName: string) => {
   };
   
 // SAVE EDIT FUNCTION
-  const saveEdit = async () => {
-    if (!editModalItem || !editModalName.trim()) return;
-  
-    const newName = editModalName.trim();
-    const oldName = editModalItem.item_name;
-  
-    setSavingEdit(true);
-  
-    try {
-      // 1) Rename + category update (items table)
-      if (newName !== oldName) {
-        const { data: existingItem, error: existingErr } = await supabase
-          .from('items')
-          .select('id')
-          .eq('name', newName)
-          .eq('user_id', SHARED_USER_ID)
-          .maybeSingle();
-  
-        if (existingErr) throw existingErr;
-  
-        if (existingItem && existingItem.id !== editModalItem.item_id) {
-          alert('An item with this name already exists.');
-          setSavingEdit(false);
-          return;
-        }
-  
-        const { error: itemError } = await supabase
-          .from('items')
-          .update({ name: newName, category: editModalCategory || 'Other' })
-          .eq('id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
-  
-        if (itemError) throw itemError;
-  
-        const { error: listError } = await supabase
-          .from('shopping_list')
-          .update({ item_name: newName })
-          .eq('item_id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
-  
-        if (listError) throw listError;
-  
-        const { error: phError } = await supabase
-          .from('price_history')
-          .update({ item_name: newName })
-          .eq('item_id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
-  
-        if (phError) throw phError;
-      } else {
-        // no rename — just update category
-        const { error: catErr } = await supabase
-          .from('items')
-          .update({ category: editModalCategory || 'Other' })
-          .eq('id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
-  
-        if (catErr) throw catErr;
+const saveEdit = async () => {
+  if (!editModalItem || !editModalName.trim()) return;
+
+  const newName = editModalName.trim();
+  const oldName = editModalItem.item_name;
+
+  setSavingEdit(true);
+
+  try {
+    // 1) Rename + category update (items table)
+    if (newName !== oldName) {
+      const { data: existingItem, error: existingErr } = await supabase
+        .from('items')
+        .select('id')
+        .eq('name', newName)
+        .eq('user_id', SHARED_USER_ID)
+        .maybeSingle();
+
+      if (existingErr) throw existingErr;
+
+      if (existingItem && existingItem.id !== editModalItem.item_id) {
+        alert('An item with this name already exists.');
+        setSavingEdit(false);
+        return;
       }
-  
-      // 2) Quantity update
-      if (editModalQuantity !== editModalItem.quantity) {
-        const { error: qtyError } = await supabase
-          .from('shopping_list')
-          .update({ quantity: editModalQuantity })
-          .eq('id', editModalItem.id)
-          .eq('user_id', SHARED_USER_ID);
-  
-        if (qtyError) throw qtyError;
-      }
-  
-      // 3) Price insert
-      if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
-        const priceNum = parseFloat(editModalPrice);
-        if (!isNaN(priceNum) && priceNum > 0) {
-          const storeId = storesByName[editModalStore];
-          if (!storeId) throw new Error('Store not found');
-  
-          const recordedDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  
-          const { error: priceError } = await supabase.from('price_history').insert({
-            item_id: editModalItem.item_id,
-            item_name: newName, // safe (same as oldName if no rename)
-            store_id: storeId,
-            store: editModalStore,
-            price: priceNum.toFixed(2),
-            user_id: SHARED_USER_ID,
-            household_code: householdCode,
-            recorded_date: recordedDate,
-          });
-  
-          if (priceError) throw priceError;
-  
-          setLastUsedStore(editModalStore);
-          localStorage.setItem('last_price_store', editModalStore);
-        }
-      }
-  
-      await loadData();
-      closeEditModal();
-    } catch (error) {
-      console.error('Error saving edit:', error);
-      alert('Failed to save changes. Check your connection and try again.');
-      setSavingEdit(false);
+
+      const { error: itemError } = await supabase
+        .from('items')
+        .update({ name: newName, category: editModalCategory || 'Other' })
+        .eq('id', editModalItem.item_id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (itemError) throw itemError;
+
+      const { error: listError } = await supabase
+        .from('shopping_list')
+        .update({ item_name: newName })
+        .eq('item_id', editModalItem.item_id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (listError) throw listError;
+
+      const { error: phError } = await supabase
+        .from('price_history')
+        .update({ item_name: newName })
+        .eq('item_id', editModalItem.item_id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (phError) throw phError;
+    } else {
+      // no rename — just update category
+      const { error: catErr } = await supabase
+        .from('items')
+        .update({ category: editModalCategory || 'Other' })
+        .eq('id', editModalItem.item_id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (catErr) throw catErr;
     }
-  };
-  
+
+    // 2) Quantity update
+    if (editModalQuantity !== editModalItem.quantity) {
+      const { error: qtyError } = await supabase
+        .from('shopping_list')
+        .update({ quantity: editModalQuantity })
+        .eq('id', editModalItem.id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (qtyError) throw qtyError;
+    }
+
+    // ✅ GUARD: Price changed but no store selected → show modal instead of crashing
+    const priceChanged = !!editModalPrice && editModalPrice !== editModalOriginalPrice;
+    const storeMissing = !editModalStore || editModalStore.trim() === '';
+    if (priceChanged && storeMissing) {
+      setSavingEdit(false);
+      setStoreRequiredOpen(true);
+      return;
+    }
+
+    // 3) Price insert
+    if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
+      const priceNum = parseFloat(editModalPrice);
+      if (!isNaN(priceNum) && priceNum > 0) {
+        const storeId = storesByName[editModalStore];
+        if (!storeId) throw new Error('Store not found');
+
+        const recordedDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+        const { error: priceError } = await supabase.from('price_history').insert({
+          item_id: editModalItem.item_id,
+          item_name: newName, // safe (same as oldName if no rename)
+          store_id: storeId,
+          store: editModalStore,
+          price: priceNum.toFixed(2),
+          user_id: SHARED_USER_ID,
+          household_code: householdCode,
+          recorded_date: recordedDate,
+        });
+
+        if (priceError) throw priceError;
+
+        setLastUsedStore(editModalStore);
+        localStorage.setItem('last_price_store', editModalStore);
+      }
+    }
+
+    await loadData();
+    closeEditModal();
+  } catch (error) {
+    console.error('Error saving edit:', error);
+    alert('Failed to save changes. Check your connection and try again.');
+    setSavingEdit(false);
+  }
+};
+
 
   // =========================
   // Store picker modal state
@@ -2522,13 +2534,11 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       <input
                         autoFocus={editModalFocusField === 'price'}
                         type="text"
-                        inputMode="decimal"              // ✅ numeric keypad on mobile
+                        inputMode="decimal"
                         placeholder="0.00"
-                        value={editModalPrice || ''}     // ✅ keep controlled input
+                        value={editModalPrice || ''}
                         onChange={(e) => {
-                          // ✅ Same behavior as handlePriceChange in Code Block 2
                           const digits = e.target.value.replace(/\D/g, '');
-
                           let priceValue = '';
                           if (digits !== '') {
                             const cents = parseInt(digits, 10);
@@ -2537,33 +2547,54 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                           setEditModalPrice(priceValue);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (!editModalStore) {
+                              e.preventDefault();
+                        
+                              // show friendly guidance
+                              setNeedsStoreHint(true);
+                        
+                              // guide user to store selection
+                              setTimeout(() => {
+                                storeSelectRef.current?.focus();
+                              }, 50);
+                            }
+                          }
+                        }}                        
                         className="w-full text-right font-semibold text-gray-800 focus:outline-none"
                         aria-label="Price"
                       />
                     </div>
                   </div>
 
-                {/* Store Selection */}
+                    {/* Store Selection */}
                     <div>
-                    <label className="text-sm font-semibold text-gray-700">Store</label>
-                    <select
-                      value={editModalStore}
-                      onChange={(e) => {
-                        const newStore = e.target.value;
-                        setEditModalStore(newStore);
-
-                        // 🔁 store preference should follow store dropdown
-                        if (editModalItem && newStore) {
-                          setItemStorePreference(editModalItem.item_name, newStore);
-                        }
-                      }}
-                      className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
-                    >
-                      <option value="">Select a store</option>
-                      {stores.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      <label className="text-sm font-semibold text-gray-700">Store</label>
+                      <select
+                        ref={storeSelectRef}
+                        value={editModalStore}
+                        onChange={(e) => {
+                          const newStore = e.target.value;
+                          setEditModalStore(newStore);
+                        
+                          // clear hint once resolved
+                          if (newStore) setNeedsStoreHint(false);
+                        
+                          if (editModalItem && newStore) {
+                            setItemStorePreference(editModalItem.item_name, newStore);
+                          }
+                        }}
+                        
+                        className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
+                      >
+                        <option value="">Select a store</option>
+                        {stores.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -2592,6 +2623,63 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
             </div>
           </div>
         )}
+        
+{/* ========================= */}
+{/* EDIT MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
+{/* ========================= */}
+{storeRequiredOpen && (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/70"
+      onClick={() => setStoreRequiredOpen(false)}
+    />
+
+    {/* Card */}
+    <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+      <div className="flex items-start justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
+        <p className="text-sm text-gray-600 mt-1">
+          You found{' '}
+          <span className="font-semibold text-gray-900">
+            {editModalName}
+          </span>
+          {' for'}
+          <span className="font-semibold text-gray-900">
+            {' $'}{editModalPrice}
+          </span>
+          ? Awesome!
+          Let me know what store that applies to.
+        </p>
+      </div>
+
+        <button
+          onClick={() => setStoreRequiredOpen(false)}
+          className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+          aria-label="Close"
+          type="button"
+        >
+          ✖️
+        </button>
+      </div>
+
+      <div className="flex justify-end gap-2 mt-6">
+        <button
+          type="button"
+          onClick={() => {
+            setStoreRequiredOpen(false);
+            setTimeout(() => storeSelectRef.current?.focus(), 50);
+          }}
+          className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+        >
+          Choose Store
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
         {/* =========================
         TOAST NOTIFICATION
