@@ -1178,14 +1178,17 @@ const buildModeAllCount = buildModeAvailableAll.length;
 const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id)).length;
 const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
 
+const favoriteNameSet = new Set(favorites);
+
 const buildModeAvailableItems =
   selectItemsFilter === 'FAVORITES'
-    ? buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id))
+    ? buildModeAvailableAll.filter((it) => favoriteNameSet.has(it.name))
     : selectItemsFilter === 'RECENT'
     ? buildModeAvailableAll
         .filter((it) => recentRank.has(it.id))
         .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity))
     : buildModeAvailableAll;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -1320,78 +1323,129 @@ HIDDEN UNTIL WE REFACTOR MODALS
   </div>
 )}
 
-        {/* Build Mode: Select Items (Mobile Only) */}
-        {isMobile && mobileMode === 'build' && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-              <span className="text-xs text-gray-500">{buildModeAvailableItems.length} available</span>
-            </div>
+{/* Build Mode: Select Items (Mobile Only) */}
+{isMobile && mobileMode === 'build' && (
+  <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+    <div className="flex justify-between items-center mb-2">
+      <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
+      <span className="text-xs text-gray-500">
+        {buildModeAvailableItems.length} available
+      </span>
+    </div>
 
-            <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+    {/* Filters (unchanged) */}
+    <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+      <button
+        onClick={() => setSelectItemsFilter('ALL')}
+        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+          selectItemsFilter === 'ALL'
+            ? 'bg-blue-600 text-white border-blue-600'
+            : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
+        }`}
+      >
+        All Items
+      </button>
+
+      <button
+        onClick={() => setSelectItemsFilter('FAVORITES')}
+        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+          selectItemsFilter === 'FAVORITES'
+            ? 'bg-amber-600 text-white border-amber-600'
+            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+        }`}
+      >
+        Favorites
+      </button>
+
+      <button
+        onClick={() => setSelectItemsFilter('RECENT')}
+        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
+          selectItemsFilter === 'RECENT'
+            ? 'bg-rose-600 text-white border-rose-600'
+            : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
+        }`}
+      >
+        Recent
+      </button>
+    </div>
+
+    {buildModeAvailableItems.length === 0 ? (
+      <div className="text-sm text-gray-500">
+        All items added for this letter.
+      </div>
+    ) : (
+      <div className="space-y-2 max-h-114 overflow-y-auto">
+        {buildModeAvailableItems.slice(0, 250).map((it: ItemRow) => {
+          const isFavorite = favorites.includes(it.name);
+
+          const toggleFavorite = async (itemName: string) => {
+            const isFav = favorites.includes(itemName);
+            const next = !isFav;
+          
+            // Optimistic local update (THIS is what makes it feel instant)
+            setFavorites(prev => (next ? [...prev, itemName] : prev.filter(n => n !== itemName)));
+          
+            const { error } = await supabase
+              .from('items')
+              .update({ is_favorite: next })
+              .eq('name', itemName)
+              .eq('user_id', SHARED_USER_ID);
+          
+            if (error) {
+              // rollback
+              setFavorites(prev => (next ? prev.filter(n => n !== itemName) : [...prev, itemName]));
+              alert('Failed to update favorite. Check your connection and try again.');
+            }
+          };
+
+          return (
+            <div
+              key={it.id}
+              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                isFavorite
+                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                  : 'bg-white border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {/* Favorite Star — EXACT match to /items */}
               <button
-                onClick={() => setSelectItemsFilter('ALL')}
-                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                  selectItemsFilter === 'ALL'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-                }`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(it.name);
+                }}
+                className={
+                  isFavorite
+                    ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
+                    : 'text-2xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+                }
+                aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
               >
-                All Items
+                {isFavorite ? '⭐' : '☆'}
               </button>
 
-              <button
-                onClick={() => setSelectItemsFilter('FAVORITES')}
-                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                  selectItemsFilter === 'FAVORITES'
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                }`}
-              >
-                Favorites
-              </button>
-
-              <button
-                onClick={() => setSelectItemsFilter('RECENT')}
-                className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                  selectItemsFilter === 'RECENT'
-                    ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
-                }`}
-              >
-                Recent
-              </button>
-            </div>
-
-            {buildModeAvailableItems.length === 0 ? (
-              <div className="text-sm text-gray-500">All items added for this letter.</div>
-            ) : (
-              <div className="space-y-2 max-h-114 overflow-y-auto">
-                {buildModeAvailableItems.slice(0, 250).map((it) => {
-                  const isFavorite = favorites.includes(it.name);
-                  return (
-                    <div
-                      key={it.id}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition
-                        ${isFavorite ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">{it.name}</div>
-                      </div>
-
-                      <button
-                        onClick={() => toggleItemById(it.id, it.name)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  );
-                })}
+              {/* Item Name */}
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-800 truncate">
+                  {it.name}
+                </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Add Button (unchanged) */}
+              <button
+                onClick={() => toggleItemById(it.id, it.name)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+              >
+                Add
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
+
 
         {/* Favorites Widget - Hidden on Mobile */}
         {filteredFavorites.length > 0 && (
