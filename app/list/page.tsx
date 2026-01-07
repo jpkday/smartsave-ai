@@ -46,10 +46,6 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
-  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
-  const storeSelectRef = useRef<HTMLSelectElement | null>(null);
-  const [needsStoreHint, setNeedsStoreHint] = useState(false);
-  const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
 
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
   const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
@@ -305,6 +301,12 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name): [];
+  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
+  const storeSelectRef = useRef<HTMLSelectElement | null>(null);
+  const [needsStoreHint, setNeedsStoreHint] = useState(false);
+  const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
+  const [editModalPriceDirty, setEditModalPriceDirty] = useState(false);
+  
 
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
     setEditModalItem(item);
@@ -312,6 +314,8 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalCategory(itemCategoryByName[item.item_name] || 'Other');
     setEditModalQuantity(item.quantity);
     setEditModalFocusField(focusField);
+    setEditModalPriceDirty(false);
+    setNeedsStoreHint(false);
 
     const effStore = getEffectiveStore(item.item_name);
     if (effStore) {
@@ -344,6 +348,8 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalPrice('');
     setEditModalOriginalPrice('');
     setSavingEdit(false);
+    setEditModalPriceDirty(false);
+    setNeedsStoreHint(false);
   };
   
 // SAVE EDIT FUNCTION
@@ -557,28 +563,32 @@ const saveEdit = async () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdCode]);
 
-  // IN EDIT ITEM, WHEN STORE SELECTED, UPDATE PRICE IMMEDIATELY
-  useEffect(() => {
-    if (!editModalOpen || !editModalItem) return;
-  
-    // No store selected → clear price context
-    if (!editModalStore) {
-      setEditModalOriginalPrice('');
-      setEditModalPrice('');
-      return;
-    }
-  
-    const key = `${editModalStore}-${editModalItem.item_name}`;
-    const priceData = prices[key];
-  
-    if (priceData) {
-      setEditModalPrice(priceData.price);
-      setEditModalOriginalPrice(priceData.price);
-    } else {
-      setEditModalPrice('');
-      setEditModalOriginalPrice('');
-    }
-  }, [editModalStore, editModalOpen, editModalItem, prices]);
+// IN EDIT ITEM, WHEN STORE SELECTED, UPDATE PRICE IMMEDIATELY
+useEffect(() => {
+  if (!editModalOpen || !editModalItem) return;
+
+  // ✅ If user has started typing a new price, never overwrite it
+  if (editModalPriceDirty) return;
+
+  // No store selected → clear price context
+  if (!editModalStore) {
+    setEditModalOriginalPrice('');
+    setEditModalPrice('');
+    return;
+  }
+
+  const key = `${editModalStore}-${editModalItem.item_name}`;
+  const priceData = prices[key];
+
+  if (priceData?.price) {
+    setEditModalPrice(priceData.price);
+    setEditModalOriginalPrice(priceData.price);
+  } else {
+    setEditModalPrice('');
+    setEditModalOriginalPrice('');
+  }
+}, [editModalStore, editModalOpen, editModalItem, prices, editModalPriceDirty]);
+
   
 
   const loadData = async () => {
@@ -2459,7 +2469,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         )}
 
         {/* ========================= */}
-        {/* EDIT MODAL */}
+        {/* EDIT ITEM MODAL */}
         {/* ========================= */}
         {editModalOpen && editModalItem && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -2541,6 +2551,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         placeholder="0.00"
                         value={editModalPrice || ''}
                         onChange={(e) => {
+                          setEditModalPriceDirty(true);
                           const digits = e.target.value.replace(/\D/g, '');
                           let priceValue = '';
                           if (digits !== '') {
@@ -2628,7 +2639,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         )}
         
 {/* ========================= */}
-{/* EDIT MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
+{/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
 {/* ========================= */}
 {storeRequiredOpen && (
   <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
