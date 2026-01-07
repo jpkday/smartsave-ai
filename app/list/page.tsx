@@ -1441,7 +1441,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                 // ✅ Price logic — matches Code Block 2 formatting
                 const effStore = getEffectiveStore(it.name);
                 const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
-                const price = priceData ? parseFloat(priceData.price) : 0;
+                const price = priceData?.price ? parseFloat(priceData.price) : 0;
 
                 return (
                   <div
@@ -1673,7 +1673,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                 {storeItems
                                   .reduce((sum, item) => {
                                     const priceData = prices[`${store}-${item.item_name}`];
-                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
                                     return sum + price * item.quantity;
                                   }, 0)
                                   .toFixed(2)}
@@ -1706,7 +1706,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                   const categoryTotal = categoryItems.reduce((sum, item) => {
                                     const effStore = getEffectiveStore(item.item_name) || store;
                                     const priceData = prices[`${effStore}-${item.item_name}`];
-                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
                                     return sum + price * item.quantity;
                                   }, 0);
 
@@ -1728,7 +1728,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
                                           const effStore = getEffectiveStore(item.item_name) || store;
                                           const priceData = prices[`${effStore}-${item.item_name}`];
-                                          const price = priceData ? parseFloat(priceData.price) : 0;
+                                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
                                           const cat = itemCategoryByName[item.item_name];
                                           const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
@@ -1775,8 +1775,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                       <p className="text-xs text-green-600 min-w-0">
                                                         {formatMoney(price)}{' '}
                                                         {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                      </p>
+                                                        {priceData?.date ? (
+  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+) : null}                                                      </p>
                                                   
                                                 {/* Add Category button */}
                                                     {missingCategory && (
@@ -1998,7 +1999,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                 {storeItems
                                   .reduce((sum, item) => {
                                     const priceData = prices[`${store}-${item.item_name}`];
-                                    const price = priceData ? parseFloat(priceData.price) : 0;
+                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
                                     return sum + price * item.quantity;
                                   }, 0)
                                   .toFixed(2)}
@@ -2010,7 +2011,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                 const isFavorite = favorites.includes(item.item_name);
                                 const effStore = getEffectiveStore(item.item_name) || store;
                                 const priceData = prices[`${effStore}-${item.item_name}`];
-                                const price = priceData ? parseFloat(priceData.price) : 0;
+                                const price = priceData?.price ? parseFloat(priceData.price) : 0;
                                 const cat = itemCategoryByName[item.item_name];
                                 const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
@@ -2055,8 +2056,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         <p className="text-xs text-green-600 min-w-0">
                                           {formatMoney(price)}{' '}
                                           {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        </p>
+                                          {priceData?.date ? (
+  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+) : null}                                        </p>
                                      
                                   {/* Add Category button */}
                                       {missingCategory && (
@@ -2232,8 +2234,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                       <p key={item.id} className="text-xs text-gray-600">
                                         {item.item_name}: {formatMoney(price)}
                                         {item.quantity > 1 && ` × ${item.quantity}`}
-                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        {classification && (
+                                        {priceData?.date ? (
+  <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+) : null}                                        {classification && (
                                           <span className={`ml-1 font-semibold ${classification.color}`}>
                                             {classification.emoji} {classification.label}
                                           </span>
