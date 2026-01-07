@@ -20,9 +20,11 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Item {
   name: string;
+  category?: string | null;
   is_favorite: boolean;
   household_code?: string;
 }
+
 
 function ItemsContent() {
   const searchParams = useSearchParams();
@@ -55,29 +57,23 @@ function ItemsContent() {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [inlineSaving, setInlineSaving] = useState(false);
-
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // Desktop inline edit
   const editRowRef = useRef<HTMLDivElement | null>(null);
 
   const [selectItemsFilter, setSelectItemsFilter] =
   useState<'ALL' | 'FAVORITES'>('ALL');
 
-  // Put this near your other constants
-const CATEGORY_OPTIONS: string[] = [
-  'Produce',
-  'Pantry',
-  'Dairy',
-  'Beverage',
-  'Meat',
-  'Frozen',
-  'Refrigerated',
-  'Other',
-];
-
-// Put this near your other useState hooks
-const [editCategory, setEditCategory] = useState<string>('Other');
+  const CATEGORY_OPTIONS: string[] = [
+    'Produce',
+    'Pantry',
+    'Dairy',
+    'Beverage',
+    'Meat',
+    'Frozen',
+    'Refrigerated',
+    'Other',
+  ];
+  const [editCategory, setEditCategory] = useState<string>('Other');
 
   useEffect(() => {
     loadItems();
@@ -108,18 +104,8 @@ const [editCategory, setEditCategory] = useState<string>('Other');
   // Populate actual category in Edit Modal
   useEffect(() => {
     if (!sheetOpen || !selected) return;
-  
-    // keep name behavior (if you already do this elsewhere, you can remove this line)
-    setEditValue((selected as any).name ?? (selected as any).item_name ?? '');
-  
-    // ✅ initialize category from the selected item (handles different field names)
-    const currentCategory =
-      (selected as any).category ??
-      (selected as any).item_category ??
-      (selected as any).itemCategory ??
-      'Other';
-  
-    setEditCategory(currentCategory || 'Other');
+    setEditValue(selected.name);
+    setEditCategory(selected.category ?? 'Other');
   }, [sheetOpen, selected]);
 
   // Close autocomplete when clicking outside
@@ -145,7 +131,7 @@ const [editCategory, setEditCategory] = useState<string>('Other');
 
     const { data, error } = await supabase
       .from('items')
-      .select('name, is_favorite, household_code')
+      .select('name, category, is_favorite, household_code')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
@@ -159,6 +145,7 @@ const [editCategory, setEditCategory] = useState<string>('Other');
       setItems(
         data.map((x: any) => ({
           name: x.name,
+          category: x.category ?? 'Other',
           is_favorite: x.is_favorite || false,
           household_code: x.household_code,
         }))
@@ -177,9 +164,10 @@ const [editCategory, setEditCategory] = useState<string>('Other');
       });
     }
     setItems(DEFAULT_ITEMS.map((name) => ({ 
-      name, 
+      name,
+      category: 'Other',              
       is_favorite: false,
-      household_code: householdCode || 'ASDF'
+      household_code: householdCode || 'ASDF',
     })));
     setLoading(false);
   };
@@ -523,7 +511,15 @@ const [editCategory, setEditCategory] = useState<string>('Other');
           {isFavorite ? '⭐' : '☆'}
         </button>
 
-        <button type="button" onClick={() => openSheet(item)} className="flex-1 text-left min-w-0">
+        <button
+          type="button"
+          onClick={() => {
+            const full = items.find((it) => it.name === item.name);
+            openSheet(full ?? item);
+          }}
+          className="flex-1 text-left min-w-0"
+        >
+
           <div className="font-medium text-gray-800 truncate">{item.name}</div>
           <div className="text-xs text-gray-500">Tap to edit</div>
         </button>
