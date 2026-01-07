@@ -595,6 +595,7 @@ useEffect(() => {
 }, [editModalStore, editModalOpen, editModalItem, prices, editModalPriceDirty]);
 
   
+  // LOAD DATA CONSTANT
 
   const loadData = async () => {
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
@@ -608,21 +609,27 @@ useEffect(() => {
     }
 
     const { data: tripsData, error: tripsError } = await supabase
-      .from('trips')
-      .select('id, store_id')
-      .eq('household_code', householdCode)
-      .is('ended_at', null)
-      .order('started_at', { ascending: false });
-
-    if (tripsError) {
-      console.error('Error loading trips:', tripsError);
-    } else if (tripsData) {
-      const tripsByStore: { [store_id: string]: string } = {};
-      tripsData.forEach((trip) => {
-        if (trip.store_id && !tripsByStore[trip.store_id]) tripsByStore[trip.store_id] = trip.id;
-      });
-      setActiveTrips(tripsByStore);
-    }
+    .from('trips')
+    .select('id, store_id')
+    .eq('household_code', householdCode)
+    .is('ended_at', null)
+    .order('started_at', { ascending: false });
+  
+  if (tripsError) {
+    console.error('Error loading trips:', tripsError);
+    setActiveTrips({});
+  } else {
+    const tripsByStore: { [store_id: string]: string } = {};
+  
+    (tripsData ?? []).forEach((trip) => {
+      if (trip.store_id && !tripsByStore[trip.store_id]) {
+        tripsByStore[trip.store_id] = trip.id;
+      }
+    });
+  
+    setActiveTrips(tripsByStore);
+    console.log('tripsError?', !!tripsError, 'tripsData length', tripsData?.length);
+  }
 
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
@@ -2491,7 +2498,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              Edit Item
+              Edit Item Details
               </h3>
                 <button
                   onClick={closeEditModal}
