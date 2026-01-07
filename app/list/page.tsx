@@ -1323,7 +1323,10 @@ HIDDEN UNTIL WE REFACTOR MODALS
   </div>
 )}
 
-{/* Build Mode: Select Items (Mobile Only) */}
+{/* =======================================================
+BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
+=========================================================== */}
+
 {isMobile && mobileMode === 'build' && (
   <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
     {(() => {
@@ -1332,10 +1335,8 @@ HIDDEN UNTIL WE REFACTOR MODALS
       // across ALL 3 filters: ALL / FAVORITES / RECENT
       // ------------------------------------------------------------
 
-      // 1) Start from the full available pool for build mode
       let list: ItemRow[] = buildModeAvailableAll;
 
-      // 2) Apply the 3 filter pills (ALL / FAVORITES / RECENT)
       if (selectItemsFilter === 'FAVORITES') {
         const favSet = new Set(favorites);
         list = list.filter((it) => favSet.has(it.name));
@@ -1344,26 +1345,23 @@ HIDDEN UNTIL WE REFACTOR MODALS
           .filter((it) => recentRank.has(it.id))
           .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
       } else {
-        // ALL (no additional filtering)
         list = list.slice();
       }
 
-      // 3) Apply the Alphabet Filter (A-Z / All) for ALL three modes
       if (filterLetter !== 'All') {
         const L = filterLetter.toUpperCase();
         list = list.filter((it) => it.name.toUpperCase().startsWith(L));
       }
 
-      // 4) Cap render count (keeps your current behavior)
       const renderList = list.slice(0, 250);
 
-      // DB-backed favorite toggle (same semantics as your /items page)
       const toggleFavorite = async (itemName: string) => {
         const isFav = favorites.includes(itemName);
         const next = !isFav;
 
-        // Optimistic local update (instant UI)
-        setFavorites((prev) => (next ? [...prev, itemName] : prev.filter((n) => n !== itemName)));
+        setFavorites((prev) =>
+          next ? [...prev, itemName] : prev.filter((n) => n !== itemName)
+        );
 
         const { error } = await supabase
           .from('items')
@@ -1372,8 +1370,9 @@ HIDDEN UNTIL WE REFACTOR MODALS
           .eq('user_id', SHARED_USER_ID);
 
         if (error) {
-          // rollback
-          setFavorites((prev) => (next ? prev.filter((n) => n !== itemName) : [...prev, itemName]));
+          setFavorites((prev) =>
+            next ? prev.filter((n) => n !== itemName) : [...prev, itemName]
+          );
           alert('Failed to update favorite. Check your connection and try again.');
         }
       };
@@ -1382,11 +1381,9 @@ HIDDEN UNTIL WE REFACTOR MODALS
         <>
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-            {/* NOTE: keep the "available" text, but make it reflect the alphabet filter too */}
             <span className="text-xs text-gray-500">{list.length} available</span>
           </div>
 
-          {/* Filters (unchanged) */}
           <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
             <button
               onClick={() => setSelectItemsFilter('ALL')}
@@ -1429,6 +1426,11 @@ HIDDEN UNTIL WE REFACTOR MODALS
               {renderList.map((it: ItemRow) => {
                 const isFavorite = favorites.includes(it.name);
 
+                // ✅ Price logic — matches Code Block 2 formatting
+                const effStore = getEffectiveStore(it.name);
+                const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
+                const price = priceData ? parseFloat(priceData.price) : 0;
+
                 return (
                   <div
                     key={it.id}
@@ -1438,32 +1440,23 @@ HIDDEN UNTIL WE REFACTOR MODALS
                         : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-  {/* Favorite Star — EXACT match to /items
-
-HIDING FOR ZOOMED IN IPHONES
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(it.name);
-                      }}
-                      className={
-                        isFavorite
-                          ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
-                          : 'text-2xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
-                      }
-                      aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
-                    >
-                      {isFavorite ? '⭐' : '☆'}
-                    </button>
-  */}
-                    {/* Item Name */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-800 truncate">{it.name}</div>
+
+                      {priceData ? (
+                        <p className="text-xs text-green-600 mt-0.5">
+                          {formatMoney(price)}{' '}
+                          <span className="text-gray-400 ml-1">
+                            ({getDaysAgo(priceData.date)})
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          No price data available
+                        </p>
+                      )}
                     </div>
 
-                    {/* Add Button (unchanged) */}
                     <button
                       onClick={() => toggleItemById(it.id, it.name)}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
@@ -1480,6 +1473,7 @@ HIDING FOR ZOOMED IN IPHONES
     })()}
   </div>
 )}
+
 
 
         {/* Favorites Widget - Hidden on Mobile */}
@@ -1572,7 +1566,8 @@ HIDING FOR ZOOMED IN IPHONES
           )}
         </div>
 
-        {/* Shopping List */}
+        {/* SHOPPING LIST MODAL */}
+
         {loading ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
@@ -1580,7 +1575,7 @@ HIDING FOR ZOOMED IN IPHONES
           </div>
         ) : listItems.length > 0 ? (
           <>
-            {/* List Items */}
+            {/* SHOPPING LIST HEADER */}
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800">
@@ -2101,7 +2096,8 @@ HIDING FOR ZOOMED IN IPHONES
               </div>
             </div>
 
-        {/* Quick Add to List Widget - Mobile(Store Mode only) */}
+        {/* STORE MODE -- "QUICK ADD" MODAL */}
+        {/* =============================== */}
         {(!isMobile || mobileMode === 'store') && (
           <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
             <h2 className="text-xl font-semibold mb-3 text-gray-800">Quick Add To List</h2>
@@ -2268,7 +2264,7 @@ HIDING FOR ZOOMED IN IPHONES
           </div>
         )}
 
-        {/* STORE PICKER MODAL     */}
+        {/* SWAP STORE MODAL      */}
         {/* ===================== */}
         {storeModalOpen && activeItemForStoreModal && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
