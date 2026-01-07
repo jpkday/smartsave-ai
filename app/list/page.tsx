@@ -2511,10 +2511,39 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                   </div>
                 </div>
 
-                {/* Store Selection */}
-
+                {/* Price Section */}
                 <div className="rounded-2xl border border-blue-100 bg-blue-100 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="space-y-3">
+                    <div>
+                    <label className="text-sm font-semibold text-gray-700">Price</label>
+                    <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
+                      <span className="text-gray-700 font-semibold mr-1">$</span>
+
+                      <input
+                        autoFocus={editModalFocusField === 'price'}
+                        type="text"
+                        inputMode="decimal"              // ✅ numeric keypad on mobile
+                        placeholder="0.00"
+                        value={editModalPrice || ''}     // ✅ keep controlled input
+                        onChange={(e) => {
+                          // ✅ Same behavior as handlePriceChange in Code Block 2
+                          const digits = e.target.value.replace(/\D/g, '');
+
+                          let priceValue = '';
+                          if (digits !== '') {
+                            const cents = parseInt(digits, 10);
+                            priceValue = (cents / 100).toFixed(2);
+                          }
+
+                          setEditModalPrice(priceValue);
+                        }}
+                        className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                        aria-label="Price"
+                      />
+                    </div>
+                  </div>
+
+                {/* Store Selection */}
                     <div>
                     <label className="text-sm font-semibold text-gray-700">Store</label>
                     <select
@@ -2536,22 +2565,6 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       ))}
                     </select>
                     </div>
-                  </div>
-
-                {/* Price Section */}
-
-                  <div className="mt-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-700 font-semibold">$</span>
-                    <input
-                      autoFocus={editModalFocusField === 'price'}
-                      type="decimal"
-                      style={{ MozAppearance: 'textfield' }}
-                      step="0.01"
-                      value={editModalPrice}
-                      onChange={(e) => setEditModalPrice(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                      placeholder="0.00"
-                    />
                   </div>
 
                   {editModalOriginalPrice && editModalPrice !== editModalOriginalPrice && (
