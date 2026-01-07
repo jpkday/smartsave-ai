@@ -1717,6 +1717,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           const effStore = getEffectiveStore(item.item_name) || store;
                                           const priceData = prices[`${effStore}-${item.item_name}`];
                                           const price = priceData ? parseFloat(priceData.price) : 0;
+                                          const cat = itemCategoryByName[item.item_name];
+                                          const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
                                           return (
                                             <div
@@ -1756,15 +1758,25 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   </button>
                                                 </div>
 
-                                                {priceData ? (
-                                                  <p className="text-xs text-green-600 mt-0.5">
-                                                    {formatMoney(price)}{' '}
-                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                    <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                  </p>
-                                                ) : (
-                                                  <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
-                                                )}
+                                                {/* Show Item Price and Recency */}
+                                                <div className="mt-0.5 flex items-center gap-2">
+                                                      <p className="text-xs text-green-600 min-w-0">
+                                                        {formatMoney(price)}{' '}
+                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                        <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                      </p>
+                                                  
+                                                {/* Add Category button */}
+                                                    {missingCategory && (
+                                                      <button
+                                                        onClick={() => openEditModal(item, 'category')}
+                                                        className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                      >
+                                                        Add Category
+                                                      </button>
+                                                    )}
+                                                    
+                                                    </div>
                                               </div>
 
                                               <div className="hidden md:flex items-center gap-2">
@@ -1987,6 +1999,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                 const effStore = getEffectiveStore(item.item_name) || store;
                                 const priceData = prices[`${effStore}-${item.item_name}`];
                                 const price = priceData ? parseFloat(priceData.price) : 0;
+                                const cat = itemCategoryByName[item.item_name];
+                                const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
                                 return (
                                   <div
@@ -2024,15 +2038,25 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         </button>
                                       </div>
 
-                                      {priceData ? (
-                                        <p className="text-xs text-green-600 mt-0.5">
+                                   {/* Show Item Price and Recency */}
+                                      <div className="mt-0.5 flex items-center gap-2">
+                                        <p className="text-xs text-green-600 min-w-0">
                                           {formatMoney(price)}{' '}
                                           {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
                                           <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
                                         </p>
-                                      ) : (
-                                        <p className="text-xs text-gray-400 mt-0.5">No price data available</p>
+                                     
+                                  {/* Add Category button */}
+                                      {missingCategory && (
+                                        <button
+                                          onClick={() => openEditModal(item, 'category')}
+                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                        >
+                                          Add Category
+                                        </button>
                                       )}
+                                      
+                                      </div>
                                     </div>
 
                                     <div className="hidden md:flex items-center gap-2">
