@@ -1438,7 +1438,10 @@ HIDDEN UNTIL WE REFACTOR MODALS
                         : 'bg-white border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    {/* Favorite Star — EXACT match to /items */}
+  {/* Favorite Star — EXACT match to /items
+
+HIDING FOR ZOOMED IN IPHONES
+
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1454,7 +1457,7 @@ HIDDEN UNTIL WE REFACTOR MODALS
                     >
                       {isFavorite ? '⭐' : '☆'}
                     </button>
-
+  */}
                     {/* Item Name */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-800 truncate">{it.name}</div>

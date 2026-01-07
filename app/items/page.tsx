@@ -105,6 +105,23 @@ const [editCategory, setEditCategory] = useState<string>('Other');
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editingName]);
 
+  // Populate actual category in Edit Modal
+  useEffect(() => {
+    if (!sheetOpen || !selected) return;
+  
+    // keep name behavior (if you already do this elsewhere, you can remove this line)
+    setEditValue((selected as any).name ?? (selected as any).item_name ?? '');
+  
+    // ✅ initialize category from the selected item (handles different field names)
+    const currentCategory =
+      (selected as any).category ??
+      (selected as any).item_category ??
+      (selected as any).itemCategory ??
+      'Other';
+  
+    setEditCategory(currentCategory || 'Other');
+  }, [sheetOpen, selected]);
+
   // Close autocomplete when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -241,12 +258,20 @@ const [editCategory, setEditCategory] = useState<string>('Other');
     return isMasterAccount || item.household_code === householdCode;
   };
 
-  const openSheet = (item: Item) => {
+  type ItemWithCategory = Item & {
+    category?: string | null;
+  };
+  
+  const openSheet = (item: ItemWithCategory) => {
     setSelected(item);
     setEditValue(item.name);
+  
+    // ✅ now works even if Item type doesn't include category
+    setEditCategory(item.category ?? 'Other');
+  
     setSheetOpen(true);
     setSaving(false);
-
+  
     setTimeout(() => {
       const el = document.getElementById('item-rename-input') as HTMLInputElement | null;
       if (el) {
@@ -256,11 +281,16 @@ const [editCategory, setEditCategory] = useState<string>('Other');
       }
     }, 50);
   };
-
+  
+  
   const closeSheet = () => {
     setSheetOpen(false);
     setSelected(null);
     setEditValue('');
+  
+    // ✅ Optional: reset category so next open doesn't carry stale state
+    setEditCategory('Other');
+  
     setSaving(false);
   };
 
