@@ -52,6 +52,9 @@ function ItemsContent() {
   const [selected, setSelected] = useState<Item | null>(null);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editCategory, setEditCategory] = useState<string>('Other');
+  const [editFavorite, setEditFavorite] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   // Desktop inline edit
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -73,8 +76,7 @@ function ItemsContent() {
     'Refrigerated',
     'Other',
   ];
-  const [editCategory, setEditCategory] = useState<string>('Other');
-
+  
   useEffect(() => {
     loadItems();
   }, []);
@@ -101,12 +103,28 @@ function ItemsContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editingName]);
 
-  // Populate actual category in Edit Modal
+  // Populate edit sheet + focus name input at end
   useEffect(() => {
     if (!sheetOpen || !selected) return;
+
+    // Initialize draft state
     setEditValue(selected.name);
     setEditCategory(selected.category ?? 'Other');
+    setEditFavorite(!!selected.is_favorite);
+
+    // Focus name input and move cursor to end (mobile-safe)
+    const t = setTimeout(() => {
+      const el = nameInputRef.current;
+      if (!el) return;
+
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }, 50);
+
+    return () => clearTimeout(t);
   }, [sheetOpen, selected]);
+
 
   // Close autocomplete when clicking outside
   useEffect(() => {
@@ -438,16 +456,46 @@ function ItemsContent() {
 
   const saveRename = async () => {
     if (!selected) return;
+  
+    const itemName = selected.name;
+    const nextCategory = (editCategory || 'Other').trim() || 'Other';
+    const nextFavorite = !!editFavorite;
+  
+    const prevItems = items;
+    const prevSelected = selected;
+  
     setSaving(true);
+  
+    // ✅ Optimistic UI update for BOTH fields
+    setItems((prev) =>
+      prev.map((i) =>
+        i.name === itemName ? { ...i, category: nextCategory, is_favorite: nextFavorite } : i
+      )
+    );
+    setSelected({ ...selected, category: nextCategory, is_favorite: nextFavorite });
+  
     try {
-      await renameItem(selected.name, editValue);
+      const { error } = await supabase
+        .from('items')
+        .update({ category: nextCategory, is_favorite: nextFavorite })
+        .eq('name', itemName)
+        .eq('user_id', SHARED_USER_ID);
+  
+      if (error) throw error;
+  
       closeSheet();
     } catch (e) {
-      console.error('Rename failed:', e);
+      console.error('Save failed:', e);
+  
+      // rollback
+      setItems(prevItems);
+      setSelected(prevSelected);
+  
       alert('Failed to save changes. Check your connection and try again.');
       setSaving(false);
     }
   };
+  
 
   const startInlineEdit = (name: string) => {
     setEditingName(name);
@@ -831,7 +879,7 @@ function ItemsContent() {
             ✕
           </button>
 
-          <div className="font-semibold text-gray-800">Edit item</div>
+          <div className="font-semibold text-gray-800">Edit Item</div>
 
           {canDeleteItem(selected) && (
             <button
@@ -846,19 +894,40 @@ function ItemsContent() {
           {!canDeleteItem(selected) && <div className="w-16"></div>}
         </div>
 
-        {/* Name */}
-        <div>
-          <input
-            id="item-rename-input"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && saveRename()}
-            className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
-            placeholder="e.g., Grapefruit (ct)"
-          />
+        {/* Name + Favorite Star */}
+        <div className="mt-3">
+          <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
+          <div className="mt-1 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setEditFavorite((p) => !p)}
+              className={
+                editFavorite
+                  ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
+                  : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+              }
+              
+              aria-label={editFavorite ? 'Unfavorite item' : 'Favorite item'}
+              title={editFavorite ? 'Unfavorite' : 'Favorite'}
+              disabled={saving}
+            >
+              {editFavorite ? '⭐' : '☆'}
+            </button>
+
+            <input
+              ref={nameInputRef}
+              id="item-rename-input"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+              className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
+              placeholder="e.g., Grapefruit (ct)"
+              disabled={saving}
+            />
+          </div>
         </div>
 
-        {/* Category (new) */}
+        {/* Category Select */}
         <div className="mt-3">
           <label className="text-sm font-semibold text-gray-700">Category</label>
           <select
@@ -873,21 +942,13 @@ function ItemsContent() {
             ))}
           </select>
         </div>
-
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => toggleFavorite(selected.name)}
-            className="py-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-800 font-semibold"
-            disabled={saving}
-          >
-            {selected.is_favorite ? 'Unfavorite' : 'Favorite'}
-          </button>
-
+        
+        {/* Save Button */}
+        <div className="flex justify-end mt-4">
           <button
             type="button"
             onClick={saveRename}
-            className="py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
+            className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
             disabled={saving}
           >
             {saving ? 'Saving…' : 'Save'}
