@@ -1879,24 +1879,40 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                       {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                     </button>
                                   </div>
-                                  <button
-                                    onClick={() => openEditModal(item, 'price')}
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-0.5"
-                                  >
-                                    Add Price
-                                  </button>
+
                                   {(() => {
                                     const cat = itemCategoryByName[item.item_name];
-                                    const missing = !cat || cat === 'Other' || cat.trim() === '';
-                                    if (!missing) return null;
+
+                                    // ✅ Treat "Other" as missing
+                                    const missingCategory =
+                                      !cat || cat.trim() === '' || cat === 'Other';
+
+                                    const effStore = getEffectiveStore(item.item_name);
+                                    const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
+                                    const missingPrice = !priceData;
 
                                     return (
-                                      <button
-                                        onClick={() => openEditModal(item, 'category')}
-                                        className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block mt-2"
-                                      >
-                                        Add Category
-                                      </button>
+                                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                        {/* Add Price — only if missing */}
+                                        {missingPrice && (
+                                          <button
+                                            onClick={() => openEditModal(item, 'price')}
+                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                          >
+                                            Add Price
+                                          </button>
+                                        )}
+
+                                        {/* Add Category — missing OR "Other" */}
+                                        {missingCategory && (
+                                          <button
+                                            onClick={() => openEditModal(item, 'category')}
+                                            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                          >
+                                            Add Category
+                                          </button>
+                                        )}
+                                      </div>
                                     );
                                   })()}
                                 </div>
