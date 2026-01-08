@@ -442,9 +442,11 @@ export default function Receipts() {
   }, 0);
   
 
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto p-0">
+      <div className="max-w-5xl mx-auto">
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -454,10 +456,15 @@ export default function Receipts() {
             <Header currentPage="Add Receipt" />
           </div>
         </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+      </div>
+      
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-0 mt-6">
+        <div className="bg-white rounded-2xl shadow-lg p-3">
+          <div className="w-full bg-white p-3">
+          <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+          
           {/* Store and Date Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
               <select
@@ -472,7 +479,7 @@ export default function Receipts() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Trip End (Date & Time)</label>
+              <label className="text-sm font-semibold text-gray-700 mb-2">Date & Time of Purchase</label>
               <input
                 type="datetime-local"
                 value={tripEndLocal}
@@ -481,9 +488,11 @@ export default function Receipts() {
               />
             </div>
           </div>
-
+        </div>
+      </div>
           {/* Create past trip toggle */}
-          <div className="mb-6">
+        <div className="w-full bg-white p-3">  
+          <div className="border border-slate-200 rounded-2xl shadow-md p-4">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -495,15 +504,16 @@ export default function Receipts() {
                 Save Receipt to your Recent Trips
               </span>
             </label>
-            <p className="text-s text-gray-500 mt-1">
+            <p className="text-s text-gray-500 mt-2">
               Use this to track purchases made outside the app.
             </p>
           </div>
-        
+        </div>
 
 
           {/* Items Table */}
-          <div className="mb-6">
+          <div className="w-full bg-white p-3">  
+          <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
             <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
             <div className="space-y-3">
               {receiptItems.map((ri, idx) => (
@@ -574,12 +584,13 @@ export default function Receipts() {
               + Add Item
             </button>
           </div>
-
+          </div>
           {/* Total */}
+        <div className="w-full bg-white p-5">    
           <div className="border-t pt-4 mb-6">
             <div className="flex justify-between items-center">
               <span className="text-xl font-bold text-gray-800">Total:</span>
-              <span className="text-3xl font-bold text-gray-800">${total.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -591,7 +602,8 @@ export default function Receipts() {
             Save Receipt
           </button>
         </div>
-      </div>
-    </div>
+        </div>
+        </div>
+</div>
   );
 }
