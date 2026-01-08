@@ -5,26 +5,114 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
+const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
+
+type ReceiptDraft = {
+  store: string;
+  date: string;
+  tripEndLocal: string;
+  receiptItems: ReceiptItem[];
+};
 
 interface ReceiptItem {
   item: string;
+  quantity: string;
   price: string;
+  priceDirty?: boolean; // user edited manually
 }
+
 
 export default function Receipts() {
   const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [store, setStore] = useState('');
   const [date, setDate] = useState('');
-  const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([{ item: '', price: '' }]);
+  const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
+    { item: '', quantity: '1', price: '', priceDirty: false }
+  ]);
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [createPastTrip, setCreatePastTrip] = useState(true);
+  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
+  const [tripEndLocal, setTripEndLocal] = useState(''); // "YYYY-MM-DDTHH:mm"
+  const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
+  
+
 
   useEffect(() => {
     loadData();
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    setDate(today);
+  
+    // default: now (rounded to nearest minute)
+    const now = new Date();
+    now.setSeconds(0, 0);
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16); // YYYY-MM-DDTHH:mm
+  
+    setTripEndLocal(local);
   }, []);
+  
+  useEffect(() => {
+    const raw = localStorage.getItem(RECEIPT_DRAFT_KEY);
+    if (!raw) return;
+  
+    try {
+      const draft: ReceiptDraft = JSON.parse(raw);
+  
+      if (draft.store) setStore(draft.store);
+      if (draft.date) setDate(draft.date);
+      if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
+      if (draft.receiptItems?.length) setReceiptItems(draft.receiptItems);
+    } catch (e) {
+      console.warn('Failed to restore receipt draft', e);
+      localStorage.removeItem(RECEIPT_DRAFT_KEY);
+    }
+  }, []);
+  
+  useEffect(() => {
+    const draft: ReceiptDraft = {
+      store,
+      date,
+      tripEndLocal,
+      receiptItems,
+    };
+  
+    localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
+  }, [store, date, tripEndLocal, receiptItems]);
+  
+
+  useEffect(() => {
+    const loadLatestPricesForStore = async () => {
+      if (!store) {
+        setStorePriceLookup({});
+        return;
+      }
+  
+      const { data, error } = await supabase
+        .from('price_history')
+        .select('item_name, price, recorded_date')
+        .eq('user_id', SHARED_USER_ID)
+        .eq('store', store)
+        .order('recorded_date', { ascending: false });
+  
+      if (error) {
+        console.error('Error loading store prices:', error);
+        setStorePriceLookup({});
+        return;
+      }
+  
+      // Keep only latest price per item_name (data is already newest-first)
+      const lookup: Record<string, string> = {};
+      for (const row of data || []) {
+        if (!lookup[row.item_name]) lookup[row.item_name] = String(row.price);
+      }
+  
+      setStorePriceLookup(lookup);
+      applySuggestedPricesForCurrentStore(lookup);
+    };
+  
+    loadLatestPricesForStore();
+  }, [store]);
+  
 
   const loadData = async () => {
     // Load stores
@@ -49,33 +137,100 @@ export default function Receipts() {
   };
 
   const addRow = () => {
-    setReceiptItems([...receiptItems, { item: '', price: '' }]);
+    setReceiptItems([...receiptItems, { item: '', quantity: '1', price: '', priceDirty: false }]);
     setTimeout(() => {
       const newIndex = receiptItems.length;
       itemRefs.current[newIndex]?.focus();
     }, 100);
   };
+  
 
   const removeRow = (index: number) => {
-    setReceiptItems(receiptItems.filter((_, i) => i !== index));
-  };
-
-  const updateItem = (index: number, field: 'item' | 'price', value: string) => {
-    const updated = [...receiptItems];
-    if (field === 'price') {
-      // Use same price entry logic as main prices page
-      const digits = value.replace(/\D/g, '');
-      if (digits === '') {
-        updated[index][field] = '';
-      } else {
-        const cents = parseInt(digits, 10);
-        updated[index][field] = (cents / 100).toFixed(2);
+    setReceiptItems((prev) => {
+      if (prev.length <= 1) {
+        // Never allow 0 rows — reset to a single blank row
+        return [{ item: '', price: '', quantity: '1' } as any];
       }
-    } else {
-      updated[index][field] = value;
-    }
-    setReceiptItems(updated);
+      return prev.filter((_, i) => i !== index);
+    });
+  
+    // Optional: keep the UX snappy
+    setTimeout(() => itemRefs.current[0]?.focus(), 50);
   };
+  
+
+  const applySuggestedPricesForCurrentStore = (lookup: Record<string, string>) => {
+    setReceiptItems((prev) =>
+      prev.map((row) => {
+        const itemName = (row.item || '').trim();
+        if (!itemName) return row;
+  
+        // don't overwrite user-entered prices
+        if (row.priceDirty) return row;
+  
+        const suggested = lookup[itemName];
+        if (!suggested) {
+          // optional: clear if no known price and user hasn't overridden
+          return { ...row, price: '' };
+        }
+  
+        const num = parseFloat(suggested);
+        const normalized = !isNaN(num) ? num.toFixed(2) : suggested;
+  
+        return { ...row, price: normalized };
+      })
+    );
+  };
+  
+
+  const updateItem = (index: number, field: 'item' | 'quantity' | 'price', value: string) => {
+    setReceiptItems((prev) => {
+      const updated = [...prev];
+      const row = { ...updated[index] };
+  
+      if (field === 'price') {
+        row.priceDirty = true;
+  
+        const digits = value.replace(/\D/g, '');
+        if (digits === '') {
+          row.price = '';
+        } else {
+          const cents = parseInt(digits, 10);
+          row.price = (cents / 100).toFixed(2);
+        }
+      } else if (field === 'quantity') {
+        // ✅ allow decimals, keep as string
+        if (/^\d*\.?\d*$/.test(value)) {
+          row.quantity = value;
+        }
+      } else {
+        row.item = value;
+  
+        // ✅ auto-fill price when item selected (only if not overridden)
+        const suggested = storePriceLookup[value];
+        if (!row.priceDirty && suggested) {
+          row.price = suggested;
+        }
+      }
+  
+      updated[index] = row;
+      return updated;
+    });
+  };
+  
+    // Converts "YYYY-MM-DDTHH:mm" (from datetime-local) into a real UTC ISO timestamp
+    const toIsoFromLocalDateTime = (local: string) => {
+      // local example: "2026-01-07T18:30"
+      const [datePart, timePart] = local.split('T');
+      if (!datePart || !timePart) return null;
+  
+      const [y, m, d] = datePart.split('-').map(Number);
+      const [hh, mm] = timePart.split(':').map(Number);
+  
+      // Month is 0-based in JS Date
+      const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
+      return dt.toISOString();
+    };
 
   const saveReceipt = async () => {
     if (!store) {
@@ -83,88 +238,213 @@ export default function Receipts() {
       return;
     }
   
-    if (!date) {
-      alert('Please select a date');
+    if (!tripEndLocal) {
+      alert('Please select a trip end date/time');
       return;
     }
+
+    const recordedDate = tripEndLocal.slice(0, 10); // "YYYY-MM-DD"
+  
+    // Trip end timestamp (timestampz)
+    const endedAtIso = toIsoFromLocalDateTime(tripEndLocal);
+      if (!endedAtIso) {
+        alert('Please select a trip end date/time');
+        return;
+      }
   
     // Filter out empty rows
-    const validItems = receiptItems.filter(ri => ri.item && parseFloat(ri.price || '0') > 0);
-    
+    const validItems = receiptItems.filter((ri) => {
+      const price = parseFloat(ri.price || '0');
+      const qty = parseFloat(ri.quantity || '1');
+      return ri.item && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
+    });
+  
     if (validItems.length === 0) {
       alert('Please add at least one item with a price');
       return;
     }
   
-    // Add any new items to the database
-    for (const ri of validItems) {
-      if (!items.includes(ri.item)) {
-        await supabase
-          .from('items')
-          .insert({ name: ri.item, user_id: SHARED_USER_ID });
-        setItems([...items, ri.item]);
-      }
-    }
-  
     // Get store_id
-    const { data: storeData } = await supabase
+    const { data: storeData, error: storeErr } = await supabase
       .from('stores')
       .select('id')
       .eq('name', store)
       .single();
   
-    if (!storeData) {
+    if (storeErr || !storeData?.id) {
       alert('Store not found');
       return;
     }
   
-    // Insert prices into price_history (never update - always insert)
-    for (const ri of validItems) {
-      // Get item_id for this item
-      const { data: itemData } = await supabase
-        .from('items')
-        .select('id')
-        .eq('name', ri.item)
-        .eq('user_id', SHARED_USER_ID)
-        .single();
+    const storeId = storeData.id;
   
-      if (!itemData) {
-        console.error('Item not found:', ri.item);
-        continue;
-      }
+    // 1) Ensure items exist + build itemId map (so we don't re-query per item)
+    const uniqueNames = Array.from(new Set(validItems.map((x) => x.item)));
   
-      await supabase
-        .from('price_history')
-        .insert({
-          item_id: itemData.id,
-          item_name: ri.item,
-          store_id: storeData.id,
-          store: store,
-          price: ri.price,
-          user_id: SHARED_USER_ID,
-          recorded_date: date, // Use the receipt date
-          created_at: new Date().toISOString()
-        });
+    const { data: existingItems, error: existingItemsErr } = await supabase
+      .from('items')
+      .select('id, name')
+      .eq('user_id', SHARED_USER_ID)
+      .in('name', uniqueNames);
+  
+    if (existingItemsErr) {
+      console.error(existingItemsErr);
+      alert('Failed to load items. Check your connection and try again.');
+      return;
     }
   
-    alert(`Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(date).toLocaleDateString()}`);
+    const existingSet = new Set((existingItems || []).map((x: any) => x.name));
+    const missing = uniqueNames.filter((n) => !existingSet.has(n));
+  
+    if (missing.length > 0) {
+      const { error: insertItemsErr } = await supabase.from('items').insert(
+        missing.map((name) => ({
+          name,
+          user_id: SHARED_USER_ID,
+          // household_code: householdCode, // uncomment if your items table uses this
+        }))
+      );
+  
+      if (insertItemsErr) {
+        console.error(insertItemsErr);
+        alert('Failed to add new items. Check your connection and try again.');
+        return;
+      }
+  
+      setItems((prev) => Array.from(new Set([...prev, ...missing])));
+    }
+  
+    // Re-select to get ids for everything (existing + newly inserted)
+    const { data: allItemsData, error: allItemsErr } = await supabase
+      .from('items')
+      .select('id, name')
+      .eq('user_id', SHARED_USER_ID)
+      .in('name', uniqueNames);
+  
+    if (allItemsErr) {
+      console.error(allItemsErr);
+      alert('Failed to load item ids. Check your connection and try again.');
+      return;
+    }
+  
+    const itemIdByName: Record<string, any> = {};
+    (allItemsData || []).forEach((it: any) => {
+      itemIdByName[it.name] = it.id;
+    });
+  
+    // 2) Insert prices into price_history (never update - always insert)
+    const createdAt = new Date().toISOString();
+  
+    const priceRows = validItems
+      .map((ri) => {
+        const itemId = itemIdByName[ri.item];
+        if (!itemId) return null;
+        return {
+          item_id: itemId,
+          item_name: ri.item,
+          store_id: storeId,
+          store,
+          price: ri.price,          // string ok if your column is numeric; Supabase will coerce
+          user_id: SHARED_USER_ID,
+          recorded_date: recordedDate,
+          created_at: createdAt,
+        };
+      })
+      .filter(Boolean);
+  
+    const { error: priceInsertErr } = await supabase.from('price_history').insert(priceRows as any);
+  
+    if (priceInsertErr) {
+      console.error(priceInsertErr);
+      alert('Failed to save prices. Check your connection and try again.');
+      return;
+    }
+  
+    // 3) OPTIONAL: Create a completed trip + checked items (past trip)
+    if (createPastTrip) {
+      // Make started_at a few minutes before ended_at
+      const startedAtIso = new Date(new Date(endedAtIso).getTime() - 5 * 60 * 1000).toISOString();
+  
+      const { data: tripRow, error: tripErr } = await supabase
+        .from('trips')
+        .insert({
+          household_code: householdCode,
+          store_id: storeId,
+          store,              // ✅ trips table has store (text)
+          started_at: startedAtIso,
+          ended_at: endedAtIso, // ✅ ensures it is NOT an active trip
+        })
+        .select('id')
+        .single();
+  
+      if (tripErr || !tripRow?.id) {
+        console.error(tripErr);
+        alert('Saved prices, but failed to create the trip.');
+        // don't return — prices already saved
+      } else {
+        const tripId = tripRow.id;
+  
+        const eventRows = validItems
+          .map((ri) => {
+            const itemId = itemIdByName[ri.item];
+            if (!itemId) return null;
+  
+            const qtyNum = parseFloat(ri.quantity || '1') || 1;
+            const priceNum = parseFloat(ri.price || '0') || 0;
+  
+            return {
+              trip_id: tripId,
+              household_code: householdCode,
+              store_id: storeId,
+              store,                 // ✅ shopping_list_events has store (text)
+              item_id: itemId,
+              item_name: ri.item,
+              quantity: qtyNum,      // ✅ from UI
+              price: priceNum,       // ✅ store-specific price captured on receipt
+              checked_at: endedAtIso // ✅ “completed” at trip end
+            };
+          })
+          .filter(Boolean);
+  
+        const { error: eventsErr } = await supabase
+          .from('shopping_list_events')
+          .insert(eventRows as any);
+  
+        if (eventsErr) {
+          console.error(eventsErr);
+          alert('Saved prices + trip, but failed to save trip items.');
+          // don't return — trip exists, prices exist
+        }
+      }
+    }
+  
+    alert(
+      `Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(
+        tripEndLocal
+      ).toLocaleString()}`
+    );
     
+  
     // Reset form
     setStore('');
     setDate(new Date().toISOString().split('T')[0]);
-    setReceiptItems([{ item: '', price: '' }]);
-    
-    // Reload items in case new ones were added
+    setReceiptItems([{ item: '', quantity: '1', price: '', priceDirty: false }]);
+    localStorage.removeItem(RECEIPT_DRAFT_KEY);
+
     loadData();
   };
+  
 
   const total = receiptItems.reduce((sum, ri) => {
-    return sum + parseFloat(ri.price || '0');
+    const price = parseFloat(ri.price || '0') || 0;
+    const qty = parseFloat(ri.quantity || '1') || 1;
+    return sum + price * qty;
   }, 0);
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto p-0">
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -192,15 +472,35 @@ export default function Receipts() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Trip End (Date & Time)</label>
               <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                type="datetime-local"
+                value={tripEndLocal}
+                onChange={(e) => setTripEndLocal(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
               />
             </div>
           </div>
+
+          {/* Create past trip toggle */}
+          <div className="mb-6">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={createPastTrip}
+                onChange={(e) => setCreatePastTrip(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 cursor-pointer"
+              />
+              <span className="text-s font-semibold text-gray-700">
+                Save Receipt to your Recent Trips
+              </span>
+            </label>
+            <p className="text-s text-gray-500 mt-1">
+              Use this to track purchases made outside the app.
+            </p>
+          </div>
+        
+
 
           {/* Items Table */}
           <div className="mb-6">
@@ -224,34 +524,46 @@ export default function Receipts() {
                       ))}
                     </datalist>
                   </div>
-                  <div className="w-32">
+
+                  {/* ✅ Quantity (between name and price) */}
+                  <div className="w-16">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="1"
+                      value={ri.quantity}
+                      onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
+                    />
+                  </div>
+
+                  <div className="w-28">
                     <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                       <span className="text-gray-800 font-semibold mr-1">$</span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         placeholder="0.00"
                         value={ri.price}
                         onChange={(e) => updateItem(idx, 'price', e.target.value)}
                         onKeyPress={(e) => {
                           if (e.key === 'Enter' && ri.item && ri.price) {
                             e.preventDefault();
-                            if (idx === receiptItems.length - 1) {
-                              addRow();
-                            }
+                            if (idx === receiptItems.length - 1) addRow();
                           }
                         }}
                         className="w-full text-right font-semibold text-gray-800 focus:outline-none"
                       />
                     </div>
                   </div>
-                  {receiptItems.length > 1 && (
-                    <button
-                      onClick={() => removeRow(idx)}
-                      className="text-red-600 hover:text-red-800 font-semibold cursor-pointer px-3"
-                    >
-                      ✕
-                    </button>
-                  )}
+                <button
+                  onClick={() => removeRow(idx)}
+                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                  aria-label="Close"
+                  title="Remove"
+                  >
+                    ✖️
+                  </button>
                 </div>
               ))}
             </div>
