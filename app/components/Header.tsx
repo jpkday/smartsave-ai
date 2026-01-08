@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
-    {name: 'Home', path: '/', icon: '🏠' },
+    {name: 'Home', path: '/', icon: 'ᯓ' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
     { name: 'Compare Items', path: '/compare', icon: '⚖️' },
     { name: 'Recent Trips', path: '/trips', icon: '🛒' },
@@ -70,7 +70,7 @@ export default function Header({ currentPage }: HeaderProps) {
             href="/"
             className="bg-gray-400 text-white w-14 h-14 rounded-2xl font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
           >
-            <span className="text-xl">🏠</span>
+            <span className="text-xl">ᯓ</span>
           </Link>
         ) : (
           <button
