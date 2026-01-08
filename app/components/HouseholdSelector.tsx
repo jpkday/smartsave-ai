@@ -43,17 +43,18 @@ export default function HouseholdSelector({
       localStorage.getItem('household_code') ||
       '';
   
-    if (!code) return;
+    if (code) {
+      setInputCode(code.toUpperCase());
+    }
   
-    setInputCode(code.toUpperCase());
-  
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    });
+    // iOS-safe focus + keyboard open
+    setTimeout(() => {
+      if (!inputRef.current) return;
+      inputRef.current.focus();
+      inputRef.current?.setSelectionRange(0, 999);
+    }, 50);
   }, [showModal, initialCode]);
   
-
 
   const handleSubmit = async () => {
     const code = inputCode.trim().toUpperCase();
