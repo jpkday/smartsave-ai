@@ -63,7 +63,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
       <div className="text-center text-white max-w-xs md:max-w-2xl w-full">
-        <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">SmartSaveAI</h1>
+        <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">ᯓ SmartSaveAI</h1>
         <p className="text-base md:text-xl mb-6 md:mb-10 px-2">Stop overpaying for groceries. Shop smart and save.</p>
         
         {/* Mobile: Primary 4 buttons only */}
@@ -212,28 +212,53 @@ function HomeContent() {
 {!isLoadingCode && (
   <div className="mt-8 md:mt-12 text-center">
     {isLocked ? (
-      <button
-        onClick={() => setShowCodeModal(true)}
-        className="bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
-      >
-        Enter Beta Code
-      </button>
+      <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 pt-1 pb-3 text-left">
+        {/* Label */}
+        <div className="text-xs uppercase tracking-wider text-gray-300 mb-0.5">
+          Beta Code
+        </div>
+
+        <button
+          onClick={() => setShowCodeModal(true)}
+          className="w-full text-center bg-white/20 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
+        >
+          Enter Beta Code
+        </button>
+      </div>
     ) : (
-      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 inline-block">
+      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 inline-block text-left">
+        {/* Label */}
+        <div className="text-xs uppercase tracking-wider text-gray-200 mb-2">
+          Beta Code
+        </div>
+
         <button
           onClick={() => setShowCodeModal(true)}
           className="relative bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors group"
           title="Click to change beta code"
         >
-          <span className="font-mono font-bold text-lg tracking-widest">{householdCode}</span>
-          <svg className="w-4 h-4 opacity-0 group-hover:opacity-75 transition-opacity absolute right-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          <span className="font-mono font-bold text-lg tracking-widest">
+            {householdCode}
+          </span>
+          <svg
+            className="w-4 h-4 opacity-0 group-hover:opacity-75 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.0 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
           </svg>
         </button>
       </div>
     )}
   </div>
 )}
+
       </div>
 
       {/* More Menu Modal - Mobile Only - Only show if unlocked */}
