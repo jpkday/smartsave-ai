@@ -358,21 +358,22 @@ export default function Receipts() {
     const createdAt = new Date().toISOString();
   
     const priceRows = validItems
-      .map((ri) => {
-        const itemId = itemIdByName[ri.item];
-        if (!itemId) return null;
-        return {
-          item_id: itemId,
-          item_name: ri.item,
-          store_id: storeId,
-          store,
-          price: ri.price,          // string ok if your column is numeric; Supabase will coerce
-          user_id: SHARED_USER_ID,
-          recorded_date: recordedDate,
-          created_at: createdAt,
-        };
-      })
-      .filter(Boolean);
+    .map((ri) => {
+      const itemId = itemIdByName[ri.item];
+      if (!itemId) return null;
+      return {
+        item_id: itemId,
+        item_name: ri.item,
+        store_id: storeId,
+        store,
+        price: ri.price,
+        user_id: SHARED_USER_ID,
+        household_code: householdCode,  // ← ADD THIS LINE
+        recorded_date: recordedDate,
+        created_at: createdAt,
+      };
+    })
+    .filter(Boolean);
   
     const { error: priceInsertErr } = await supabase.from('price_history').insert(priceRows as any);
   
