@@ -59,6 +59,16 @@ export default function Receipts() {
       setMode(savedMode);
     }
   }, []);
+
+  // Update date format when mode changes
+  useEffect(() => {
+    if (mode === 'flyer') {
+      // Set to today's date at noon for flyer mode
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10);
+      setTripEndLocal(dateStr + 'T12:00');
+    }
+  }, [mode]);
   
   useEffect(() => {
     const raw = localStorage.getItem(RECEIPT_DRAFT_KEY);
@@ -313,12 +323,12 @@ export default function Receipts() {
         missing.map((name) => ({
           name,
           user_id: SHARED_USER_ID,
-          // household_code: householdCode, // uncomment if your items table uses this
+          household_code: householdCode,
         }))
       );
   
       if (insertItemsErr) {
-        console.error(insertItemsErr);
+        console.error('Error inserting items:', insertItemsErr);
         alert('Failed to add new items. Check your connection and try again.');
         return;
       }
@@ -497,11 +507,11 @@ export default function Receipts() {
                   onClick={() => setMode('receipt')}
                   className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${
                     mode === 'receipt'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-orange-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Receipt Mode
+                  🧾 Receipt Mode
                 </button>
                 <button
                   onClick={() => setMode('flyer')}
@@ -511,13 +521,13 @@ export default function Receipts() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Flyer Mode
+                  ✄ Flyer Mode
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-3">
                 {mode === 'flyer' 
-                  ? '💡 Use Flyer Mode to quickly update prices from weekly ads - no trip tracking needed'
-                  : '🧾 Use Receipt Mode to log actual purchases and track shopping trips'
+                  ? '💡 Use Flyer Mode to quickly update prices from weekly ads - no trip tracking needed.'
+                  : '🧾 Use Receipt Mode to log actual purchases and track shopping trips.'
                 }
               </p>
             </div>
@@ -610,17 +620,19 @@ export default function Receipts() {
                     </datalist>
                   </div>
 
-                  {/* ✅ Quantity (between name and price) */}
-                  <div className="w-16">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="1"
-                      value={ri.quantity}
-                      onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
-                    />
-                  </div>
+                  {/* ✅ Quantity (only show in receipt mode) */}
+                  {mode === 'receipt' && (
+                    <div className="w-16">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="1"
+                        value={ri.quantity}
+                        onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
+                      />
+                    </div>
+                  )}
 
                   <div className="w-28">
                     <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
@@ -660,23 +672,37 @@ export default function Receipts() {
             </button>
           </div>
           </div>
-          {/* Total */}
-        <div className="w-full bg-white p-5">    
-          <div className="border-t pt-4 mb-6">
-            <div className="flex justify-between items-center">
-              <span className="text-xl font-bold text-gray-800">Total:</span>
-              <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
+          {/* Total - only show in receipt mode */}
+        {mode === 'receipt' && (
+          <div className="w-full bg-white p-5">    
+            <div className="border-t pt-4 mb-6">
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-gray-800">Total:</span>
+                <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Save Button */}
-          <button
-            onClick={saveReceipt}
-            className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
-          >
-            {mode === 'flyer' ? 'Save Flyer Prices' : 'Save Receipt'}
-          </button>
-        </div>
+            {/* Save Button */}
+            <button
+              onClick={saveReceipt}
+              className="w-full bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+            >
+              Save Receipt
+            </button>
+          </div>
+        )}
+
+        {/* Flyer mode - just save button, no total */}
+        {mode === 'flyer' && (
+          <div className="w-full bg-white p-5">
+            <button
+              onClick={saveReceipt}
+              className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+            >
+              Save Flyer Prices
+            </button>
+          </div>
+        )}
         </div>
         </div>
 </div>

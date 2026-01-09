@@ -17,6 +17,7 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Manage Items', path: '/items', icon: '📋' },
     { name: 'Enter Prices', path: '/prices', icon: '💰' },
     { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
+    { name: 'Add Flyer', path: '/flyer', icon: '✄' }, 
     { name: 'Manage Stores', path: '/stores', icon: '🛍️' },
   ];
 
@@ -29,6 +30,7 @@ export default function Header({ currentPage }: HeaderProps) {
     'Manage Items': 'bg-purple-500 hover:bg-purple-600',
     'Enter Prices': 'bg-blue-600 hover:bg-blue-700',
     'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
+    'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',    
     'Manage Stores': 'bg-pink-500 hover:bg-pink-600',
   };
 
