@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
+const MODE_KEY = 'receipt_mode_v1';
+
+type ReceiptMode = 'receipt' | 'flyer';
 
 type ReceiptDraft = {
   store: string;
@@ -35,8 +38,8 @@ export default function Receipts() {
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [tripEndLocal, setTripEndLocal] = useState(''); // "YYYY-MM-DDTHH:mm"
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
+  const [mode, setMode] = useState<ReceiptMode>('receipt');
   
-
 
   useEffect(() => {
     loadData();
@@ -49,6 +52,12 @@ export default function Receipts() {
       .slice(0, 16); // YYYY-MM-DDTHH:mm
   
     setTripEndLocal(local);
+
+    // Load saved mode
+    const savedMode = localStorage.getItem(MODE_KEY);
+    if (savedMode === 'flyer' || savedMode === 'receipt') {
+      setMode(savedMode);
+    }
   }, []);
   
   useEffect(() => {
@@ -79,6 +88,9 @@ export default function Receipts() {
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
   }, [store, date, tripEndLocal, receiptItems]);
   
+  useEffect(() => {
+    localStorage.setItem(MODE_KEY, mode);
+  }, [mode]);
 
   useEffect(() => {
     const loadLatestPricesForStore = async () => {
@@ -239,18 +251,18 @@ export default function Receipts() {
     }
   
     if (!tripEndLocal) {
-      alert('Please select a trip end date/time');
+      alert(mode === 'flyer' ? 'Please select a flyer date' : 'Please select a trip end date/time');
       return;
     }
 
     const recordedDate = tripEndLocal.slice(0, 10); // "YYYY-MM-DD"
   
-    // Trip end timestamp (timestampz)
-    const endedAtIso = toIsoFromLocalDateTime(tripEndLocal);
-      if (!endedAtIso) {
-        alert('Please select a trip end date/time');
-        return;
-      }
+    // Trip end timestamp (timestampz) - only used in receipt mode
+    const endedAtIso = mode === 'receipt' ? toIsoFromLocalDateTime(tripEndLocal) : null;
+    if (mode === 'receipt' && !endedAtIso) {
+      alert('Please select a trip end date/time');
+      return;
+    }
   
     // Filter out empty rows
     const validItems = receiptItems.filter((ri) => {
@@ -360,8 +372,8 @@ export default function Receipts() {
       return;
     }
   
-    // 3) OPTIONAL: Create a completed trip + checked items (past trip)
-    if (createPastTrip) {
+    // 3) OPTIONAL: Create a completed trip + checked items (past trip) - ONLY in receipt mode
+    if (mode === 'receipt' && createPastTrip && endedAtIso) {
       // Make started_at a few minutes before ended_at
       const startedAtIso = new Date(new Date(endedAtIso).getTime() - 5 * 60 * 1000).toISOString();
   
@@ -401,7 +413,7 @@ export default function Receipts() {
               item_name: ri.item,
               quantity: qtyNum,      // ✅ from UI
               price: priceNum,       // ✅ store-specific price captured on receipt
-              checked_at: endedAtIso // ✅ “completed” at trip end
+              checked_at: endedAtIso // ✅ "completed" at trip end
             };
           })
           .filter(Boolean);
@@ -418,11 +430,20 @@ export default function Receipts() {
       }
     }
   
-    alert(
-      `Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(
-        tripEndLocal
-      ).toLocaleString()}`
-    );
+    // Success message based on mode
+    if (mode === 'flyer') {
+      alert(
+        `Flyer prices saved! Updated ${validItems.length} prices for ${store} from ${new Date(
+          tripEndLocal
+        ).toLocaleDateString()}`
+      );
+    } else {
+      alert(
+        `Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(
+          tripEndLocal
+        ).toLocaleString()}`
+      );
+    }
     
   
     // Reset form
@@ -450,16 +471,58 @@ export default function Receipts() {
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Enter Receipt</h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">Quickly update prices from your shopping receipts</p>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
+                {mode === 'flyer' ? 'Enter Flyer Prices' : 'Enter Receipt'}
+              </h1>
+              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
+                {mode === 'flyer' 
+                  ? 'Quickly update prices from store flyers and ads'
+                  : 'Quickly update prices from your shopping receipts'
+                }
+              </p>
             </div>
-            <Header currentPage="Add Receipt" />
+            <Header currentPage={mode === 'flyer' ? 'Add Flyer' : 'Add Receipt'} />
           </div>
         </div>
       </div>
       
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-0 mt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
+          
+          {/* Mode Toggle */}
+          <div className="w-full bg-white p-3 mb-2">
+            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setMode('receipt')}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${
+                    mode === 'receipt'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Receipt Mode
+                </button>
+                <button
+                  onClick={() => setMode('flyer')}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${
+                    mode === 'flyer'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Flyer Mode
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                {mode === 'flyer' 
+                  ? '💡 Use Flyer Mode to quickly update prices from weekly ads - no trip tracking needed'
+                  : '🧾 Use Receipt Mode to log actual purchases and track shopping trips'
+                }
+              </p>
+            </div>
+          </div>
+
           <div className="w-full bg-white p-3">
           <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
           
@@ -479,36 +542,48 @@ export default function Receipts() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2">Date & Time of Purchase</label>
+              <label className="text-sm font-semibold text-gray-700 mb-2">
+                {mode === 'flyer' ? 'Flyer Date' : 'Date & Time of Purchase'}
+              </label>
               <input
-                type="datetime-local"
-                value={tripEndLocal}
-                onChange={(e) => setTripEndLocal(e.target.value)}
+                type={mode === 'flyer' ? 'date' : 'datetime-local'}
+                value={mode === 'flyer' ? tripEndLocal.slice(0, 10) : tripEndLocal}
+                onChange={(e) => {
+                  if (mode === 'flyer') {
+                    // For flyer mode, append default time
+                    setTripEndLocal(e.target.value + 'T12:00');
+                  } else {
+                    setTripEndLocal(e.target.value);
+                  }
+                }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
               />
             </div>
           </div>
         </div>
       </div>
-          {/* Create past trip toggle */}
-        <div className="w-full bg-white p-3">  
-          <div className="border border-slate-200 rounded-2xl shadow-md p-4">
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={createPastTrip}
-                onChange={(e) => setCreatePastTrip(e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 cursor-pointer"
-              />
-              <span className="text-s font-semibold text-gray-700">
-                Save Receipt to your Recent Trips
-              </span>
-            </label>
-            <p className="text-s text-gray-500 mt-2">
-              Use this to track purchases made outside the app.
-            </p>
-          </div>
-        </div>
+
+          {/* Create past trip toggle - ONLY show in receipt mode */}
+          {mode === 'receipt' && (
+            <div className="w-full bg-white p-3">  
+              <div className="border border-slate-200 rounded-2xl shadow-md p-4">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={createPastTrip}
+                    onChange={(e) => setCreatePastTrip(e.target.checked)}
+                    className="w-5 h-5 rounded border-gray-300 cursor-pointer"
+                  />
+                  <span className="text-s font-semibold text-gray-700">
+                    Save Receipt to your Recent Trips
+                  </span>
+                </label>
+                <p className="text-s text-gray-500 mt-2">
+                  Use this to track purchases made outside the app.
+                </p>
+              </div>
+            </div>
+          )}
 
 
           {/* Items Table */}
@@ -599,7 +674,7 @@ export default function Receipts() {
             onClick={saveReceipt}
             className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
           >
-            Save Receipt
+            {mode === 'flyer' ? 'Save Flyer Prices' : 'Save Receipt'}
           </button>
         </div>
         </div>
