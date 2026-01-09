@@ -1046,15 +1046,20 @@ if (!householdCode) {
   const removeItem = async (id: string) => {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
-
+  
     setListItems(listItems.filter((li) => li.id !== id));
     setUndoRemoveItem(item);
-
+  
     if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
-
+  
     const timeout = setTimeout(async () => {
       try {
-        const { error } = await supabase.from('shopping_list').delete().eq('id', id).eq('user_id', SHARED_USER_ID);
+        const { error } = await supabase
+          .from('shopping_list')
+          .delete()
+          .eq('id', id)
+          .eq('household_code', householdCode); // Changed from user_id + SHARED_USER_ID
+        
         if (error) throw new Error(`Failed to remove item: ${error.message}`);
       } catch (error) {
         console.error('Error removing item:', error);
@@ -1065,7 +1070,7 @@ if (!householdCode) {
         setUndoRemoveTimeout(null);
       }
     }, 2500);
-
+  
     setUndoRemoveTimeout(timeout);
   };
 
