@@ -72,7 +72,7 @@ function HomeContent() {
               
               <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Weekly Deals</span>
+                <span className="flex-1 ml-6">Local Deals</span>
               </Link>
 
               <button onClick={handleLockedClick} className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
@@ -97,7 +97,7 @@ function HomeContent() {
               
               <Link href="/deals" className="w-full bg-red-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Weekly Deals</span>
+                <span className="flex-1 ml-6">Local Deals</span>
               </Link>
               
               <Link href="/trips" className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
@@ -142,7 +142,7 @@ function HomeContent() {
 
               <button onClick={handleLockedClick} className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Weekly Deals</span>
+                <span className="flex-1 ml-6">Local Deals</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
@@ -179,7 +179,7 @@ function HomeContent() {
 
               <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Weekly Deals</span>
+                <span className="flex-1 ml-6">Local Deals</span>
               </Link>
               
               <Link href="/compare" className="bg-emerald-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">

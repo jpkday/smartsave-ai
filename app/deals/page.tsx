@@ -126,8 +126,8 @@ export default function Deals() {
 
       console.log(`${p.item_name}: $${currentPrice} vs typical $${typicalHighPrice.toFixed(2)} = ${discountPercent.toFixed(1)}% off`);
 
-      // Skip if discount is less than 4%
-      if (discountPercent < 4) return;
+      // Skip if discount is less than 5%
+      if (discountPercent < 5) return;
       
       // Calculate average price
       const sum = history.reduce((acc, val) => acc + val, 0);
@@ -462,7 +462,7 @@ export default function Deals() {
               </div>
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-xs font-semibold text-blue-900">
-                  Showing deals with at least 4% savings compared to typical high prices (75th percentile). Only showing currently valid flyer prices.
+                  Showing deals with at least 5% savings compared to typical high prices (75th percentile). Only showing currently valid flyer prices.
                 </p>
               </div>
             </div>
