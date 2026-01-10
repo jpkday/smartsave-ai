@@ -10,29 +10,24 @@ function HomeContent() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isLoadingCode, setIsLoadingCode] = useState(true); // Add loading state
-  const searchParams = useSearchParams(); // Add slug ability to beta codes
+  const [isLoadingCode, setIsLoadingCode] = useState(true);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const code = localStorage.getItem('household_code');
     setHouseholdCode(code);
-    setIsLoadingCode(false); // Mark as loaded
+    setIsLoadingCode(false);
   }, []);
 
-  // Check for code in URL parameter first, then localStorage
   useEffect(() => {
     const urlCode = searchParams.get('code');
     
     if (urlCode) {
-      // Set the code from URL parameter
       localStorage.setItem('household_code', urlCode);
       setHouseholdCode(urlCode);
       setIsLoadingCode(false);
-      
-      // Optional: Clean up URL to remove the parameter
       window.history.replaceState({}, '', '/');
     } else {
-      // Check localStorage
       const code = localStorage.getItem('household_code');
       setHouseholdCode(code);
       setIsLoadingCode(false);
@@ -70,15 +65,16 @@ function HomeContent() {
         <div className="grid grid-cols-1 gap-3 md:hidden">
           {isLocked ? (
             <>
-              <button onClick={handleLockedClick} className="w-full bg-yellow-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">                <span className="absolute left-4 text-xl">📝</span>
+              <button onClick={handleLockedClick} className="w-full bg-yellow-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-xl">📝</span>
                 <span className="flex-1 ml-6">Shopping List</span>
               </button>
               
-              <button onClick={handleLockedClick} className="w-full bg-emerald-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare Items</span>
-              </button>
-              
+              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🔥</span>
+                <span className="flex-1 ml-6">Weekly Deals</span>
+              </Link>
+
               <button onClick={handleLockedClick} className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">🛒</span>
                 <span className="flex-1 ml-6">Recent Trips</span>
@@ -99,12 +95,13 @@ function HomeContent() {
                 <span className="flex-1 ml-6">Shopping List</span>
               </Link>
               
-              <Link href="/compare" className="w-full bg-emerald-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare Items</span>
+              <Link href="/deals" className="w-full bg-red-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🔥</span>
+                <span className="flex-1 ml-6">Weekly Deals</span>
               </Link>
               
-              <Link href="/trips" className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">                <span className="absolute left-4 text-xl">🛒</span>
+              <Link href="/trips" className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-xl">🛒</span>
                 <span className="flex-1 ml-6">Recent Trips</span>
               </Link>
               
@@ -123,7 +120,8 @@ function HomeContent() {
         <div className="hidden md:grid grid-cols-2 gap-4">
           {isLocked ? (
             <>
-              <button onClick={handleLockedClick} className="bg-yellow-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">                <span className="absolute left-4 text-2xl">📝</span>
+              <button onClick={handleLockedClick} className="bg-yellow-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">📝</span>
                 <span className="flex-1 ml-6">Shopping List</span>
               </button>
 
@@ -140,6 +138,11 @@ function HomeContent() {
               <button onClick={handleLockedClick} className="bg-emerald-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">⚖️</span>
                 <span className="flex-1 ml-6">Compare Items</span>
+              </button>
+
+              <button onClick={handleLockedClick} className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🔥</span>
+                <span className="flex-1 ml-6">Weekly Deals</span>
               </button>
               
               <button onClick={handleLockedClick} className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
@@ -161,7 +164,6 @@ function HomeContent() {
                 <span className="absolute left-4 text-2xl">🛍️</span>
                 <span className="flex-1 ml-6">Manage Stores</span>
               </button>
-              
             </>
           ) : (
             <>
@@ -185,8 +187,14 @@ function HomeContent() {
                 <span className="flex-1 ml-6">Enter Prices</span>
               </Link>
 
-              <Link href="/trips" className="bg-rose-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">                <span className="absolute left-4 text-2xl">🛒</span>
+              <Link href="/trips" className="bg-rose-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🛒</span>
                 <span className="flex-1 ml-6">Recent Trips</span>
+              </Link>
+
+              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🔥</span>
+                <span className="flex-1 ml-6">Weekly Deals</span>
               </Link>
               
               <Link href="/receipts" className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
@@ -203,62 +211,58 @@ function HomeContent() {
                 <span className="absolute left-4 text-2xl">🛍️</span>
                 <span className="flex-1 ml-6">Manage Stores</span>
               </Link>
-              
             </>
           )}
         </div>
 
-{/* Beta Code Section at Bottom */}
-{!isLoadingCode && (
-  <div className="mt-8 md:mt-12 text-center">
-    {isLocked ? (
-      <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 pt-1 pb-3 text-left">
-        {/* Label */}
-        <div className="text-xs uppercase tracking-wider text-gray-300 mb-0.5">
-          Beta Code
-        </div>
+        {/* Beta Code Section at Bottom */}
+        {!isLoadingCode && (
+          <div className="mt-8 md:mt-12 text-center">
+            {isLocked ? (
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 pt-1 pb-3 text-left">
+                <div className="text-xs uppercase tracking-wider text-gray-300 mb-0.5">
+                  Beta Code
+                </div>
 
-        <button
-          onClick={() => setShowCodeModal(true)}
-          className="w-full text-center bg-white/20 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
-        >
-          Enter Beta Code
-        </button>
-      </div>
-    ) : (
-      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 inline-block text-left">
-        {/* Label */}
-        <div className="text-xs uppercase tracking-wider text-gray-200 mb-2">
-          Beta Code
-        </div>
+                <button
+                  onClick={() => setShowCodeModal(true)}
+                  className="w-full text-center bg-white/20 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/30 transition-all"
+                >
+                  Enter Beta Code
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 inline-block text-left">
+                <div className="text-xs uppercase tracking-wider text-gray-200 mb-2">
+                  Beta Code
+                </div>
 
-        <button
-          onClick={() => setShowCodeModal(true)}
-          className="relative bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors group"
-          title="Click to change beta code"
-        >
-          <span className="font-mono font-bold text-lg tracking-widest">
-            {householdCode}
-          </span>
-          <svg
-            className="w-4 h-4 opacity-0 group-hover:opacity-75 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.0 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-            />
-          </svg>
-        </button>
-      </div>
-    )}
-  </div>
-)}
-
+                <button
+                  onClick={() => setShowCodeModal(true)}
+                  className="relative bg-white/30 hover:bg-white/40 px-10 py-2 rounded-lg transition-colors group"
+                  title="Click to change beta code"
+                >
+                  <span className="font-mono font-bold text-lg tracking-widest">
+                    {householdCode}
+                  </span>
+                  <svg
+                    className="w-4 h-4 opacity-0 group-hover:opacity-75 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.0 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* More Menu Modal - Mobile Only - Only show if unlocked */}
@@ -276,6 +280,11 @@ function HomeContent() {
             </div>
             
             <div className="grid grid-cols-1 gap-3">
+              <Link href="/compare" onClick={() => setShowMoreMenu(false)} className="w-full bg-emerald-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-xl">⚖️</span>
+                <span className="flex-1 ml-6">Compare Items</span>
+              </Link>
+
               <Link href="/history" onClick={() => setShowMoreMenu(false)} className="w-full bg-amber-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">📊</span>
                 <span className="flex-1 ml-6">Price History</span>
