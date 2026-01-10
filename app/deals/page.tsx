@@ -21,6 +21,8 @@ interface Deal {
   previousBestPrice: number;
   discountPercent: number;
   isOnList: boolean;
+  valid_from: string | null;
+  valid_until: string | null;
 }
 
 export default function Deals() {
@@ -43,12 +45,14 @@ export default function Deals() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const cutoffDate = sevenDaysAgo.toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
 
     const { data: recentPrices, error: recentError } = await supabase
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .gte('recorded_date', cutoffDate)
+      .or(`valid_until.gte.${today},valid_until.is.null`) // Only valid prices or prices without validity dates
       .order('recorded_date', { ascending: false });
 
     if (recentError) {
@@ -167,6 +171,8 @@ export default function Deals() {
         previousBestPrice: previousBestPrice,
         discountPercent,
         isOnList: false, // Will be updated later
+        valid_from: p.valid_from || null,
+        valid_until: p.valid_until || null,
       };
 
       // Only keep the most recent entry per item (item_name is unique identifier)
@@ -414,7 +420,15 @@ export default function Deals() {
                             Range: ${deal.historicalLow.toFixed(2)} - ${deal.historicalHigh.toFixed(2)}
                           </div>
                           <div>
-                            Valid from: {new Date(deal.recorded_date).toLocaleDateString()}
+                            {deal.valid_from && deal.valid_until ? (
+                              <span className="text-green-600 font-semibold">
+                                Valid: {new Date(deal.valid_from).toLocaleDateString()} - {new Date(deal.valid_until).toLocaleDateString()}
+                              </span>
+                            ) : (
+                              <span>
+                                Added: {new Date(deal.recorded_date).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button
@@ -455,7 +469,7 @@ export default function Deals() {
               </div>
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-xs font-semibold text-blue-900">
-                  Showing deals from the last 7 days with at least 4% savings compared to the previous best price
+                  Showing deals from the last 7 days with at least 4% savings compared to the previous best price. Only showing currently valid flyer prices.
                 </p>
               </div>
             </div>

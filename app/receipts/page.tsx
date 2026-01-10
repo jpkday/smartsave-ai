@@ -15,15 +15,16 @@ type ReceiptDraft = {
   date: string;
   tripEndLocal: string;
   receiptItems: ReceiptItem[];
+  validFrom?: string;
+  validUntil?: string;
 };
 
 interface ReceiptItem {
   item: string;
   quantity: string;
   price: string;
-  priceDirty?: boolean; // user edited manually
+  priceDirty?: boolean;
 }
-
 
 export default function Receipts() {
   const [stores, setStores] = useState<string[]>([]);
@@ -36,37 +37,38 @@ export default function Receipts() {
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [createPastTrip, setCreatePastTrip] = useState(true);
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
-  const [tripEndLocal, setTripEndLocal] = useState(''); // "YYYY-MM-DDTHH:mm"
+  const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<ReceiptMode>('receipt');
-  
+  const [validFrom, setValidFrom] = useState('');
+  const [validUntil, setValidUntil] = useState('');
 
   useEffect(() => {
     loadData();
   
-    // default: now (rounded to nearest minute)
     const now = new Date();
     now.setSeconds(0, 0);
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
-      .slice(0, 16); // YYYY-MM-DDTHH:mm
+      .slice(0, 16);
   
     setTripEndLocal(local);
 
-    // Load saved mode
     const savedMode = localStorage.getItem(MODE_KEY);
     if (savedMode === 'flyer' || savedMode === 'receipt') {
       setMode(savedMode);
     }
   }, []);
 
-  // Update date format when mode changes
   useEffect(() => {
     if (mode === 'flyer') {
-      // Set to today's date at noon for flyer mode
+      // Set default validity dates: today to 7 days from today
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10);
-      setTripEndLocal(dateStr + 'T12:00');
+      setValidFrom(dateStr);
+      const sevenDaysLater = new Date(today);
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      setValidUntil(sevenDaysLater.toISOString().slice(0, 10));
     }
   }, [mode]);
   
@@ -81,6 +83,8 @@ export default function Receipts() {
       if (draft.date) setDate(draft.date);
       if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
       if (draft.receiptItems?.length) setReceiptItems(draft.receiptItems);
+      if (draft.validFrom) setValidFrom(draft.validFrom);
+      if (draft.validUntil) setValidUntil(draft.validUntil);
     } catch (e) {
       console.warn('Failed to restore receipt draft', e);
       localStorage.removeItem(RECEIPT_DRAFT_KEY);
@@ -93,10 +97,12 @@ export default function Receipts() {
       date,
       tripEndLocal,
       receiptItems,
+      validFrom,
+      validUntil,
     };
   
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
-  }, [store, date, tripEndLocal, receiptItems]);
+  }, [store, date, tripEndLocal, receiptItems, validFrom, validUntil]);
   
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
@@ -122,7 +128,6 @@ export default function Receipts() {
         return;
       }
   
-      // Keep only latest price per item_name (data is already newest-first)
       const lookup: Record<string, string> = {};
       for (const row of data || []) {
         if (!lookup[row.item_name]) lookup[row.item_name] = String(row.price);
@@ -134,10 +139,8 @@ export default function Receipts() {
   
     loadLatestPricesForStore();
   }, [store]);
-  
 
   const loadData = async () => {
-    // Load stores
     const { data: storesData } = await supabase
       .from('stores')
       .select('name')
@@ -147,7 +150,6 @@ export default function Receipts() {
       setStores(storesData.map(s => s.name));
     }
 
-    // Load items
     const { data: itemsData } = await supabase
       .from('items')
       .select('name')
@@ -165,21 +167,17 @@ export default function Receipts() {
       itemRefs.current[newIndex]?.focus();
     }, 100);
   };
-  
 
   const removeRow = (index: number) => {
     setReceiptItems((prev) => {
       if (prev.length <= 1) {
-        // Never allow 0 rows — reset to a single blank row
         return [{ item: '', price: '', quantity: '1' } as any];
       }
       return prev.filter((_, i) => i !== index);
     });
   
-    // Optional: keep the UX snappy
     setTimeout(() => itemRefs.current[0]?.focus(), 50);
   };
-  
 
   const applySuggestedPricesForCurrentStore = (lookup: Record<string, string>) => {
     setReceiptItems((prev) =>
@@ -187,12 +185,10 @@ export default function Receipts() {
         const itemName = (row.item || '').trim();
         if (!itemName) return row;
   
-        // don't overwrite user-entered prices
         if (row.priceDirty) return row;
   
         const suggested = lookup[itemName];
         if (!suggested) {
-          // optional: clear if no known price and user hasn't overridden
           return { ...row, price: '' };
         }
   
@@ -203,7 +199,6 @@ export default function Receipts() {
       })
     );
   };
-  
 
   const updateItem = (index: number, field: 'item' | 'quantity' | 'price', value: string) => {
     setReceiptItems((prev) => {
@@ -221,14 +216,12 @@ export default function Receipts() {
           row.price = (cents / 100).toFixed(2);
         }
       } else if (field === 'quantity') {
-        // ✅ allow decimals, keep as string
         if (/^\d*\.?\d*$/.test(value)) {
           row.quantity = value;
         }
       } else {
         row.item = value;
   
-        // ✅ auto-fill price when item selected (only if not overridden)
         const suggested = storePriceLookup[value];
         if (!row.priceDirty && suggested) {
           row.price = suggested;
@@ -240,41 +233,49 @@ export default function Receipts() {
     });
   };
   
-    // Converts "YYYY-MM-DDTHH:mm" (from datetime-local) into a real UTC ISO timestamp
-    const toIsoFromLocalDateTime = (local: string) => {
-      // local example: "2026-01-07T18:30"
-      const [datePart, timePart] = local.split('T');
-      if (!datePart || !timePart) return null;
+  const toIsoFromLocalDateTime = (local: string) => {
+    const [datePart, timePart] = local.split('T');
+    if (!datePart || !timePart) return null;
   
-      const [y, m, d] = datePart.split('-').map(Number);
-      const [hh, mm] = timePart.split(':').map(Number);
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [hh, mm] = timePart.split(':').map(Number);
   
-      // Month is 0-based in JS Date
-      const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
-      return dt.toISOString();
-    };
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
+    return dt.toISOString();
+  };
 
   const saveReceipt = async () => {
     if (!store) {
       alert('Please select a store');
       return;
     }
-  
-    if (!tripEndLocal) {
-      alert(mode === 'flyer' ? 'Please select a flyer date' : 'Please select a trip end date/time');
-      return;
+
+    // Validate based on mode
+    if (mode === 'flyer') {
+      if (!validFrom || !validUntil) {
+        alert('Please specify when these prices are valid');
+        return;
+      }
+      if (validFrom > validUntil) {
+        alert('Valid From date must be before Valid Until date');
+        return;
+      }
+    } else {
+      if (!tripEndLocal) {
+        alert('Please select a trip end date/time');
+        return;
+      }
     }
 
-    const recordedDate = tripEndLocal.slice(0, 10); // "YYYY-MM-DD"
+    // Set recorded_date based on mode
+    const recordedDate = mode === 'flyer' ? validFrom : tripEndLocal.slice(0, 10);
   
-    // Trip end timestamp (timestampz) - only used in receipt mode
     const endedAtIso = mode === 'receipt' ? toIsoFromLocalDateTime(tripEndLocal) : null;
     if (mode === 'receipt' && !endedAtIso) {
       alert('Please select a trip end date/time');
       return;
     }
   
-    // Filter out empty rows
     const validItems = receiptItems.filter((ri) => {
       const price = parseFloat(ri.price || '0');
       const qty = parseFloat(ri.quantity || '1');
@@ -286,7 +287,6 @@ export default function Receipts() {
       return;
     }
   
-    // Get store_id
     const { data: storeData, error: storeErr } = await supabase
       .from('stores')
       .select('id')
@@ -300,7 +300,6 @@ export default function Receipts() {
   
     const storeId = storeData.id;
   
-    // 1) Ensure items exist + build itemId map (so we don't re-query per item)
     const uniqueNames = Array.from(new Set(validItems.map((x) => x.item)));
   
     const { data: existingItems, error: existingItemsErr } = await supabase
@@ -336,7 +335,6 @@ export default function Receipts() {
       setItems((prev) => Array.from(new Set([...prev, ...missing])));
     }
   
-    // Re-select to get ids for everything (existing + newly inserted)
     const { data: allItemsData, error: allItemsErr } = await supabase
       .from('items')
       .select('id, name')
@@ -354,26 +352,34 @@ export default function Receipts() {
       itemIdByName[it.name] = it.id;
     });
   
-    // 2) Insert prices into price_history (never update - always insert)
     const createdAt = new Date().toISOString();
   
     const priceRows = validItems
-    .map((ri) => {
-      const itemId = itemIdByName[ri.item];
-      if (!itemId) return null;
-      return {
-        item_id: itemId,
-        item_name: ri.item,
-        store_id: storeId,
-        store,
-        price: ri.price,
-        user_id: SHARED_USER_ID,
-        household_code: householdCode,  // ← ADD THIS LINE
-        recorded_date: recordedDate,
-        created_at: createdAt,
-      };
-    })
-    .filter(Boolean);
+      .map((ri) => {
+        const itemId = itemIdByName[ri.item];
+        if (!itemId) return null;
+        
+        const priceRow: any = {
+          item_id: itemId,
+          item_name: ri.item,
+          store_id: storeId,
+          store,
+          price: ri.price,
+          user_id: SHARED_USER_ID,
+          household_code: householdCode,
+          recorded_date: recordedDate,
+          created_at: createdAt,
+        };
+
+        // Add validity dates for flyer mode
+        if (mode === 'flyer') {
+          priceRow.valid_from = validFrom;
+          priceRow.valid_until = validUntil;
+        }
+
+        return priceRow;
+      })
+      .filter(Boolean);
   
     const { error: priceInsertErr } = await supabase.from('price_history').insert(priceRows as any);
   
@@ -383,9 +389,7 @@ export default function Receipts() {
       return;
     }
   
-    // 3) OPTIONAL: Create a completed trip + checked items (past trip) - ONLY in receipt mode
     if (mode === 'receipt' && createPastTrip && endedAtIso) {
-      // Make started_at a few minutes before ended_at
       const startedAtIso = new Date(new Date(endedAtIso).getTime() - 5 * 60 * 1000).toISOString();
   
       const { data: tripRow, error: tripErr } = await supabase
@@ -393,9 +397,9 @@ export default function Receipts() {
         .insert({
           household_code: householdCode,
           store_id: storeId,
-          store,              // ✅ trips table has store (text)
+          store,
           started_at: startedAtIso,
-          ended_at: endedAtIso, // ✅ ensures it is NOT an active trip
+          ended_at: endedAtIso,
         })
         .select('id')
         .single();
@@ -403,7 +407,6 @@ export default function Receipts() {
       if (tripErr || !tripRow?.id) {
         console.error(tripErr);
         alert('Saved prices, but failed to create the trip.');
-        // don't return — prices already saved
       } else {
         const tripId = tripRow.id;
   
@@ -419,12 +422,12 @@ export default function Receipts() {
               trip_id: tripId,
               household_code: householdCode,
               store_id: storeId,
-              store,                 // ✅ shopping_list_events has store (text)
+              store,
               item_id: itemId,
               item_name: ri.item,
-              quantity: qtyNum,      // ✅ from UI
-              price: priceNum,       // ✅ store-specific price captured on receipt
-              checked_at: endedAtIso // ✅ "completed" at trip end
+              quantity: qtyNum,
+              price: priceNum,
+              checked_at: endedAtIso
             };
           })
           .filter(Boolean);
@@ -436,17 +439,15 @@ export default function Receipts() {
         if (eventsErr) {
           console.error(eventsErr);
           alert('Saved prices + trip, but failed to save trip items.');
-          // don't return — trip exists, prices exist
         }
       }
     }
   
-    // Success message based on mode
     if (mode === 'flyer') {
       alert(
-        `Flyer prices saved! Updated ${validItems.length} prices for ${store} from ${new Date(
-          tripEndLocal
-        ).toLocaleDateString()}`
+        `Flyer prices saved! Updated ${validItems.length} prices for ${store} (valid ${new Date(
+          validFrom
+        ).toLocaleDateString()} - ${new Date(validUntil).toLocaleDateString()})`
       );
     } else {
       alert(
@@ -455,26 +456,22 @@ export default function Receipts() {
         ).toLocaleString()}`
       );
     }
-    
   
-    // Reset form
     setStore('');
     setDate(new Date().toISOString().split('T')[0]);
     setReceiptItems([{ item: '', quantity: '1', price: '', priceDirty: false }]);
+    setValidFrom('');
+    setValidUntil('');
     localStorage.removeItem(RECEIPT_DRAFT_KEY);
 
     loadData();
   };
-  
 
   const total = receiptItems.reduce((sum, ri) => {
     const price = parseFloat(ri.price || '0') || 0;
     const qty = parseFloat(ri.quantity || '1') || 1;
     return sum + price * qty;
   }, 0);
-  
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -535,44 +532,67 @@ export default function Receipts() {
           </div>
 
           <div className="w-full bg-white p-3">
-          <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
           
-          {/* Store and Date Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
-              <select
-                value={store}
-                onChange={(e) => setStore(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
-              >
-                <option value="">Select</option>
-                {stores.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2">
-                {mode === 'flyer' ? 'Flyer Date' : 'Date & Time of Purchase'}
-              </label>
-              <input
-                type={mode === 'flyer' ? 'date' : 'datetime-local'}
-                value={mode === 'flyer' ? tripEndLocal.slice(0, 10) : tripEndLocal}
-                onChange={(e) => {
-                  if (mode === 'flyer') {
-                    // For flyer mode, append default time
-                    setTripEndLocal(e.target.value + 'T12:00');
-                  } else {
-                    setTripEndLocal(e.target.value);
-                  }
-                }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
-              />
+              {/* Store and Date Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
+                  <select
+                    value={store}
+                    onChange={(e) => setStore(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                  >
+                    <option value="">Select</option>
+                    {stores.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                {mode === 'receipt' && (
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 mb-2">
+                      Date & Time of Purchase
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={tripEndLocal}
+                      onChange={(e) => setTripEndLocal(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Validity Dates - Only show in Flyer Mode */}
+              {mode === 'flyer' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Valid From
+                    </label>
+                    <input
+                      type="date"
+                      value={validFrom}
+                      onChange={(e) => setValidFrom(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Valid Until
+                    </label>
+                    <input
+                      type="date"
+                      value={validUntil}
+                      onChange={(e) => setValidUntil(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
 
           {/* Create past trip toggle - ONLY show in receipt mode */}
           {mode === 'receipt' && (
@@ -596,116 +616,115 @@ export default function Receipts() {
             </div>
           )}
 
-
           {/* Items Table */}
           <div className="w-full bg-white p-3">  
-          <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
-            <div className="space-y-3">
-              {receiptItems.map((ri, idx) => (
-                <div key={idx} className="flex gap-3 items-center">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      list={`items-${idx}`}
-                      value={ri.item}
-                      onChange={(e) => updateItem(idx, 'item', e.target.value)}
-                      placeholder="Type or select item..."
-                      ref={(el) => { if (el) itemRefs.current[idx] = el; }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                    />
-                    <datalist id={`items-${idx}`}>
-                      {items.sort().map(item => (
-                        <option key={item} value={item} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  {/* ✅ Quantity (only show in receipt mode) */}
-                  {mode === 'receipt' && (
-                    <div className="w-16">
+            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+              <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
+              <div className="space-y-3">
+                {receiptItems.map((ri, idx) => (
+                  <div key={idx} className="flex gap-3 items-center">
+                    <div className="flex-1">
                       <input
                         type="text"
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={ri.quantity}
-                        onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
+                        list={`items-${idx}`}
+                        value={ri.item}
+                        onChange={(e) => updateItem(idx, 'item', e.target.value)}
+                        placeholder="Type or select item..."
+                        ref={(el) => { if (el) itemRefs.current[idx] = el; }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                       />
+                      <datalist id={`items-${idx}`}>
+                        {items.sort().map(item => (
+                          <option key={item} value={item} />
+                        ))}
+                      </datalist>
                     </div>
-                  )}
 
-                  <div className="w-28">
-                    <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-                      <span className="text-gray-800 font-semibold mr-1">$</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={ri.price}
-                        onChange={(e) => updateItem(idx, 'price', e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && ri.item && ri.price) {
-                            e.preventDefault();
-                            if (idx === receiptItems.length - 1) addRow();
-                          }
-                        }}
-                        className="w-full text-right font-semibold text-gray-800 focus:outline-none"
-                      />
+                    {/* Quantity (only show in receipt mode) */}
+                    {mode === 'receipt' && (
+                      <div className="w-16">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="1"
+                          value={ri.quantity}
+                          onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
+                        />
+                      </div>
+                    )}
+
+                    <div className="w-28">
+                      <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                        <span className="text-gray-800 font-semibold mr-1">$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          value={ri.price}
+                          onChange={(e) => updateItem(idx, 'price', e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && ri.item && ri.price) {
+                              e.preventDefault();
+                              if (idx === receiptItems.length - 1) addRow();
+                            }
+                          }}
+                          className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                        />
+                      </div>
                     </div>
+                    <button
+                      onClick={() => removeRow(idx)}
+                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                      aria-label="Close"
+                      title="Remove"
+                    >
+                      ✖️
+                    </button>
                   </div>
-                <button
-                  onClick={() => removeRow(idx)}
-                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-                  aria-label="Close"
-                  title="Remove"
-                  >
-                    ✖️
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={addRow}
-              className="mt-3 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
-            >
-              + Add Item
-            </button>
-          </div>
-          </div>
-          {/* Total - only show in receipt mode */}
-        {mode === 'receipt' && (
-          <div className="w-full bg-white p-5">    
-            <div className="border-t pt-4 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-gray-800">Total:</span>
-                <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
+                ))}
               </div>
+              <button
+                onClick={addRow}
+                className="mt-3 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+              >
+                + Add Item
+              </button>
             </div>
-
-            {/* Save Button */}
-            <button
-              onClick={saveReceipt}
-              className="w-full bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
-            >
-              Save Receipt
-            </button>
           </div>
-        )}
 
-        {/* Flyer mode - just save button, no total */}
-        {mode === 'flyer' && (
-          <div className="w-full bg-white p-5">
-            <button
-              onClick={saveReceipt}
-              className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
-            >
-              Save Flyer Prices
-            </button>
-          </div>
-        )}
+          {/* Total - only show in receipt mode */}
+          {mode === 'receipt' && (
+            <div className="w-full bg-white p-5">    
+              <div className="border-t pt-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-bold text-gray-800">Total:</span>
+                  <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={saveReceipt}
+                className="w-full bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              >
+                Save Receipt
+              </button>
+            </div>
+          )}
+
+          {/* Flyer mode - just save button, no total */}
+          {mode === 'flyer' && (
+            <div className="w-full bg-white p-5">
+              <button
+                onClick={saveReceipt}
+                className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              >
+                Save Flyer Prices
+              </button>
+            </div>
+          )}
         </div>
-        </div>
-</div>
+      </div>
+    </div>
   );
 }
