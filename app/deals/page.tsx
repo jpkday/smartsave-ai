@@ -18,7 +18,7 @@ interface Deal {
   historicalLow: number;
   historicalHigh: number;
   historicalAvg: number;
-  previousBestPrice: number;
+  typicalHighPrice: number; // 75th percentile price
   discountPercent: number;
   isOnList: boolean;
   valid_from: string | null;
@@ -105,36 +105,29 @@ export default function Deals() {
 
     (recentPrices || []).forEach((p: any) => {
       const history = itemHistory[p.item_name] || [];
-      if (history.length < 2) return; // Need historical data to compare
+      if (history.length < 2) return; // Need at least 2 prices to compare
 
       const itemInfo = itemLookup[p.item_name];
       if (!itemInfo) return; // Skip if item not found
 
       const currentPrice = p.price;
       
-      // Get all historical prices EXCEPT current price
-      const previousPrices = history.filter(price => price !== currentPrice);
-      
-      if (previousPrices.length === 0) {
-        // No previous prices to compare
-        return;
-      }
-      
-      // Find the lowest previous price (previous best)
-      const previousBestPrice = Math.min(...previousPrices);
-      
-      // If current price is higher or equal to previous best, skip it
-      if (currentPrice >= previousBestPrice) return;
-
-      // Calculate discount % from previous best price
-      const discountPercent = ((previousBestPrice - currentPrice) / previousBestPrice) * 100;
-
-      // Skip if discount is less than 4%
-      if (discountPercent < 4) return;
-
+      // Sort prices to calculate percentiles
       const sorted = [...history].sort((a, b) => a - b);
       const low = sorted[0];
       const high = sorted[sorted.length - 1];
+      
+      // Calculate 75th percentile (typical high price)
+      const p75Index = Math.floor(sorted.length * 0.75);
+      const typicalHighPrice = sorted[p75Index];
+      
+      // Calculate discount % from typical high price
+      const discountPercent = ((typicalHighPrice - currentPrice) / typicalHighPrice) * 100;
+
+      console.log(`${p.item_name}: $${currentPrice} vs typical $${typicalHighPrice.toFixed(2)} = ${discountPercent.toFixed(1)}% off`);
+
+      // Skip if discount is less than 4%
+      if (discountPercent < 4) return;
       
       // Calculate average price
       const sum = history.reduce((acc, val) => acc + val, 0);
@@ -168,7 +161,7 @@ export default function Deals() {
         historicalLow: low,
         historicalHigh: high,
         historicalAvg: avg,
-        previousBestPrice: previousBestPrice,
+        typicalHighPrice: typicalHighPrice,
         discountPercent,
         isOnList: false, // Will be updated later
         valid_from: p.valid_from || null,
@@ -303,10 +296,10 @@ export default function Deals() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
-                🔥 Weekly Deals
+                🔥 Local Deals
               </h1>
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
-                {filteredDeals.length} items with 4%+ savings from the past 7 days
+                {filteredDeals.length} items on sale near you right now!
               </p>
             </div>
             <Header currentPage="Deals" />
@@ -394,13 +387,13 @@ export default function Deals() {
                         <div className="text-3xl font-bold text-green-600">
                           ${deal.price.toFixed(2)}
                         </div>
-                        {deal.previousBestPrice && (
+                        {deal.typicalHighPrice && (
                           <>
                             <div className="text-lg font-semibold text-gray-400 line-through">
-                              ${deal.previousBestPrice.toFixed(2)}
+                              ${deal.typicalHighPrice.toFixed(2)}
                             </div>
                             <div className="text-sm font-semibold text-gray-600">
-                              (was)
+                              (typical)
                             </div>
                           </>
                         )}
@@ -469,7 +462,7 @@ export default function Deals() {
               </div>
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-xs font-semibold text-blue-900">
-                  Showing deals from the last 7 days with at least 4% savings compared to the previous best price. Only showing currently valid flyer prices.
+                  Showing deals with at least 4% savings compared to typical high prices (75th percentile). Only showing currently valid flyer prices.
                 </p>
               </div>
             </div>

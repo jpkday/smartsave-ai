@@ -485,7 +485,7 @@ export default function Receipts() {
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
                 {mode === 'flyer' 
                   ? 'Quickly update prices from store flyers and ads'
-                  : 'Quickly update prices from your shopping receipts'
+                  : 'Quickly add in missed receipts.'
                 }
               </p>
             </div>

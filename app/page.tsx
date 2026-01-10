@@ -176,6 +176,11 @@ function HomeContent() {
                 <span className="absolute left-4 text-2xl">📋</span>
                 <span className="flex-1 ml-6">Manage Items</span>
               </Link>
+
+              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-2xl">🔥</span>
+                <span className="flex-1 ml-6">Weekly Deals</span>
+              </Link>
               
               <Link href="/compare" className="bg-emerald-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">⚖️</span>
@@ -192,11 +197,6 @@ function HomeContent() {
                 <span className="flex-1 ml-6">Recent Trips</span>
               </Link>
 
-              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Weekly Deals</span>
-              </Link>
-              
               <Link href="/receipts" className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-2xl">🧾</span>
                 <span className="flex-1 ml-6">Enter Receipt</span>
