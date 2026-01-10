@@ -228,13 +228,17 @@ export default function Deals() {
       return;
     }
 
-    // Check if already in list (check shopping_list)
-    const { data: existing } = await supabase
+    // Check if already in list (use maybeSingle to avoid 406 error)
+    const { data: existing, error: checkError } = await supabase
       .from('shopping_list')
       .select('id')
       .eq('household_code', householdCode)
       .eq('item_id', itemId)
-      .single();
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking list:', checkError);
+    }
 
     if (existing) {
       alert('Already in your list!');
@@ -249,6 +253,7 @@ export default function Deals() {
         item_id: itemId,
         item_name: itemName,
         quantity: 1,
+        added_at: new Date().toISOString(),
       });
 
     if (insertError) {
