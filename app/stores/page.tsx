@@ -6,21 +6,36 @@ import { supabase } from '../lib/supabase';
 interface Store {
   id: string;
   name: string;
+  location: string | null;
   created_at: string;
+  is_favorite?: boolean;
 }
 
 export default function Stores() {
   const [stores, setStores] = useState<Store[]>([]);
   const [newStore, setNewStore] = useState('');
+  const [newLocation, setNewLocation] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [editingLocation, setEditingLocation] = useState('');
+  const [householdCode, setHouseholdCode] = useState<string>('');
 
   useEffect(() => {
-    loadStores();
+    if (typeof window !== 'undefined') {
+      const code = localStorage.getItem('household_code') || '';
+      setHouseholdCode(code);
+    }
   }, []);
 
+  useEffect(() => {
+    if (householdCode) {
+      loadStores();
+    }
+  }, [householdCode]);
+
   const loadStores = async () => {
-    const { data, error } = await supabase
+    // Load all stores
+    const { data: storesData, error } = await supabase
       .from('stores')
       .select('*')
       .order('name');
@@ -30,9 +45,28 @@ export default function Stores() {
       return;
     }
     
-    if (data) {
-      setStores(data);
-    }
+    // Load favorited stores for this household
+    const { data: favoritesData } = await supabase
+      .from('household_store_favorites')
+      .select('store_id')
+      .eq('household_code', householdCode);
+    
+    const favoritedIds = new Set(favoritesData?.map((f: any) => f.store_id) || []);
+    
+    // Mark stores as favorited and sort (favorites first)
+    const storesWithFavorites = (storesData || []).map((s: any) => ({
+      ...s,
+      is_favorite: favoritedIds.has(s.id)
+    }));
+    
+    // Sort: favorited first, then alphabetically
+    storesWithFavorites.sort((a, b) => {
+      if (a.is_favorite && !b.is_favorite) return -1;
+      if (!a.is_favorite && b.is_favorite) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    setStores(storesWithFavorites);
   };
 
   useEffect(() => {
@@ -55,14 +89,18 @@ export default function Stores() {
       return;
     }
 
-    if (stores.find(s => s.name.toLowerCase() === newStore.trim().toLowerCase())) {
-      alert('A store with this name already exists');
+    if (stores.find(s => s.name.toLowerCase() === newStore.trim().toLowerCase() && 
+                       s.location === (newLocation.trim() || null))) {
+      alert('A store with this name and location already exists');
       return;
     }
 
     const { error } = await supabase
       .from('stores')
-      .insert({ name: newStore.trim() });
+      .insert({ 
+        name: newStore.trim(),
+        location: newLocation.trim() || null
+      });
     
     if (error) {
       console.error('Error adding store:', error);
@@ -71,6 +109,7 @@ export default function Stores() {
     }
     
     setNewStore('');
+    setNewLocation('');
     loadStores();
   };
 
@@ -79,13 +118,6 @@ export default function Stores() {
       return;
     }
 
-    // Delete all price history for this store
-    await supabase
-      .from('price_history')
-      .delete()
-      .eq('store', storeName);
-
-    // Delete the store
     const { error } = await supabase
       .from('stores')
       .delete()
@@ -96,59 +128,83 @@ export default function Stores() {
       alert('Failed to delete store');
       return;
     }
-
+    
     loadStores();
   };
 
-  const startEdit = (storeId: string, storeName: string) => {
-    setEditingId(storeId);
-    setEditingValue(storeName);
+  const startEdit = (store: Store) => {
+    setEditingId(store.id);
+    setEditingValue(store.name);
+    setEditingLocation(store.location || '');
   };
-  
+
   const cancelEdit = () => {
     setEditingId(null);
     setEditingValue('');
+    setEditingLocation('');
   };
-  
-  const saveEdit = async (storeId: string, oldName: string) => {
-    if (!editingValue.trim() || editingValue === oldName) {
-      cancelEdit();
-      return;
-    }
-  
-    // Check if new name already exists
-    if (stores.find(s => s.name.toLowerCase() === editingValue.trim().toLowerCase() && s.id !== storeId)) {
-      alert('A store with this name already exists');
+
+  const saveEdit = async (storeId: string) => {
+    if (!editingValue.trim()) {
+      alert('Store name cannot be empty');
       return;
     }
 
-    // Update store in database
-    const { error: storeError } = await supabase
+    const { error } = await supabase
       .from('stores')
-      .update({ name: editingValue.trim() })
+      .update({ 
+        name: editingValue.trim(),
+        location: editingLocation.trim() || null
+      })
       .eq('id', storeId);
     
-    if (storeError) {
-      console.error('Error updating store:', storeError);
+    if (error) {
+      console.error('Error updating store:', error);
       alert('Failed to update store');
       return;
     }
-
-    // Update all price history with new store name
-    const { error: priceError } = await supabase
-      .from('price_history')
-      .update({ store: editingValue.trim() })
-      .eq('store', oldName);
     
-    if (priceError) {
-      console.error('Error updating price history:', priceError);
-      alert('Failed to update price history');
-      return;
-    }
-  
+    setEditingId(null);
+    setEditingValue('');
+    setEditingLocation('');
     loadStores();
-    cancelEdit();
   };
+
+  const toggleFavorite = async (storeId: string, isFavorite: boolean) => {
+    if (isFavorite) {
+      // Remove from favorites
+      const { error } = await supabase
+        .from('household_store_favorites')
+        .delete()
+        .eq('household_code', householdCode)
+        .eq('store_id', storeId);
+      
+      if (error) {
+        console.error('Error removing favorite:', error);
+        alert('Failed to remove favorite');
+        return;
+      }
+    } else {
+      // Add to favorites
+      const { error } = await supabase
+        .from('household_store_favorites')
+        .insert({
+          household_code: householdCode,
+          store_id: storeId
+        });
+      
+      if (error) {
+        console.error('Error adding favorite:', error);
+        alert('Failed to add favorite');
+        return;
+      }
+    }
+    
+    loadStores();
+  };
+
+  const favoritedStores = stores.filter(s => s.is_favorite);
+  const otherStores = stores.filter(s => !s.is_favorite);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -156,90 +212,203 @@ export default function Stores() {
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Manage Stores</h1>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
+                Manage Stores
+              </h1>
+              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
+                Add locations to tell stores apart. Star your favorites to see them first everywhere.
+              </p>
             </div>
             <Header currentPage="Manage Stores" />
           </div>
         </div>
 
-        {/* Add New Store */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-800">Add Store</h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g., Trader Joe's"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-              value={newStore}
-              onChange={(e) => setNewStore(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addStore()}
-            />
-            <button
-              onClick={addStore}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Stores List */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Your Stores ({stores.length})</h2>
-          
-          {stores.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No stores yet. Add your first store above!</p>
-          ) : (
-            <div className="space-y-2">
-              {stores.map((store) => (
-                <div
-                  key={store.id}
-                  className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition"
+        <div className="px-2 sm:px-4 md:px-0">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            
+            {/* Add Store Form */}
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-3">Add New Store</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  value={newStore}
+                  onChange={(e) => setNewStore(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addStore()}
+                  placeholder="Name (e.g., Costco)"
+                  className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addStore()}
+                  placeholder="Location (e.g., KOP)"
+                  className="px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                />
+                <button
+                  onClick={addStore}
+                  className="bg-blue-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-blue-700 transition cursor-pointer"
                 >
-                  {editingId === store.id ? (
-                    <div className="editing-row flex items-center flex-1 justify-between w-full">
-                      <input
-                        type="text"
-                        value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id, store.name)}
-                        className="flex-1 px-3 py-2 border border-blue-500 rounded-2xl focus:ring-2 focus:ring-blue-200 text-gray-800 font-medium"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => saveEdit(store.id, store.name)}
-                        className="text-green-600 hover:text-green-800 font-semibold cursor-pointer px-3 ml-2"
-                      >
-                        ✓
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="text-gray-800 font-medium flex-1 flex items-center gap-3">
-                        {store.name}
-                        <button
-                          onClick={() => startEdit(store.id, store.name)}
-                          className="ml-3 text-gray-400 hover:text-blue-600 cursor-pointer"
-                          title="Edit"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                      </span>
-                      <button
-                        onClick={() => deleteStore(store.id, store.name)}
-                        className="text-red-600 hover:text-red-800 cursor-pointer"
-                        title="Delete store"
-                      >
-                        🗑️
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
+                  Add Store
+                </button>
+              </div>
             </div>
-          )}
+
+            {/* Favorited Stores Section */}
+            {favoritedStores.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-3">⭐ Your Stores</h2>
+                <div className="space-y-2">
+                  {favoritedStores.map(store => (
+                    <div key={store.id} className="editing-row">
+                      {editingId === store.id ? (
+                        <div className="flex gap-2 p-3 bg-blue-50 rounded-2xl border-2 border-blue-300">
+                          <input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                            autoFocus
+                          />
+                          <input
+                            type="text"
+                            value={editingLocation}
+                            onChange={(e) => setEditingLocation(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
+                            placeholder="Location"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                          />
+                          <button
+                            onClick={() => saveEdit(store.id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 transition">
+                          <div className="flex-1">
+                            <span className="text-lg font-bold text-gray-800">{store.name}</span>
+                            {store.location && (
+                              <span className="ml-2 text-sm text-gray-600">({store.location})</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleFavorite(store.id, store.is_favorite || false)}
+                              className="px-3 py-2 bg-yellow-500 text-white rounded-xl font-semibold hover:bg-yellow-600 transition cursor-pointer text-sm"
+                            >
+                              ⭐ Favorited
+                            </button>
+                            <button
+                              onClick={() => startEdit(store)}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteStore(store.id, store.name)}
+                              className="px-3 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition cursor-pointer text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Other Stores Section */}
+            {otherStores.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 mb-3">All Stores</h2>
+                <div className="space-y-2">
+                  {otherStores.map(store => (
+                    <div key={store.id} className="editing-row">
+                      {editingId === store.id ? (
+                        <div className="flex gap-2 p-3 bg-blue-50 rounded-2xl border-2 border-blue-300">
+                          <input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                            autoFocus
+                          />
+                          <input
+                            type="text"
+                            value={editingLocation}
+                            onChange={(e) => setEditingLocation(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
+                            placeholder="Location"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                          />
+                          <button
+                            onClick={() => saveEdit(store.id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border-2 border-gray-200 hover:border-gray-300 transition">
+                          <div className="flex-1">
+                            <span className="text-lg font-bold text-gray-800">{store.name}</span>
+                            {store.location && (
+                              <span className="ml-2 text-sm text-gray-600">({store.location})</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleFavorite(store.id, store.is_favorite || false)}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition cursor-pointer text-sm"
+                            >
+                              ☆ Favorite
+                            </button>
+                            <button
+                              onClick={() => startEdit(store)}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteStore(store.id, store.name)}
+                              className="px-3 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition cursor-pointer text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {stores.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No stores yet. Add your first store above!
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

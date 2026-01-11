@@ -15,7 +15,6 @@ interface ListItem {
 interface ItemRow {
   id: number;
   name: string;
-  is_favorite: boolean | null;
 }
 interface PriceData {
   price: string;
@@ -633,31 +632,37 @@ useEffect(() => {
 
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
-      .from('items')
-      .select('id, name, is_favorite, category')
-      .eq('user_id', SHARED_USER_ID)
-      .order('name');
+    .from('items')
+    .select('id, name, category')
+    .eq('user_id', SHARED_USER_ID)
+    .order('name');
 
-      if (itemsData) {
-        const map: Record<string, string> = {};
-        itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
-        setItemCategoryByName(map);
-      }
+    if (itemsData) {
+    const map: Record<string, string> = {};
+    itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
+    setItemCategoryByName(map);
+    }
 
     if (itemsError) console.error('Error loading items:', itemsError);
 
-    let itemNameById: Record<string, string> = {};
     if (itemsData) {
-      setAllItems(itemsData as ItemRow[]);
-    
-      // keep your existing name arrays if other parts of the page still depend on them
-      setItems(itemsData.map((i) => i.name));
-    
-      const favIds = itemsData.filter((i) => i.is_favorite === true).map((i) => i.id);
-      setFavoritesIds(favIds);
-    
-      // keep old favorites by name too (optional)
-      setFavorites(itemsData.filter((i) => i.is_favorite === true).map((i) => i.name));
+    setAllItems(itemsData as ItemRow[]);
+    setItems(itemsData.map((i) => i.name));
+    }
+
+    // Load favorites from junction table
+    const { data: favData } = await supabase
+    .from('household_item_favorites')
+    .select('item_id')
+    .eq('household_code', householdCode);
+
+    const favIds = favData?.map(f => f.item_id) || [];
+    setFavoritesIds(favIds);
+
+    // Convert IDs to names for UI
+    if (itemsData) {
+    const favNames = itemsData.filter((i) => favIds.includes(i.id)).map((i) => i.name);
+    setFavorites(favNames);
     }
 
     const { data: listData, error: listError } = await supabase
@@ -1395,24 +1400,51 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
       const renderList = list.slice(0, 250);
 
       const toggleFavorite = async (itemName: string) => {
+        if (!householdCode) return;
+
+        // Find item ID
+        const item = allItems.find(i => i.name === itemName);
+        if (!item) return;
+
         const isFav = favorites.includes(itemName);
-        const next = !isFav;
 
-        setFavorites((prev) =>
-          next ? [...prev, itemName] : prev.filter((n) => n !== itemName)
-        );
+        // Optimistically update UI
+        if (isFav) {
+          setFavorites(prev => prev.filter(n => n !== itemName));
+          setFavoritesIds(prev => prev.filter(id => id !== item.id));
+        } else {
+          setFavorites(prev => [...prev, itemName]);
+          setFavoritesIds(prev => [...prev, item.id]);
+        }
 
-        const { error } = await supabase
-          .from('items')
-          .update({ is_favorite: next })
-          .eq('name', itemName)
-          .eq('user_id', SHARED_USER_ID);
+        // Update database
+        if (isFav) {
+          const { error } = await supabase
+            .from('household_item_favorites')
+            .delete()
+            .eq('household_code', householdCode)
+            .eq('item_id', item.id);
 
-        if (error) {
-          setFavorites((prev) =>
-            next ? prev.filter((n) => n !== itemName) : [...prev, itemName]
-          );
-          alert('Failed to update favorite. Check your connection and try again.');
+          if (error) {
+            // Rollback on error
+            setFavorites(prev => [...prev, itemName]);
+            setFavoritesIds(prev => [...prev, item.id]);
+            alert('Failed to update favorite. Check your connection and try again.');
+          }
+        } else {
+          const { error } = await supabase
+            .from('household_item_favorites')
+            .insert({
+              household_code: householdCode,
+              item_id: item.id,
+            });
+
+          if (error) {
+            // Rollback on error
+            setFavorites(prev => prev.filter(n => n !== itemName));
+            setFavoritesIds(prev => prev.filter(id => id !== item.id));
+            alert('Failed to update favorite. Check your connection and try again.');
+          }
         }
       };
 

@@ -19,9 +19,9 @@ const DEFAULT_ITEMS = [
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Item {
+  id: number;
   name: string;
   category?: string | null;
-  is_favorite: boolean;
   household_code?: string;
 }
 
@@ -30,6 +30,7 @@ function ItemsContent() {
   const searchParams = useSearchParams();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [favoritedIds, setFavoritedIds] = useState<Set<number>>(new Set());
 
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const isMasterAccount = householdCode === 'ASDF';
@@ -79,7 +80,7 @@ function ItemsContent() {
   
   useEffect(() => {
     loadItems();
-  }, []);
+  }, [householdCode]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -110,7 +111,7 @@ function ItemsContent() {
     // Initialize draft state
     setEditValue(selected.name);
     setEditCategory(selected.category ?? 'Other');
-    setEditFavorite(!!selected.is_favorite);
+    setEditFavorite(favoritedIds.has(selected.id));
 
     // Focus name input and move cursor to end (mobile-safe)
     const t = setTimeout(() => {
@@ -123,7 +124,7 @@ function ItemsContent() {
     }, 50);
 
     return () => clearTimeout(t);
-  }, [sheetOpen, selected]);
+  }, [sheetOpen, selected, favoritedIds]);
 
 
   // Close autocomplete when clicking outside
@@ -145,11 +146,12 @@ function ItemsContent() {
   }, [showAutocomplete]);
 
   const loadItems = async () => {
+    if (!householdCode) return;
     setLoading(true);
 
     const { data, error } = await supabase
       .from('items')
-      .select('name, category, is_favorite, household_code')
+      .select('id, name, category, household_code')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
@@ -162,31 +164,37 @@ function ItemsContent() {
     if (data && data.length > 0) {
       setItems(
         data.map((x: any) => ({
+          id: x.id,
           name: x.name,
           category: x.category ?? 'Other',
-          is_favorite: x.is_favorite || false,
           household_code: x.household_code,
         }))
       );
-      setLoading(false);
-      return;
+    } else {
+      // Seed defaults once if empty
+      for (const name of DEFAULT_ITEMS) {
+        await supabase.from('items').insert({
+          name,
+          user_id: SHARED_USER_ID,
+          household_code: householdCode || 'ASDF',
+        });
+      }
+      const defaultItems = DEFAULT_ITEMS.map((name, idx) => ({ 
+        id: idx + 1, // temporary IDs
+        name,
+        category: 'Other',              
+        household_code: householdCode || 'ASDF',
+      }));
+      setItems(defaultItems);
     }
 
-    // Seed defaults once if empty
-    for (const name of DEFAULT_ITEMS) {
-      await supabase.from('items').insert({
-        name,
-        user_id: SHARED_USER_ID,
-        household_code: householdCode || 'ASDF',
-        is_favorite: false,
-      });
-    }
-    setItems(DEFAULT_ITEMS.map((name) => ({ 
-      name,
-      category: 'Other',              
-      is_favorite: false,
-      household_code: householdCode || 'ASDF',
-    })));
+    // Load favorites for this household
+    const { data: favData } = await supabase
+      .from('household_item_favorites')
+      .select('item_id')
+      .eq('household_code', householdCode);
+
+    setFavoritedIds(new Set(favData?.map(f => f.item_id) || []));
     setLoading(false);
   };
 
@@ -251,30 +259,24 @@ function ItemsContent() {
   }, [items, inputValue, filterLetter]);
 
   const favorites = useMemo(
-    () => filtered.filter((i) => i.is_favorite).sort((a, b) => a.name.localeCompare(b.name)),
-    [filtered]
+    () => filtered.filter((i) => favoritedIds.has(i.id)).sort((a, b) => a.name.localeCompare(b.name)),
+    [filtered, favoritedIds]
   );
 
   const regular = useMemo(
-    () => filtered.filter((i) => !i.is_favorite).sort((a, b) => a.name.localeCompare(b.name)),
-    [filtered]
+    () => filtered.filter((i) => !favoritedIds.has(i.id)).sort((a, b) => a.name.localeCompare(b.name)),
+    [filtered, favoritedIds]
   );
 
   const canDeleteItem = (item: Item): boolean => {
     return isMasterAccount || item.household_code === householdCode;
   };
 
-  type ItemWithCategory = Item & {
-    category?: string | null;
-  };
-  
-  const openSheet = (item: ItemWithCategory) => {
+  const openSheet = (item: Item) => {
     setSelected(item);
     setEditValue(item.name);
-  
-    // ✅ now works even if Item type doesn't include category
     setEditCategory(item.category ?? 'Other');
-  
+    setEditFavorite(favoritedIds.has(item.id));
     setSheetOpen(true);
     setSaving(false);
   
@@ -293,10 +295,7 @@ function ItemsContent() {
     setSheetOpen(false);
     setSelected(null);
     setEditValue('');
-  
-    // ✅ Optional: reset category so next open doesn't carry stale state
     setEditCategory('Other');
-  
     setSaving(false);
   };
 
@@ -309,12 +308,15 @@ function ItemsContent() {
       return;
     }
 
-    const { error } = await supabase.from('items').insert({
-      name,
-      user_id: SHARED_USER_ID,
-      household_code: householdCode || 'ASDF',
-      is_favorite: false,
-    });
+    const { data: newItem, error } = await supabase
+      .from('items')
+      .insert({
+        name,
+        user_id: SHARED_USER_ID,
+        household_code: householdCode || 'ASDF',
+      })
+      .select('id, name, category, household_code')
+      .single();
 
     if (error) {
       console.error('Error adding item:', error);
@@ -322,45 +324,64 @@ function ItemsContent() {
       return;
     }
 
-    setItems((prev) => [...prev, { 
-      name, 
-      is_favorite: false,
-      household_code: householdCode || 'ASDF'
-    }]);
+    if (newItem) {
+      setItems((prev) => [...prev, {
+        id: newItem.id,
+        name: newItem.name,
+        category: newItem.category ?? 'Other',
+        household_code: newItem.household_code,
+      }]);
+    }
+
     setInputValue('');
     setShowAutocomplete(false);
     inputRef.current?.focus();
   };
 
-  const toggleFavorite = async (itemName: string) => {
-    const item = items.find((i) => i.name === itemName);
-    if (!item) return;
+  const toggleFavorite = async (itemId: number) => {
+    if (!householdCode) return;
 
-    const next = !item.is_favorite;
+    const isFavorited = favoritedIds.has(itemId);
 
-    const { error } = await supabase
-      .from('items')
-      .update({ is_favorite: next })
-      .eq('name', itemName)
-      .eq('user_id', SHARED_USER_ID);
+    if (isFavorited) {
+      // Remove from favorites
+      const { error } = await supabase
+        .from('household_item_favorites')
+        .delete()
+        .eq('household_code', householdCode)
+        .eq('item_id', itemId);
 
-    if (error) {
-      console.error('Error updating favorite:', error);
-      alert('Failed to update favorite. Check your connection and try again.');
-      return;
-    }
+      if (error) {
+        console.error('Error removing favorite:', error);
+        alert('Failed to update favorite. Check your connection and try again.');
+        return;
+      }
 
-    setItems((prev) => prev.map((i) => (i.name === itemName ? { ...i, is_favorite: next } : i)));
+      setFavoritedIds(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    } else {
+      // Add to favorites
+      const { error } = await supabase
+        .from('household_item_favorites')
+        .insert({
+          household_code: householdCode,
+          item_id: itemId,
+        });
 
-    if (selected?.name === itemName) {
-      setSelected({ ...selected, is_favorite: next });
+      if (error) {
+        console.error('Error adding favorite:', error);
+        alert('Failed to update favorite. Check your connection and try again.');
+        return;
+      }
+
+      setFavoritedIds(prev => new Set([...prev, itemId]));
     }
   };
 
-  const deleteItem = async (itemName: string) => {
-    const item = items.find(i => i.name === itemName);
-    if (!item) return;
-  
+  const deleteItem = async (item: Item) => {
     const canDelete = canDeleteItem(item);
     
     if (!canDelete) {
@@ -375,7 +396,7 @@ function ItemsContent() {
       const { error: shoppingListError } = await supabase
         .from('shopping_list')
         .delete()
-        .eq('item_name', itemName)
+        .eq('item_name', item.name)
         .eq('user_id', SHARED_USER_ID);
   
       if (shoppingListError) {
@@ -385,7 +406,7 @@ function ItemsContent() {
       const { error: priceError } = await supabase
         .from('price_history')
         .delete()
-        .eq('item_name', itemName)
+        .eq('item_name', item.name)
         .eq('user_id', SHARED_USER_ID);
   
       if (priceError) {
@@ -396,7 +417,7 @@ function ItemsContent() {
       const { error: itemError } = await supabase
         .from('items')
         .delete()
-        .eq('name', itemName)
+        .eq('id', item.id)
         .eq('user_id', SHARED_USER_ID);
   
       if (itemError) {
@@ -404,10 +425,15 @@ function ItemsContent() {
       }
   
       // Update UI
-      setItems((prev) => prev.filter((i) => i.name !== itemName));
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setFavoritedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
   
-      if (selected?.name === itemName) closeSheet();
-      if (editingName === itemName) cancelInlineEdit();
+      if (selected?.id === item.id) closeSheet();
+      if (editingName === item.name) cancelInlineEdit();
   
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -455,33 +481,62 @@ function ItemsContent() {
   };
 
   const saveRename = async () => {
-    if (!selected) return;
+    if (!selected || !householdCode) return;
   
-    const itemName = selected.name;
+    const itemId = selected.id;
     const nextCategory = (editCategory || 'Other').trim() || 'Other';
     const nextFavorite = !!editFavorite;
   
     const prevItems = items;
-    const prevSelected = selected;
+    const prevFavorites = favoritedIds;
   
     setSaving(true);
   
-    // ✅ Optimistic UI update for BOTH fields
+    // Optimistic UI update
     setItems((prev) =>
       prev.map((i) =>
-        i.name === itemName ? { ...i, category: nextCategory, is_favorite: nextFavorite } : i
+        i.id === itemId ? { ...i, category: nextCategory } : i
       )
     );
-    setSelected({ ...selected, category: nextCategory, is_favorite: nextFavorite });
+
+    if (nextFavorite && !favoritedIds.has(itemId)) {
+      setFavoritedIds(prev => new Set([...prev, itemId]));
+    } else if (!nextFavorite && favoritedIds.has(itemId)) {
+      setFavoritedIds(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
   
     try {
-      const { error } = await supabase
+      // Update category
+      const { error: catError } = await supabase
         .from('items')
-        .update({ category: nextCategory, is_favorite: nextFavorite })
-        .eq('name', itemName)
+        .update({ category: nextCategory })
+        .eq('id', itemId)
         .eq('user_id', SHARED_USER_ID);
   
-      if (error) throw error;
+      if (catError) throw catError;
+
+      // Update favorite
+      const isFavorited = prevFavorites.has(itemId);
+      if (nextFavorite && !isFavorited) {
+        const { error: favError } = await supabase
+          .from('household_item_favorites')
+          .insert({
+            household_code: householdCode,
+            item_id: itemId,
+          });
+        if (favError) throw favError;
+      } else if (!nextFavorite && isFavorited) {
+        const { error: unfavError } = await supabase
+          .from('household_item_favorites')
+          .delete()
+          .eq('household_code', householdCode)
+          .eq('item_id', itemId);
+        if (unfavError) throw unfavError;
+      }
   
       closeSheet();
     } catch (e) {
@@ -489,7 +544,7 @@ function ItemsContent() {
   
       // rollback
       setItems(prevItems);
-      setSelected(prevSelected);
+      setFavoritedIds(prevFavorites);
   
       alert('Failed to save changes. Check your connection and try again.');
       setSaving(false);
@@ -536,7 +591,7 @@ function ItemsContent() {
   const renderMobileRow = (item: Item, isFavorite: boolean) => {
     return (
       <div
-        key={item.name}
+        key={item.id}
         className={
           isFavorite
             ? 'w-full flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 transition'
@@ -547,7 +602,7 @@ function ItemsContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            toggleFavorite(item.name);
+            toggleFavorite(item.id);
           }}
           className={
             isFavorite
@@ -561,13 +616,9 @@ function ItemsContent() {
 
         <button
           type="button"
-          onClick={() => {
-            const full = items.find((it) => it.name === item.name);
-            openSheet(full ?? item);
-          }}
+          onClick={() => openSheet(item)}
           className="flex-1 text-left min-w-0"
         >
-
           <div className="font-medium text-gray-800 truncate">{item.name}</div>
           <div className="text-xs text-gray-500">Tap to edit</div>
         </button>
@@ -583,7 +634,7 @@ function ItemsContent() {
 
     return (
       <div
-        key={item.name}
+        key={item.id}
         ref={isEditing ? editRowRef : null}
         className={
           isFavorite
@@ -593,7 +644,7 @@ function ItemsContent() {
       >
         <button
           type="button"
-          onClick={() => toggleFavorite(item.name)}
+          onClick={() => toggleFavorite(item.id)}
           className={
             isFavorite
               ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
@@ -647,7 +698,7 @@ function ItemsContent() {
               {canDelete && (
                 <button
                   type="button"
-                  onClick={() => deleteItem(item.name)}
+                  onClick={() => deleteItem(item)}
                   className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
                   title="Delete item"
                   disabled={inlineSaving}
@@ -743,7 +794,7 @@ function ItemsContent() {
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                   {autocompleteItems.slice(0, 10).map((item) => {
                     const itemData = items.find((i) => i.name === item);
-                    const isFavorite = itemData?.is_favorite || false;
+                    const isFavorite = itemData ? favoritedIds.has(itemData.id) : false;
                     return (
                       <button
                         key={item}
@@ -788,8 +839,6 @@ function ItemsContent() {
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name));
 
-              const listClassMobile = 'max-h-[520px] overflow-y-auto';
-              const listClassDesktop = 'max-h-[520px] overflow-y-auto';
               const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto';
 
               return (
@@ -838,14 +887,14 @@ function ItemsContent() {
                       {/* ONE list (mobile + desktop), preserves favorite styling + star behavior */}
                       <div className={`md:hidden space-y-2 ${LIST_MAX}`}>
                         {unifiedItems.map((item) => {
-                          const isFavorite = favorites.some((f) => f.name === item.name);
+                          const isFavorite = favoritedIds.has(item.id);
                           return renderMobileRow(item, isFavorite);
                         })}
                       </div>
 
                       <div className={`hidden md:block space-y-2 ${LIST_MAX}`}>
                         {unifiedItems.map((item) => {
-                          const isFavorite = favorites.includes(item);
+                          const isFavorite = favoritedIds.has(item.id);
                           return renderDesktopRow(item, isFavorite);
                         })}
                       </div>
@@ -884,7 +933,7 @@ function ItemsContent() {
           {canDeleteItem(selected) && (
             <button
               type="button"
-              onClick={() => deleteItem(selected.name)}
+              onClick={() => deleteItem(selected)}
               className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
               disabled={saving}
             >

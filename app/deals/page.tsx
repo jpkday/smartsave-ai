@@ -302,7 +302,7 @@ export default function Deals() {
                 {filteredDeals.length} items on sale near you right now!
               </p>
             </div>
-            <Header currentPage="Deals" />
+            <Header currentPage="Local Deals" />
           </div>
         </div>
 

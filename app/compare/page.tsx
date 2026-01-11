@@ -10,6 +10,22 @@ const DEFAULT_DEMO_ITEM_ID = 43; // Item ID for demo default
 
 type PriceData = { price: string; date: string };
 
+interface Store {
+  id: string;
+  name: string;
+  location: string | null;
+}
+
+// Helper to format store display name
+const formatStoreName = (store: Store | string, stores?: Store[]): string => {
+  if (typeof store === 'string') {
+    const storeObj = stores?.find(s => s.name === store);
+    if (!storeObj) return store;
+    return storeObj.location ? `${storeObj.name} (${storeObj.location})` : storeObj.name;
+  }
+  return store.location ? `${store.name} (${store.location})` : store.name;
+};
+
 function CompareContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -17,11 +33,12 @@ function CompareContent() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
 
   // UI data
-  const [stores, setStores] = useState<string[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
   const [items, setItems] = useState<string[]>([]);
   const [itemsByName, setItemsByName] = useState<{ [name: string]: number }>({});
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoritesIds, setFavoritesIds] = useState<Set<number>>(new Set());
 
   // prices keyed by `${storeName}-${itemName}`
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
@@ -51,13 +68,11 @@ function CompareContent() {
     }
   }, []);
 
-  // Only load data when household code exists (matches /list behavior)
+  // Load data on mount (doesn't require household_code for basic functionality)
   useEffect(() => {
-    if (householdCode) {
-      loadData();
-    }
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [householdCode]);
+  }, []);
 
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
@@ -142,33 +157,30 @@ function CompareContent() {
   };
 
   const loadData = async () => {
-    if (!householdCode) return;
-
     // -----------------------
-    // Stores (id, name) + lookup
+    // Stores (id, name, location) + lookup
     // -----------------------
     const { data: storesData, error: storesError } = await supabase
       .from('stores')
-      .select('id, name')
+      .select('id, name, location')
       .order('name');
 
     if (storesError) console.error('Error loading stores:', storesError);
 
     if (storesData) {
-      setStores(storesData.map((s) => s.name));
+      setStores(storesData);
       const lookup: { [name: string]: string } = {};
       storesData.forEach((s) => (lookup[s.name] = s.id));
       setStoresByName(lookup);
     }
 
     // -----------------------
-    // Items (id, name, favorite)
+    // Items (id, name) - load ALL items globally
     // -----------------------
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
-      .select('id, name, is_favorite')
+      .select('id, name')
       .eq('user_id', SHARED_USER_ID)
-      .eq('household_code', householdCode)
       .order('name');
 
     if (itemsError) console.error('Error loading items:', itemsError);
@@ -176,9 +188,6 @@ function CompareContent() {
     if (itemsData) {
       const names = itemsData.map((i) => i.name);
       setItems(names);
-
-      const favs = itemsData.filter((i) => i.is_favorite === true).map((i) => i.name);
-      setFavorites(favs);
 
       const itemLookup: { [name: string]: number } = {};
       itemsData.forEach((i) => (itemLookup[i.name] = i.id));
@@ -191,13 +200,37 @@ function CompareContent() {
     }
 
     // -----------------------
-    // Prices (latest per store+item)
+    // Favorites from junction table (only if household_code exists)
+    // -----------------------
+    if (householdCode) {
+      const { data: favData } = await supabase
+        .from('household_item_favorites')
+        .select('item_id')
+        .eq('household_code', householdCode);
+
+      const favIds = new Set(favData?.map(f => f.item_id) || []);
+      setFavoritesIds(favIds);
+
+      // Convert IDs to names for display
+      if (itemsData) {
+        const favNames = itemsData
+          .filter((i) => favIds.has(i.id))
+          .map((i) => i.name);
+        setFavorites(favNames);
+      }
+    } else {
+      // No household code = no favorites
+      setFavoritesIds(new Set());
+      setFavorites([]);
+    }
+
+    // -----------------------
+    // Prices (latest per store+item) - load ALL prices globally
     // -----------------------
     const { data: pricesData, error: pricesError } = await supabase
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
-      .eq('household_code', householdCode)
       .order('recorded_date', { ascending: false });
 
     if (pricesError) console.error('Error loading prices:', pricesError);
@@ -282,14 +315,14 @@ function CompareContent() {
       let coverage = 0;
 
       selectedItems.forEach((item) => {
-        const priceData = prices[`${store}-${item}`];
+        const priceData = prices[`${store.name}-${item}`];
         if (priceData) {
           total += parseFloat(priceData.price);
           coverage++;
         }
       });
 
-      storeData[store] = { total, coverage, itemCount: selectedItems.length };
+      storeData[store.name] = { total, coverage, itemCount: selectedItems.length };
     });
 
     return storeData;
@@ -449,7 +482,7 @@ function CompareContent() {
   const getPriceClassification = (itemName: string, currentPrice: number) => {
     const itemPrices: number[] = [];
     stores.forEach((store) => {
-      const priceData = prices[`${store}-${itemName}`];
+      const priceData = prices[`${store.name}-${itemName}`];
       if (priceData) itemPrices.push(parseFloat(priceData.price));
     });
 
@@ -753,7 +786,9 @@ function CompareContent() {
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-bold text-lg md:text-xl text-gray-800">{store}</span>
+                              <span className="font-bold text-lg md:text-xl text-gray-800">
+                                {formatStoreName(store, stores)}
+                              </span>
                               {idx === 0 && (
                                 <span className="text-xs md:text-sm bg-green-500 text-white px-2 md:px-3 py-1 rounded-full whitespace-nowrap">
                                   Best Deal!
@@ -820,7 +855,7 @@ function CompareContent() {
                           sortedStores.length > 1 &&
                           sortedStores[0][1].coverage === sortedStores[1][1].coverage && (
                             <p className="text-xs md:text-sm text-green-700 mt-2">
-                              Save ${(sortedStores[1][1].total - data.total).toFixed(2)} vs {sortedStores[1][0]}
+                              Save ${(sortedStores[1][1].total - data.total).toFixed(2)} vs {formatStoreName(sortedStores[1][0], stores)}
                             </p>
                           )}
                       </div>
@@ -861,8 +896,8 @@ function CompareContent() {
                   >
                     <option value="">Select store...</option>
                     {stores.map((store) => (
-                      <option key={store} value={store}>
-                        {store}
+                      <option key={store.id || store.name} value={store.name}>
+                        {formatStoreName(store)}
                       </option>
                     ))}
                   </select>

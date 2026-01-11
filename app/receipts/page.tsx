@@ -36,6 +36,7 @@ export default function Receipts() {
   ]);
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [createPastTrip, setCreatePastTrip] = useState(true);
+  const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
