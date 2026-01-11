@@ -32,6 +32,7 @@ export default function ShoppingList() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
+  const [storeFilter, setStoreFilter] = useState<string>('All');
 
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
@@ -1653,6 +1654,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                   Shopping List ({listItems.filter((i) => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
+                  
                   {listItems.some((i) => i.checked) && (
                     <button
                       onClick={() => setShowCheckedItems(!showCheckedItems)}
@@ -1916,8 +1918,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       })}
 
 
-                    {/* Second: Items without price data */}
-                    {itemsWithoutPrice.length > 0 && (
+{/* Second: Items without price data - WITH CATEGORY GROUPING */}
+{itemsWithoutPrice.length > 0 && (
                       <div>
                         <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-2">
@@ -1928,127 +1930,189 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                           </div>
                         </h3>
 
-                        <div className="space-y-2">
-                          {itemsWithoutPrice.map((item) => {
-                            const isFavorite = favorites.includes(item.item_name);
+                        {/* Group items by category */}
+                        <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
+                          {Object.entries(
+                            itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
+                              const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                              (acc[cat] ||= []).push(item);
+                              return acc;
+                            }, {})
+                          )
+                            .sort(([catA], [catB]) => {
+                              const ra = categoryRank(catA);
+                              const rb = categoryRank(catB);
+                              if (ra !== rb) return ra - rb;
+                              return catA.localeCompare(catB);
+                            })
+                            .map(([category, categoryItems]) => {
+                              // Sort items: unchecked first, then alphabetical
+                              categoryItems.sort((a, b) => {
+                                if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                                return a.item_name.localeCompare(b.item_name);
+                              });
 
-                            return (
-                              <div
-                                key={item.id}
-                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                  item.checked
-                                    ? 'bg-gray-100 border-gray-300'
-                                    : isFavorite
-                                    ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                    : 'bg-white border-gray-300 hover:bg-gray-50'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={item.checked}
-                                  disabled={mobileMode == 'build'}
-                                  onChange={() => {
-                                    if (mobileMode == 'build') return;
-                                    toggleChecked(item.id);
-                                  }}
-                                  className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
-                                ></input>
-
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {isFavorite && <span className="text-yellow-500 text-xl">⭐</span>}
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditModal(item)}
-                                      className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                        item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                      }`}
-                                    >
-                                      {item.item_name}
-                                      {item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                    </button>
+                              return (
+                                <div key={category} className="space-y-2">
+                                  {/* Category header */}
+                                  <div
+                                    className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
+                                      category
+                                    )}`}
+                                  >
+                                    <div className="font-bold text-gray-700">{category}</div>
                                   </div>
 
-                                  {(() => {
-                                    const cat = itemCategoryByName[item.item_name];
+                                  {/* Category items */}
+                                  <div className="space-y-2">
+                                    {categoryItems.map((item) => {
+                                      const isFavorite = favorites.includes(item.item_name);
+                                      const cat = itemCategoryByName[item.item_name];
+                                      const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
+                                      const effStore = getEffectiveStore(item.item_name);
+                                      const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
+                                      const missingPrice = !priceData;
 
-                                    // ✅ Treat "Other" as missing
-                                    const missingCategory =
-                                      !cat || cat.trim() === '' || cat === 'Other';
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                            item.checked
+                                              ? 'bg-gray-100 border-gray-300'
+                                              : isFavorite
+                                              ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                              : 'bg-white border-gray-300 hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={item.checked}
+                                            disabled={mobileMode == 'build'}
+                                            onChange={() => {
+                                              if (mobileMode == 'build') return;
+                                              toggleChecked(item.id);
+                                            }}
+                                            className={`w-5 h-5 rounded transition ${
+                                              mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                            }`}
+                                          />
 
-                                    const effStore = getEffectiveStore(item.item_name);
-                                    const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
-                                    const missingPrice = !priceData;
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <button
+                                                type="button"
+                                                onClick={() => openEditModal(item)}
+                                                className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                                  item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                }`}
+                                              >
+                                                {item.item_name}
+                                                {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                              </button>
+                                            </div>
 
-                                    return (
-                                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                        {/* Add Price — only if missing */}
-                                        {missingPrice && (
+                                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                              {/* Add Price — only if missing */}
+                                              {missingPrice && (
+                                                <button
+                                                  onClick={() => openEditModal(item, 'price')}
+                                                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                >
+                                                  Add Price
+                                                </button>
+                                              )}
+
+                                              {/* Add Category — missing OR "Other" */}
+                                              {missingCategory && (
+                                                <button
+                                                  onClick={() => openEditModal(item, 'category')}
+                                                  className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                >
+                                                  Add Category
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+
                                           <button
-                                            onClick={() => openEditModal(item, 'price')}
-                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                            onClick={() => openStoreModal(item.item_name)}
+                                            className={`cursor-pointer ml-1 transition ${
+                                              storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                ? 'text-indigo-600 hover:text-indigo-700'
+                                                : 'text-gray-300 hover:text-gray-500'
+                                            }`}
+                                            title="Swap store"
+                                            aria-label="Swap store"
                                           >
-                                            Add Price
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                              />
+                                            </svg>
                                           </button>
-                                        )}
 
-                                        {/* Add Category — missing OR "Other" */}
-                                        {missingCategory && (
                                           <button
-                                            onClick={() => openEditModal(item, 'category')}
-                                            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                            onClick={() => removeItem(item.id)}
+                                            className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                            title="Remove from list"
+                                            aria-label="Remove from list"
                                           >
-                                            Add Category
+                                            ✖️
                                           </button>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Divider between categories (except last) */}
+                                  {Object.keys(
+                                    itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
+                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                      (acc[cat] ||= []).push(item);
+                                      return acc;
+                                    }, {})
+                                  ).indexOf(category) < Object.keys(
+                                    itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
+                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                      (acc[cat] ||= []).push(item);
+                                      return acc;
+                                    }, {})
+                                  ).length - 1 && (
+                                    <div className="h-px bg-gray-200/70 mt-2" />
+                                  )}
                                 </div>
-
-                                <button
-                                  onClick={() => openStoreModal(item.item_name)}
-                                  className={`cursor-pointer ml-1 transition ${
-                                    storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                      ? 'text-indigo-600 hover:text-indigo-700'
-                                      : 'text-gray-300 hover:text-gray-500'
-                                  }`}
-                                  title="Swap store"
-                                  aria-label="Swap store"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                    />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={() => removeItem(item.id)}
-                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                  title="Remove from list"
-                                  aria-label="Remove from list"
-                                >
-                                  ✖️
-                                </button>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
                       </div>
                     )}
 
-                    {/* Third: All other stores alphabetically */}
-                    {storeEntries
+{/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
+{storeEntries
                       .filter(([store]) => {
                         const storeId = storesByName[store];
                         return !(storeId && activeTrips[storeId]);
                       })
                       .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
                       .map(([store, storeItems]) => {
+                        // Calculate store total
+                        const storeTotal = storeItems.reduce((sum, item) => {
+                          const effStore = getEffectiveStore(item.item_name) || store;
+                          const priceData = prices[`${effStore}-${item.item_name}`];
+                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                          return sum + price * item.quantity;
+                        }, 0);
+
+                        // Group items by category
+                        const itemsByCategory = storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
+                          const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                          (acc[cat] ||= []).push(item);
+                          return acc;
+                        }, {});
+
                         return (
                           <div key={store}>
                             <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
@@ -2059,132 +2123,173 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                 </span>
                               </div>
                               <span className="text-lg font-bold text-teal-600">
-                                $
-                                {storeItems
-                                  .reduce((sum, item) => {
-                                    const priceData = prices[`${store}-${item.item_name}`];
-                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                    return sum + price * item.quantity;
-                                  }, 0)
-                                  .toFixed(2)}
+                                ${storeTotal.toFixed(2)}
                               </span>
                             </h3>
 
-                            <div className="space-y-2">
-                              {storeItems.map((item) => {
-                                const isFavorite = favorites.includes(item.item_name);
-                                const effStore = getEffectiveStore(item.item_name) || store;
-                                const priceData = prices[`${effStore}-${item.item_name}`];
-                                const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                const cat = itemCategoryByName[item.item_name];
-                                const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
+                            {/* ONE cohesive store panel with categories inside */}
+                            <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
+                              {Object.entries(itemsByCategory)
+                                // Sort categories by rank
+                                .sort(([catA], [catB]) => {
+                                  const ra = categoryRank(catA);
+                                  const rb = categoryRank(catB);
+                                  if (ra !== rb) return ra - rb;
+                                  return catA.localeCompare(catB);
+                                })
+                                .map(([category, categoryItems]) => {
+                                  // Sort items: unchecked first, then alphabetical
+                                  categoryItems.sort((a, b) => {
+                                    if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                                    return a.item_name.localeCompare(b.item_name);
+                                  });
 
-                                return (
-                                  <div
-                                    key={item.id}
-                                    className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                      item.checked
-                                        ? 'bg-gray-100 border-gray-300'
-                                        : isFavorite
-                                        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                        : 'bg-white border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={item.checked}
-                                      disabled={mobileMode == 'build'}
-                                      onChange={() => {
-                                        if (mobileMode == 'build') return;
-                                        toggleChecked(item.id);
-                                      }}
-                                      className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
-                                    ></input>
+                                  // Calculate category subtotal
+                                  const categoryTotal = categoryItems.reduce((sum, item) => {
+                                    const effStore = getEffectiveStore(item.item_name) || store;
+                                    const priceData = prices[`${effStore}-${item.item_name}`];
+                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                    return sum + price * item.quantity;
+                                  }, 0);
 
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <button
-                                          type="button"
-                                          onClick={() => openEditModal(item)}
-                                          className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                            item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                          }`}
-                                        >
-                                          {item.item_name}
-                                          {item.quantity > 1 ? ` (${item.quantity})` : ''}
-                                        </button>
+                                  return (
+                                    <div key={category} className="space-y-2">
+                                      {/* Category header */}
+                                      <div
+                                        className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
+                                          category
+                                        )}`}
+                                      >
+                                        <div className="font-bold text-gray-700">{category}</div>
+                                        <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
                                       </div>
 
-                                   {/* Show Item Price and Recency */}
-                                      <div className="mt-0.5 flex items-center gap-2">
-                                        <p className="text-xs text-green-600 min-w-0">
-                                          {formatMoney(price)}{' '}
-                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                          {priceData?.date ? (
-                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                          ) : null}                                                      
-                                        </p>
-                                     
-                                  {/* Add Category button */}
-                                      {missingCategory && (
-                                        <button
-                                          onClick={() => openEditModal(item, 'category')}
-                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                        >
-                                          Add Category
-                                        </button>
+                                      {/* Category items */}
+                                      <div className="space-y-2">
+                                        {categoryItems.map((item) => {
+                                          const isFavorite = favorites.includes(item.item_name);
+                                          const effStore = getEffectiveStore(item.item_name) || store;
+                                          const priceData = prices[`${effStore}-${item.item_name}`];
+                                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                          const cat = itemCategoryByName[item.item_name];
+                                          const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
+
+                                          return (
+                                            <div
+                                              key={item.id}
+                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
+                                                item.checked
+                                                  ? 'bg-gray-100 border-gray-300'
+                                                  : isFavorite
+                                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                                  : 'bg-white border-gray-300 hover:bg-gray-50'
+                                              }`}
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={item.checked}
+                                                disabled={mobileMode == 'build'}
+                                                onChange={() => {
+                                                  if (mobileMode == 'build') return;
+                                                  toggleChecked(item.id);
+                                                }}
+                                                className={`w-5 h-5 rounded transition ${
+                                                  mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                }`}
+                                              />
+
+                                              <div className="flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(item)}
+                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
+                                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                    }`}
+                                                  >
+                                                    {item.item_name}
+                                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                                  </button>
+                                                </div>
+
+                                                {/* Show Item Price and Recency */}
+                                                <div className="mt-0.5 flex items-center gap-2">
+                                                  <p className="text-xs text-green-600 min-w-0">
+                                                    {formatMoney(price)}{' '}
+                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                    {priceData?.date ? (
+                                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                    ) : null}
+                                                  </p>
+
+                                                  {/* Add Category button */}
+                                                  {missingCategory && (
+                                                    <button
+                                                      onClick={() => openEditModal(item, 'category')}
+                                                      className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                    >
+                                                      Add Category
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              <div className="hidden md:flex items-center gap-2">
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  −
+                                                </button>
+                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  +
+                                                </button>
+                                              </div>
+
+                                              <button
+                                                onClick={() => openStoreModal(item.item_name)}
+                                                className={`cursor-pointer text-xl ml-1 transition ${
+                                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                    ? 'text-indigo-600 hover:text-indigo-700'
+                                                    : 'text-gray-300 hover:text-gray-500'
+                                                }`}
+                                                title="Swap store"
+                                                aria-label="Swap store"
+                                              >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                  />
+                                                </svg>
+                                              </button>
+
+                                              <button
+                                                onClick={() => removeItem(item.id)}
+                                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                title="Remove from list"
+                                                aria-label="Remove from list"
+                                              >
+                                                ✖️
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* Divider between categories (except last) */}
+                                      {Object.keys(itemsByCategory).indexOf(category) < Object.keys(itemsByCategory).length - 1 && (
+                                        <div className="h-px bg-gray-200/70 mt-2" />
                                       )}
-                                      
-                                      </div>
                                     </div>
-
-                                    <div className="hidden md:flex items-center gap-2">
-                                      <button
-                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                      >
-                                        −
-                                      </button>
-                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                      <button
-                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-
-                                    <button
-                                      onClick={() => openStoreModal(item.item_name)}
-                                      className={`cursor-pointer text-xl ml-1 transition ${
-                                        storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                          ? 'text-indigo-600 hover:text-indigo-700'
-                                          : 'text-gray-300 hover:text-gray-500'
-                                      }`}
-                                      title="Swap store"
-                                      aria-label="Swap store"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                        />
-                                      </svg>
-                                    </button>
-
-                                    <button
-                                      onClick={() => removeItem(item.id)}
-                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                      title="Remove from list"
-                                      aria-label="Remove from list"
-                                    >
-                                      ✖️
-                                    </button>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
                             </div>
                           </div>
                         );
