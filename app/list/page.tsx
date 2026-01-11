@@ -33,6 +33,7 @@ export default function ShoppingList() {
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
   const [storeFilter, setStoreFilter] = useState<string>('All');
+  const [dealsItemNames, setDealsItemNames] = useState<Set<string>>(new Set());
 
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
@@ -697,6 +698,45 @@ useEffect(() => {
 
       setPrices(pricesObj);
     }
+
+// Load deals - items with valid flyer prices that are good deals
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const { data: flyerPrices } = await supabase
+  .from('price_history')
+  .select('*')
+  .gte('valid_until', today.toISOString())
+  .order('recorded_date', { ascending: false });
+
+if (flyerPrices && flyerPrices.length > 0) {
+  const dealItems = new Set<string>();
+
+  flyerPrices.forEach((flyer: any) => {
+    const itemName = flyer.item_name;
+    const flyerPrice = parseFloat(flyer.price);
+
+    // Get all regular prices for this item from price_history
+    const itemRegularPrices = pricesData?.filter((p: any) => p.item_name === itemName) || [];
+    const itemPrices = itemRegularPrices
+      .map((p: any) => parseFloat(p.price))
+      .filter((p: number) => !isNaN(p) && p > 0);
+
+    if (itemPrices.length > 0) {
+      // Calculate 75th percentile (typical price)
+      const sorted = [...itemPrices].sort((a, b) => a - b);
+      const index = Math.ceil(sorted.length * 0.75) - 1;
+      const percentile75 = sorted[Math.max(0, index)];
+
+      // If flyer price is better than typical price, it's a deal
+      if (flyerPrice < percentile75) {
+        dealItems.add(itemName);
+      }
+    }
+  });
+
+  setDealsItemNames(dealItems);
+}    
 
 // =========================
 // Recent items (ID-based; preserves checked_at desc order)
@@ -1826,6 +1866,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                       item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                                     }`}
                                                   >
+                                                    {dealsItemNames.has(item.item_name) && (
+                                                    <span className="mr-1" title="On sale today!">🔥</span>
+                                                  )}
                                                     {item.item_name}
                                                     {item.quantity > 1 && (
                                                       <span className="ml-1 font-semibold text-indigo-600">
@@ -2006,6 +2049,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                                 }`}
                                               >
+                                                {dealsItemNames.has(item.item_name) && (
+                                                  <span className="mr-1" title="On sale today!">🔥</span>
+                                                )}
                                                 {item.item_name}
                                                 {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                               </button>
@@ -2207,6 +2253,9 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                       item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                                     }`}
                                                   >
+                                                    {dealsItemNames.has(item.item_name) && (
+                                                      <span className="mr-1" title="On sale today!">🔥</span>
+                                                    )}
                                                     {item.item_name}
                                                     {item.quantity > 1 ? ` (${item.quantity})` : ''}
                                                   </button>
