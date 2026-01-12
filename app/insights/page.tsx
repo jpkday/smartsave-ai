@@ -101,7 +101,7 @@ export default function InsightsPage() {
            {/* Most Purchased Items */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                🛒 Most Frequent Purchases
+                🛒 Frequently Purchased
             </h2>
             {frequentItems.filter(item => item.purchase_count > 1).length > 0 ? (
                 <div className="max-h-64 overflow-y-auto space-y-3">
@@ -130,7 +130,7 @@ export default function InsightsPage() {
                             <p className="text-2xl font-bold text-gray-800">
                             {item.purchase_count}
                             </p>
-                            <p className="text-xs text-gray-600">purchases</p>
+                            <p className="text-xs text-gray-600">times</p>
                         </div>
                         </div>
                     );
