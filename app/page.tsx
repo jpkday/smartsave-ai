@@ -75,12 +75,12 @@ function HomeContent() {
         <span className="flex-1 ml-6">Local Deals</span>
       </Link>
 
-      <button onClick={handleLockedClick} className="w-full bg-violet-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
+      <button onClick={handleLockedClick} className="w-full bg-violet-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
         <span className="absolute left-4 text-xl">💡</span>
         <span className="flex-1 ml-6">Insights</span>
       </button>
 
-      <button onClick={handleLockedClick} className="w-full bg-rose-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-rose-600 transition cursor-pointer text-center relative flex items-center">
+      <button onClick={handleLockedClick} className="w-full bg-lime-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-lime-600 transition cursor-pointer text-center relative flex items-center">
         <span className="absolute left-4 text-xl">🛒</span>
         <span className="flex-1 ml-6">Recent Trips</span>
       </button>
@@ -105,7 +105,7 @@ function HomeContent() {
         <span className="flex-1 ml-6">Local Deals</span>
       </Link>
 
-      <Link href="/insights" className="w-full bg-violet-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
+      <Link href="/insights" className="w-full bg-violet-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
         <span className="absolute left-4 text-xl">💡</span>
         <span className="flex-1 ml-6">Insights</span>
       </Link>
@@ -114,7 +114,7 @@ function HomeContent() {
         <span className="absolute left-4 text-xl">🛒</span>
         <span className="flex-1 ml-6">Recent Trips</span>
       </Link>
-      
+  
       <button 
         onClick={() => setShowMoreMenu(true)}
         className="w-full bg-blue-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-gray-800 transition cursor-pointer text-center relative flex items-center"
