@@ -11,6 +11,7 @@ export default function Header({ currentPage }: HeaderProps) {
   const pages = [
     {name: 'Home', path: '/', icon: 'ᯓ ' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
+    { name: 'Insights', path: '/insights', icon: '💡' },
     { name: 'Local Deals', path: '/deals', icon: '🔥' },
     { name: 'Recent Trips', path: '/trips', icon: '🛒' },
     { name: 'Compare Items', path: '/compare', icon: '⚖️' },
@@ -25,8 +26,9 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileColorByPage: Record<string, string> = {
     'Home': 'bg-yellow-500 hover:bg-yellow-600',
     'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
+    'Insights': 'bg-violet-500 hover:bg-violet-600',
     'Local Deals': 'bg-red-500 hover:bg-red-600',
-    'Recent Trips': 'bg-rose-500 hover:bg-rose-600',
+    'Recent Trips': 'bg-lime-500 hover:bg-lime-600',
     'Compare Items': 'bg-emerald-500 hover:bg-emerald-600',
     'Price History': 'bg-amber-700 hover:bg-amber-800',
     'Manage Items': 'bg-purple-500 hover:bg-purple-600',
