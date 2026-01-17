@@ -14,6 +14,7 @@ export const useWakeLock = () => {
 
     const request = useCallback(async () => {
         if (!isSupported) return;
+        if (document.visibilityState !== 'visible') return;
 
         try {
             wakeLock.current = await navigator.wakeLock.request('screen');

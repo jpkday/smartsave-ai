@@ -1724,7 +1724,7 @@ export default function ShoppingList() {
                 <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3">
-                      Shopping List ({listItems.filter((i) => !i.checked).length} items)
+                      Shopping List ({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length} items)
                       <button
                         onClick={() => setShowPriorityOnly(!showPriorityOnly)}
                         className={`text-sm px-3 py-1 rounded-full font-bold transition flex items-center gap-1.5 ${showPriorityOnly
@@ -1733,13 +1733,8 @@ export default function ShoppingList() {
                           }`}
                         title="Show Urgent Items Only"
                       >
-                        <svg className="w-4 h-4" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m2-4h-2m2-4h-2m2-4h-2m-2-4h18" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h16" />
-                          {/* Flag Icon */}
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
-                          <path d="M5 3v18" strokeWidth="2.5" strokeLinecap="round" />
-                          <path d="M5 5h12l-2 4 2 4H5" strokeWidth="2.5" strokeLinejoin="round" fill={showPriorityOnly ? "currentColor" : "none"} />
+                        <svg className="w-4 h-4" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                         </svg>
                         {showPriorityOnly ? 'Flagged Only' : 'Flagged'}
                       </button>
@@ -1995,7 +1990,7 @@ export default function ShoppingList() {
                                                     title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                                   >
                                                     <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                                                     </svg>
                                                   </button>
 
@@ -2189,7 +2184,7 @@ export default function ShoppingList() {
                                                 title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                               >
                                                 <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                                                 </svg>
                                               </button>
 
@@ -2424,7 +2419,7 @@ export default function ShoppingList() {
                                                     title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                                   >
                                                     <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                                                     </svg>
                                                   </button>
 
