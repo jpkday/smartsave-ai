@@ -37,7 +37,7 @@ function HistoryContent() {
   const router = useRouter();
 
   const [stores, setStores] = useState<string[]>([]);
-  const [items, setItems] = useState<string[]>([]);
+
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [selectedStore, setSelectedStore] = useState<string>('All');
   const [priceHistory, setPriceHistory] = useState<PriceRecord[]>([]);
@@ -77,7 +77,7 @@ function HistoryContent() {
   }, [showAutocomplete]);
 
   useEffect(() => {
-    if (!isInitialLoad || items.length === 0) return;
+    if (!isInitialLoad) return;
 
     // Load from URL parameters with proper decoding
     const itemParam = searchParams.get('item');
@@ -112,7 +112,7 @@ function HistoryContent() {
         const lastItem = localStorage.getItem('history_last_item');
         const lastStore = localStorage.getItem('history_last_store');
 
-        if (lastItem && items.includes(lastItem)) {
+        if (lastItem) {
           setSelectedItem(lastItem);
           if (lastStore) {
             setSelectedStore(lastStore);
@@ -125,7 +125,7 @@ function HistoryContent() {
     }
 
     setIsInitialLoad(false);
-  }, [searchParams, items, isInitialLoad]);
+  }, [searchParams, isInitialLoad]);
 
   useEffect(() => {
     if (selectedItem) {
@@ -134,7 +134,7 @@ function HistoryContent() {
   }, [selectedItem, selectedStore]);
 
   const loadStoresAndItems = async () => {
-    // Load stores
+    // Load stores only
     const { data: storesData } = await supabase
       .from('stores')
       .select('name')
@@ -143,28 +143,23 @@ function HistoryContent() {
     if (storesData) {
       setStores(storesData.map(s => s.name));
     }
-
-    // Load items
-    const { data: itemsData } = await supabase
-      .from('items')
-      .select('name')
-      .order('name');
-
-    if (itemsData) {
-      setItems(itemsData.map(i => i.name));
-    }
   };
 
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = async (value: string) => {
     setSearchQuery(value);
 
     if (value.trim()) {
-      // Filter items that match the search
-      const matchingItems = items.filter(item =>
-        item.toLowerCase().includes(value.toLowerCase())
-      );
-      setAutocompleteItems(matchingItems);
-      setShowAutocomplete(matchingItems.length > 0);
+      // Server-side search
+      const { data: searchResults, error } = await supabase
+        .from('items')
+        .select('name')
+        .ilike('name', `%${value}%`)
+        .limit(10);
+
+      if (searchResults) {
+        setAutocompleteItems(searchResults.map(i => i.name));
+        setShowAutocomplete(searchResults.length > 0);
+      }
     } else {
       setAutocompleteItems([]);
       setShowAutocomplete(false);
@@ -476,8 +471,8 @@ function HistoryContent() {
                           key={item}
                           onClick={() => selectItemFromSearch(item)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
-                              ? 'bg-indigo-50 text-blue-700 font-semibold'
-                              : 'hover:bg-gray-50 text-gray-800'
+                            ? 'bg-indigo-50 text-blue-700 font-semibold'
+                            : 'hover:bg-gray-50 text-gray-800'
                             }`}
                         >
                           {item} {isSelected && '✓'}
@@ -583,8 +578,8 @@ function HistoryContent() {
                           key={item}
                           onClick={() => selectItemFromSearch(item)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
-                              ? 'bg-indigo-50 text-blue-700 font-semibold'
-                              : 'hover:bg-gray-50 text-gray-800'
+                            ? 'bg-indigo-50 text-blue-700 font-semibold'
+                            : 'hover:bg-gray-50 text-gray-800'
                             }`}
                         >
                           {item} {isSelected && '✓'}

@@ -175,31 +175,6 @@ function CompareContent() {
     }
 
     // -----------------------
-    // Items (id, name) - load ALL items globally
-    // -----------------------
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('items')
-      .select('id, name')
-      .eq('user_id', SHARED_USER_ID)
-      .order('name');
-
-    if (itemsError) console.error('Error loading items:', itemsError);
-
-    if (itemsData) {
-      const names = itemsData.map((i) => i.name);
-      setItems(names);
-
-      const itemLookup: { [name: string]: number } = {};
-      itemsData.forEach((i) => (itemLookup[i.name] = i.id));
-      setItemsByName(itemLookup);
-
-      // demo default by ID
-      const demoItem = itemsData.find((i) => i.id === DEFAULT_DEMO_ITEM_ID);
-      if (demoItem) setDefaultDemoItemName(demoItem.name);
-      else setDefaultDemoItemName(''); // keep non-null so initial selection logic can proceed
-    }
-
-    // -----------------------
     // Favorites from junction table (only if household_code exists)
     // -----------------------
     if (householdCode) {
@@ -211,66 +186,26 @@ function CompareContent() {
       const favIds = new Set(favData?.map(f => f.item_id) || []);
       setFavoritesIds(favIds);
 
-      // Convert IDs to names for display
-      if (itemsData) {
-        const favNames = itemsData
-          .filter((i) => favIds.has(i.id))
-          .map((i) => i.name);
-        setFavorites(favNames);
+      // Fetch names for these specific IDs
+      if (favIds.size > 0) {
+        const { data: favItems } = await supabase
+          .from('items')
+          .select('name')
+          .in('id', Array.from(favIds));
+
+        if (favItems) {
+          setFavorites(favItems.map(i => i.name));
+        }
       }
     } else {
       // No household code = no favorites
       setFavoritesIds(new Set());
       setFavorites([]);
     }
-
-    // -----------------------
-    // Prices (latest per store+item) - load ALL prices globally
-    // -----------------------
-    const { data: pricesData, error: pricesError } = await supabase
-      .from('price_history')
-      .select('*')
-      .eq('user_id', SHARED_USER_ID)
-      .order('recorded_date', { ascending: false });
-
-    if (pricesError) console.error('Error loading prices:', pricesError);
-
-    if (pricesData) {
-      const pricesObj: { [key: string]: PriceData } = {};
-      const latestPrices: { [key: string]: any } = {};
-
-      pricesData.forEach((p: any) => {
-        const key = `${p.store}-${p.item_name}`;
-        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
-          latestPrices[key] = p;
-          pricesObj[key] = {
-            price: p.price,
-            date: p.recorded_date,
-          };
-        }
-      });
-
-      setPrices(pricesObj);
-
-      if (pricesData.length > 0) {
-        const latest = pricesData.reduce((a: any, b: any) =>
-          new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
-        );
-        setLastUpdated(new Date(latest.recorded_date).toLocaleDateString());
-      } else {
-        setLastUpdated('');
-      }
-    }
   };
 
   // Deselect items when filter changes and they're no longer visible
-  useEffect(() => {
-    if (filterLetter !== 'All') {
-      setSelectedItems((prevSelected) =>
-        prevSelected.filter((item) => item.toUpperCase().startsWith(filterLetter))
-      );
-    }
-  }, [filterLetter]);
+
 
   const toggleItem = (item: string) => {
     const newSelectedItems = selectedItems.includes(item)
@@ -287,13 +222,77 @@ function CompareContent() {
     }
   };
 
-  const handleSearchChange = (value: string) => {
+  // Helper to fetch prices for specific items
+  const fetchPricesForItems = async (itemNames: string[]) => {
+    if (itemNames.length === 0) return;
+
+    // Filter out items we already have prices for (optimization)
+    const itemsToFetch = itemNames.filter(name => {
+      // Check if we have ANY price for this item key. 
+      // This is tricky because keys are Store-Item.
+      // Simplest: just check if we've fetched for this item before?
+      // For now, let's just fetch. The query is fast if limited to item_name.
+      return true;
+    });
+
+    if (itemsToFetch.length === 0) return;
+
+    const { data: pricesData, error: pricesError } = await supabase
+      .from('price_history')
+      .select('*')
+      .eq('user_id', SHARED_USER_ID)
+      .in('item_name', itemsToFetch)
+      .order('recorded_date', { ascending: false });
+
+    if (pricesError) {
+      console.error('Error loading prices:', pricesError);
+      return;
+    }
+
+    if (pricesData) {
+      setPrices(prev => {
+        const next = { ...prev };
+        const latestPrices: { [key: string]: any } = {};
+
+        // Merge new data
+        pricesData.forEach((p: any) => {
+          const key = `${p.store}-${p.item_name}`;
+          // Logic: keep existing if newer? Or overwrite? 
+          // Since we are fetching *all* history for these items, we can just rebuild the latest map for these items.
+          // Actually, we just need the LATEST price for the compare table.
+          if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
+            latestPrices[key] = p;
+            next[key] = {
+              price: p.price,
+              date: p.recorded_date,
+            };
+          }
+        });
+        return next;
+      });
+    }
+  };
+
+  // Lazy load prices when selection changes
+  useEffect(() => {
+    fetchPricesForItems(selectedItems);
+  }, [selectedItems]);
+
+  const handleSearchChange = async (value: string) => {
     setSearchQuery(value);
 
     if (value.trim()) {
-      const matchingItems = items.filter((item) => item.toLowerCase().includes(value.toLowerCase()));
-      setAutocompleteItems(matchingItems);
-      setShowAutocomplete(matchingItems.length > 0);
+      // Server-side search
+      const { data: searchResults, error } = await supabase
+        .from('items')
+        .select('name')
+        .ilike('name', `%${value}%`)
+        .limit(10);
+
+      if (searchResults) {
+        setAutocompleteItems(searchResults.map(i => i.name));
+        setShowAutocomplete(searchResults.length > 0);
+      }
     } else {
       setAutocompleteItems([]);
       setShowAutocomplete(false);
@@ -415,12 +414,7 @@ function CompareContent() {
   };
 
   const selectAllFavorites = () => {
-    const filteredFavorites =
-      filterLetter === 'All'
-        ? favorites
-        : favorites.filter((fav) => fav.toUpperCase().startsWith(filterLetter));
-
-    const newSelectedItems = [...new Set([...selectedItems, ...filteredFavorites])];
+    const newSelectedItems = [...new Set([...selectedItems, ...favorites])];
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
 
@@ -432,12 +426,7 @@ function CompareContent() {
   };
 
   const deselectAllFavorites = () => {
-    const filteredFavorites =
-      filterLetter === 'All'
-        ? favorites
-        : favorites.filter((fav) => fav.toUpperCase().startsWith(filterLetter));
-
-    const newSelectedItems = selectedItems.filter((item) => !filteredFavorites.includes(item));
+    const newSelectedItems = selectedItems.filter((item) => !favorites.includes(item));
     setSelectedItems(newSelectedItems);
     updateURL(newSelectedItems);
 
@@ -448,15 +437,7 @@ function CompareContent() {
     }
   };
 
-  const allFavoritesSelected =
-    (filterLetter === 'All'
-      ? favorites
-      : favorites.filter((fav) => fav.toUpperCase().startsWith(filterLetter))
-    ).length > 0 &&
-    (filterLetter === 'All'
-      ? favorites
-      : favorites.filter((fav) => fav.toUpperCase().startsWith(filterLetter))
-    ).every((fav) => selectedItems.includes(fav));
+  const allFavoritesSelected = favorites.length > 0 && favorites.every((fav) => selectedItems.includes(fav));
 
   const getDaysAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -521,16 +502,7 @@ function CompareContent() {
     };
   };
 
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const filteredItems =
-    filterLetter === 'All'
-      ? [...items].sort()
-      : [...items].sort().filter((item) => item.toUpperCase().startsWith(filterLetter));
-
-  const filteredFavorites =
-    filterLetter === 'All'
-      ? favorites
-      : favorites.filter((fav) => fav.toUpperCase().startsWith(filterLetter));
+  /* Removed alphabet/filtering logic as we no longer load all items */
 
   const storeData = calculateBestStore();
   const sortedStores = Object.entries(storeData)
@@ -574,35 +546,7 @@ function CompareContent() {
           </div>
         </div>
 
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
-          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-            <button
-              onClick={() => setFilterLetter('All')}
-              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                filterLetter === 'All'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-            {alphabet
-              .filter((letter) => items.some((item) => item.toUpperCase().startsWith(letter)))
-              .map((letter) => (
-                <button
-                  key={letter}
-                  onClick={() => toggleLetter(letter)}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                    filterLetter === letter
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {letter}
-                </button>
-              ))}
-          </div>
-        </div>
+
 
         <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
           {/* Mobile search */}
@@ -628,11 +572,10 @@ function CompareContent() {
                       <button
                         key={item}
                         onClick={() => selectItemFromSearch(item)}
-                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                          isSelected
-                            ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                            : 'hover:bg-gray-50 text-gray-800'
-                        }`}
+                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
+                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-800'
+                          }`}
                       >
                         {item} {isSelected && '✓'}
                       </button>
@@ -663,7 +606,7 @@ function CompareContent() {
           </div>
 
           {/* Favorites */}
-          {filteredFavorites.length > 0 && (
+          {favorites.length > 0 && (
             <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg md:text-xl font-bold text-gray-800">⭐ Favorites</h2>
@@ -675,15 +618,14 @@ function CompareContent() {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {filteredFavorites.map((item) => (
+                {favorites.map((item) => (
                   <button
                     key={item}
                     onClick={() => toggleItem(item)}
-                    className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${
-                      selectedItems.includes(item)
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-gray-700 border-yellow-400 hover:border-yellow-500'
-                    }`}
+                    className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${selectedItems.includes(item)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white text-gray-700 border-yellow-400 hover:border-yellow-500'
+                      }`}
                   >
                     {item}
                   </button>
@@ -734,11 +676,10 @@ function CompareContent() {
                       <button
                         key={item}
                         onClick={() => selectItemFromSearch(item)}
-                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                          isSelected
-                            ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                            : 'hover:bg-gray-50 text-gray-800'
-                        }`}
+                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
+                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-800'
+                          }`}
                       >
                         {item} {isSelected && '✓'}
                       </button>
@@ -748,21 +689,7 @@ function CompareContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
-              {filteredItems.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => toggleItem(item)}
-                  className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${
-                    selectedItems.includes(item)
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
+
           </div>
 
           {/* Best stores */}
@@ -779,9 +706,8 @@ function CompareContent() {
                     return (
                       <div
                         key={store}
-                        className={`p-4 rounded-2xl border-2 ${
-                          idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'
-                        }`}
+                        className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'
+                          }`}
                       >
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex-1 min-w-0">
@@ -798,9 +724,8 @@ function CompareContent() {
 
                             {selectedItems.length > 1 && (
                               <p
-                                className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${
-                                  isComplete ? 'text-green-600' : 'text-orange-600'
-                                }`}
+                                className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${isComplete ? 'text-green-600' : 'text-orange-600'
+                                  }`}
                               >
                                 <span>
                                   {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)

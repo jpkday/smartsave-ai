@@ -522,8 +522,28 @@ export default function ShoppingList() {
         }
       }
 
-      await loadData();
+      // ✅ Optimistic Update (Fix "Name not sticking")
+      // Update local state immediately so UI reflects changes while we re-fetch in background
+      setListItems((prev) =>
+        prev.map((li) => {
+          // Update all instances of this item (in case of duplicates or same item_id)
+          if (li.item_id === editModalItem.item_id) {
+            return { ...li, item_name: newName, quantity: qtyNum };
+          }
+          return li;
+        })
+      );
+
+      if (newName !== oldName) {
+        setAllItems((prev) =>
+          prev.map((i) => (i.id === editModalItem.item_id ? { ...i, name: newName, category: editModalCategory || 'Other' } : i))
+        );
+        // items is just string array of names
+        setItems((prev) => prev.map((n) => (n === oldName ? newName : n)));
+      }
+
       closeEditModal();
+      await loadData();
     } catch (error) {
       console.error('Error saving edit:', error);
       alert('Failed to save changes. Check your connection and try again.');
@@ -1415,9 +1435,20 @@ export default function ShoppingList() {
             >
               All
             </button>
-            {alphabet
-              .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
-              .map((letter) => (
+            {alphabet.map((letter) => {
+              const hasItems = allItems.some((it) => it.name.toUpperCase().startsWith(letter));
+              if (!hasItems) {
+                return (
+                  <button
+                    key={letter}
+                    disabled
+                    className="px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold text-gray-300 cursor-default"
+                  >
+                    {letter}
+                  </button>
+                );
+              }
+              return (
                 <button
                   key={letter}
                   onClick={() => toggleLetter(letter)}
@@ -1426,7 +1457,8 @@ export default function ShoppingList() {
                 >
                   {letter}
                 </button>
-              ))}
+              );
+            })}
           </div>
         </div>
 
