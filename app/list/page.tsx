@@ -1430,7 +1430,7 @@ export default function ShoppingList() {
 
         <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
           {/* LEFT COLUMN: Filter, Search, Select Items */}
-          <div className="w-full md:w-1/3 space-y-4">
+          <div className="w-full md:w-2/5 space-y-4">
 
             {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
             <div
@@ -1685,7 +1685,7 @@ export default function ShoppingList() {
           </div>
 
           {/* RIGHT COLUMN: Shopping List */}
-          <div className="w-full md:w-2/3 mt-4 md:mt-0">
+          <div className="w-full md:w-3/5 mt-4 md:mt-0">
 
             {/* SHOPPING LIST MODAL */}
 
@@ -2096,6 +2096,22 @@ export default function ShoppingList() {
                                                     </button>
                                                   )}
                                                 </div>
+                                              </div>
+
+                                              <div className="hidden md:flex items-center gap-2">
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  −
+                                                </button>
+                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                <button
+                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                >
+                                                  +
+                                                </button>
                                               </div>
 
                                               <button
