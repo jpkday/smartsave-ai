@@ -1868,7 +1868,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                     )}
                                                     {item.item_name}
                                                     {item.quantity > 1 && (
-                                                      <span className="ml-1 font-semibold text-indigo-600">
+                                                      <span className="ml-1 font-bold text-indigo-600">
                                                         (Qty: {item.quantity})
                                                       </span>
                                                     )}
@@ -2046,7 +2046,11 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   <span className="mr-1" title="On sale today!">🔥</span>
                                                 )}
                                                 {item.item_name}
-                                                {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                                {item.quantity > 1 && (
+                                                  <span className="ml-1 font-bold text-indigo-600">
+                                                    (Qty: {item.quantity})
+                                                  </span>
+                                                )}
                                               </button>
                                             </div>
 
@@ -2246,7 +2250,11 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                       <span className="mr-1" title="On sale today!">🔥</span>
                                                     )}
                                                     {item.item_name}
-                                                    {item.quantity > 1 ? ` (${item.quantity})` : ''}
+                                                    {item.quantity > 1 && (
+                                                      <span className="ml-1 font-bold text-indigo-600">
+                                                        (Qty: {item.quantity})
+                                                      </span>
+                                                    )}
                                                   </button>
                                                 </div>
 
