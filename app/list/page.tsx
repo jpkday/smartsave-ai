@@ -467,6 +467,7 @@ export default function ShoppingList() {
             user_id: SHARED_USER_ID,
             household_code: householdCode,
             recorded_date: recordedDate,
+            created_at: new Date().toISOString(),
           });
 
           if (priceError) throw priceError;
@@ -690,7 +691,8 @@ export default function ShoppingList() {
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
-      .order('recorded_date', { ascending: false });
+      .order('recorded_date', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (pricesError) console.error('Error loading prices:', pricesError);
 
@@ -700,7 +702,10 @@ export default function ShoppingList() {
 
       pricesData.forEach((p) => {
         const key = `${p.store}-${p.item_name}`;
-        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
+        if (!latestPrices[key] ||
+          new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date) ||
+          (p.recorded_date === latestPrices[key].recorded_date && new Date(p.created_at || 0) > new Date(latestPrices[key].created_at || 0))
+        ) {
           latestPrices[key] = p;
           pricesObj[key] = { price: p.price, date: p.recorded_date };
         }

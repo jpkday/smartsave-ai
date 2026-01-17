@@ -35,7 +35,7 @@ const parseLocalDate = (dateString: string) => {
 function HistoryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>('');
@@ -46,7 +46,7 @@ function HistoryContent() {
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // Search/autocomplete state
   const [searchQuery, setSearchQuery] = useState('');
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -78,11 +78,11 @@ function HistoryContent() {
 
   useEffect(() => {
     if (!isInitialLoad || items.length === 0) return;
-    
+
     // Load from URL parameters with proper decoding
     const itemParam = searchParams.get('item');
     const storeParam = searchParams.get('store');
-    
+
     if (itemParam || storeParam) {
       // URL params take priority
       if (itemParam) {
@@ -95,7 +95,7 @@ function HistoryContent() {
           localStorage.setItem('history_last_item', itemParam);
         }
       }
-      
+
       if (storeParam) {
         try {
           const decodedStore = JSON.parse(storeParam);
@@ -111,7 +111,7 @@ function HistoryContent() {
       try {
         const lastItem = localStorage.getItem('history_last_item');
         const lastStore = localStorage.getItem('history_last_store');
-        
+
         if (lastItem && items.includes(lastItem)) {
           setSelectedItem(lastItem);
           if (lastStore) {
@@ -123,7 +123,7 @@ function HistoryContent() {
         console.error('Failed to load from localStorage:', e);
       }
     }
-    
+
     setIsInitialLoad(false);
   }, [searchParams, items, isInitialLoad]);
 
@@ -139,7 +139,7 @@ function HistoryContent() {
       .from('stores')
       .select('name')
       .order('name');
-    
+
     if (storesData) {
       setStores(storesData.map(s => s.name));
     }
@@ -149,7 +149,7 @@ function HistoryContent() {
       .from('items')
       .select('name')
       .order('name');
-    
+
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
     }
@@ -157,10 +157,10 @@ function HistoryContent() {
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    
+
     if (value.trim()) {
       // Filter items that match the search
-      const matchingItems = items.filter(item => 
+      const matchingItems = items.filter(item =>
         item.toLowerCase().includes(value.toLowerCase())
       );
       setAutocompleteItems(matchingItems);
@@ -189,14 +189,14 @@ function HistoryContent() {
     // Use JSON encoding to handle commas in names
     if (item) params.set('item', JSON.stringify(item));
     if (store && store !== 'All') params.set('store', JSON.stringify(store));
-    
+
     const newURL = params.toString() ? `/history?${params.toString()}` : '/history';
     router.push(newURL);
   };
 
   const shareLink = async () => {
     const url = window.location.href;
-    
+
     try {
       await navigator.clipboard.writeText(url);
       setShowCopied(true);
@@ -208,38 +208,39 @@ function HistoryContent() {
 
   const loadPriceHistory = async () => {
     setLoading(true);
-    
+
     let query = supabase
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .eq('item_name', selectedItem)
-      .order('recorded_date', { ascending: false });
-    
+      .order('recorded_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
     if (selectedStore !== 'All') {
       query = query.eq('store', selectedStore);
     }
-    
+
     const { data } = await query;
-    
+
     if (data) {
       setPriceHistory(data);
     }
-    
+
     setLoading(false);
   };
 
   const handlePriceChange = (value: string) => {
     // Remove all non-digit characters
     const digits = value.replace(/\D/g, '');
-    
+
     let priceValue = '';
     if (digits !== '') {
       // Convert to cents, then to dollars
       const cents = parseInt(digits, 10);
       priceValue = (cents / 100).toFixed(2);
     }
-    
+
     setNewPrice(priceValue);
   };
 
@@ -248,12 +249,12 @@ function HistoryContent() {
       alert('Please enter a valid price');
       return;
     }
-  
+
     if (!newDate) {
       alert('Please select a date');
       return;
     }
-  
+
     // Get item_id
     const { data: itemData } = await supabase
       .from('items')
@@ -261,24 +262,24 @@ function HistoryContent() {
       .eq('name', selectedItem)
       .eq('user_id', SHARED_USER_ID)
       .single();
-  
+
     if (!itemData) {
       alert('Item not found');
       return;
     }
-  
+
     // Get store_id
     const { data: storeData } = await supabase
       .from('stores')
       .select('id')
       .eq('name', selectedStore)
       .single();
-  
+
     if (!storeData) {
       alert('Store not found');
       return;
     }
-  
+
     // Insert new price record
     const { error } = await supabase
       .from('price_history')
@@ -292,17 +293,17 @@ function HistoryContent() {
         recorded_date: newDate,
         created_at: new Date().toISOString()
       });
-  
+
     if (error) {
       console.error('Error adding price:', error);
       alert('Failed to add price entry');
       return;
     }
-  
+
     // Clear form (using local date)
     setNewPrice('');
     setNewDate(getLocalDateString());
-  
+
     // Reload history to show new entry
     loadPriceHistory();
   };
@@ -331,7 +332,7 @@ function HistoryContent() {
     try {
       // Use override store if provided (for "All Stores" view), otherwise use selectedStore
       const storeToUse = storeOverride || selectedStore;
-      
+
       // Get item_id
       const { data: itemData } = await supabase
         .from('items')
@@ -339,22 +340,22 @@ function HistoryContent() {
         .eq('name', selectedItem)
         .eq('user_id', SHARED_USER_ID)
         .single();
-  
+
       if (!itemData) {
         throw new Error('Item not found');
       }
-  
+
       // Get store_id
       const { data: storeData } = await supabase
         .from('stores')
         .select('id')
         .eq('name', storeToUse)
         .single();
-  
+
       if (!storeData) {
         throw new Error('Store not found');
       }
-  
+
       // Insert new price record with today's date
       const { error } = await supabase
         .from('price_history')
@@ -368,11 +369,11 @@ function HistoryContent() {
           recorded_date: getLocalDateString(),
           created_at: new Date().toISOString()
         });
-  
+
       if (error) {
         throw new Error(`Failed to confirm price: ${error.message}`);
       }
-  
+
       // Reload history to show new entry
       loadPriceHistory();
     } catch (error) {
@@ -385,9 +386,9 @@ function HistoryContent() {
     const current = parseFloat(currentPrice);
     const previous = parseFloat(previousPrice);
     const diff = current - previous;
-    
+
     if (diff === 0) return null;
-    
+
     return {
       amount: Math.abs(diff),
       direction: diff > 0 ? 'up' : 'down',
@@ -396,7 +397,7 @@ function HistoryContent() {
   };
 
   // Group by store if showing all stores
-  const groupedHistory: {[store: string]: PriceRecord[]} = {};
+  const groupedHistory: { [store: string]: PriceRecord[] } = {};
   if (selectedStore === 'All') {
     priceHistory.forEach(record => {
       if (!groupedHistory[record.store]) {
@@ -464,7 +465,7 @@ function HistoryContent() {
                     }
                   }}
                 />
-                
+
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
@@ -474,11 +475,10 @@ function HistoryContent() {
                         <button
                           key={item}
                           onClick={() => selectItemFromSearch(item)}
-                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                            isSelected 
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
                               ? 'bg-indigo-50 text-blue-700 font-semibold'
                               : 'hover:bg-gray-50 text-gray-800'
-                          }`}
+                            }`}
                         >
                           {item} {isSelected && '✓'}
                         </button>
@@ -572,7 +572,7 @@ function HistoryContent() {
                     }
                   }}
                 />
-                
+
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
@@ -582,11 +582,10 @@ function HistoryContent() {
                         <button
                           key={item}
                           onClick={() => selectItemFromSearch(item)}
-                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                            isSelected 
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
                               ? 'bg-indigo-50 text-blue-700 font-semibold'
                               : 'hover:bg-gray-50 text-gray-800'
-                          }`}
+                            }`}
                         >
                           {item} {isSelected && '✓'}
                         </button>
@@ -646,17 +645,17 @@ function HistoryContent() {
                       const prevRecord = records[idx + 1];
                       const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
                       const isLatest = idx === 0;
-                      
+
                       return (
                         <div key={record.id}>
                           <div className="flex justify-between items-center gap-3">
                             <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                               <div>
                                 <p className="font-semibold text-gray-800">
-                                  {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric' 
+                                  {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
                                   })}
                                 </p>
                                 {change && (
@@ -706,26 +705,26 @@ function HistoryContent() {
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       tick={{ fontSize: 12 }}
                       angle={-45}
                       textAnchor="end"
                       height={60}
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 12 }}
                       domain={[0, 'dataMax + 1']}
                       tickFormatter={(value) => `$${value.toFixed(2)}`}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number | undefined) => value !== undefined ? [`$${value.toFixed(2)}`, 'Price'] : ['', '']}
                       labelStyle={{ color: '#1f2937' }}
                     />
-                    <Line 
-                      type="linear" 
-                      dataKey="price" 
-                      stroke="#14b8a6" 
+                    <Line
+                      type="linear"
+                      dataKey="price"
+                      stroke="#14b8a6"
                       strokeWidth={3}
                       dot={{ fill: '#14b8a6', r: 6 }}
                       activeDot={{ r: 8 }}
@@ -735,7 +734,7 @@ function HistoryContent() {
                 </ResponsiveContainer>
               </div>
             )}
-            
+
             {/* Timeline List - Shows existing data or helpful message */}
             {priceHistory.length > 0 ? (
               <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
@@ -747,17 +746,17 @@ function HistoryContent() {
                     const prevRecord = priceHistory[idx + 1];
                     const change = prevRecord ? getPriceChange(record.price, prevRecord.price) : null;
                     const isLatest = idx === 0;
-                    
+
                     return (
                       <div key={record.id}>
                         <div className="flex justify-between items-center gap-3">
                           <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                             <div>
                               <p className="font-semibold text-gray-800">
-                                {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric', 
-                                  year: 'numeric' 
+                                {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
                                 })}
                               </p>
                               {change && (
@@ -805,7 +804,7 @@ function HistoryContent() {
               <p className="text-sm text-gray-600 mb-4">
                 Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{selectedStore}</span>
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
