@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
@@ -27,6 +28,8 @@ interface ReceiptItem {
 }
 
 export default function Receipts() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [stores, setStores] = useState<string[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [store, setStore] = useState('');
@@ -46,20 +49,26 @@ export default function Receipts() {
 
   useEffect(() => {
     loadData();
-  
+
     const now = new Date();
     now.setSeconds(0, 0);
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
-  
+
     setTripEndLocal(local);
 
-    const savedMode = localStorage.getItem(MODE_KEY);
-    if (savedMode === 'flyer' || savedMode === 'receipt') {
-      setMode(savedMode);
+    // Check URL query parameter first (priority), then localStorage
+    const urlMode = searchParams.get('mode');
+    if (urlMode === 'flyer' || urlMode === 'receipt') {
+      setMode(urlMode);
+    } else {
+      const savedMode = localStorage.getItem(MODE_KEY);
+      if (savedMode === 'flyer' || savedMode === 'receipt') {
+        setMode(savedMode);
+      }
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (mode === 'flyer') {
@@ -72,14 +81,14 @@ export default function Receipts() {
       setValidUntil(sevenDaysLater.toISOString().slice(0, 10));
     }
   }, [mode]);
-  
+
   useEffect(() => {
     const raw = localStorage.getItem(RECEIPT_DRAFT_KEY);
     if (!raw) return;
-  
+
     try {
       const draft: ReceiptDraft = JSON.parse(raw);
-  
+
       if (draft.store) setStore(draft.store);
       if (draft.date) setDate(draft.date);
       if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
@@ -91,7 +100,7 @@ export default function Receipts() {
       localStorage.removeItem(RECEIPT_DRAFT_KEY);
     }
   }, []);
-  
+
   useEffect(() => {
     const draft: ReceiptDraft = {
       store,
@@ -101,10 +110,10 @@ export default function Receipts() {
       validFrom,
       validUntil,
     };
-  
+
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
   }, [store, date, tripEndLocal, receiptItems, validFrom, validUntil]);
-  
+
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
   }, [mode]);
@@ -115,29 +124,29 @@ export default function Receipts() {
         setStorePriceLookup({});
         return;
       }
-  
+
       const { data, error } = await supabase
         .from('price_history')
         .select('item_name, price, recorded_date')
         .eq('user_id', SHARED_USER_ID)
         .eq('store', store)
         .order('recorded_date', { ascending: false });
-  
+
       if (error) {
         console.error('Error loading store prices:', error);
         setStorePriceLookup({});
         return;
       }
-  
+
       const lookup: Record<string, string> = {};
       for (const row of data || []) {
         if (!lookup[row.item_name]) lookup[row.item_name] = String(row.price);
       }
-  
+
       setStorePriceLookup(lookup);
       applySuggestedPricesForCurrentStore(lookup);
     };
-  
+
     loadLatestPricesForStore();
   }, [store]);
 
@@ -146,7 +155,7 @@ export default function Receipts() {
       .from('stores')
       .select('name')
       .order('name');
-    
+
     if (storesData) {
       setStores(storesData.map(s => s.name));
     }
@@ -155,7 +164,7 @@ export default function Receipts() {
       .from('items')
       .select('name')
       .order('name');
-    
+
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
     }
@@ -176,7 +185,7 @@ export default function Receipts() {
       }
       return prev.filter((_, i) => i !== index);
     });
-  
+
     setTimeout(() => itemRefs.current[0]?.focus(), 50);
   };
 
@@ -185,17 +194,17 @@ export default function Receipts() {
       prev.map((row) => {
         const itemName = (row.item || '').trim();
         if (!itemName) return row;
-  
+
         if (row.priceDirty) return row;
-  
+
         const suggested = lookup[itemName];
         if (!suggested) {
           return { ...row, price: '' };
         }
-  
+
         const num = parseFloat(suggested);
         const normalized = !isNaN(num) ? num.toFixed(2) : suggested;
-  
+
         return { ...row, price: normalized };
       })
     );
@@ -205,10 +214,10 @@ export default function Receipts() {
     setReceiptItems((prev) => {
       const updated = [...prev];
       const row = { ...updated[index] };
-  
+
       if (field === 'price') {
         row.priceDirty = true;
-  
+
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
           row.price = '';
@@ -222,25 +231,25 @@ export default function Receipts() {
         }
       } else {
         row.item = value;
-  
+
         const suggested = storePriceLookup[value];
         if (!row.priceDirty && suggested) {
           row.price = suggested;
         }
       }
-  
+
       updated[index] = row;
       return updated;
     });
   };
-  
+
   const toIsoFromLocalDateTime = (local: string) => {
     const [datePart, timePart] = local.split('T');
     if (!datePart || !timePart) return null;
-  
+
     const [y, m, d] = datePart.split('-').map(Number);
     const [hh, mm] = timePart.split(':').map(Number);
-  
+
     const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
     return dt.toISOString();
   };
@@ -270,54 +279,54 @@ export default function Receipts() {
 
     // Set recorded_date based on mode
     const recordedDate = mode === 'flyer' ? validFrom : tripEndLocal.slice(0, 10);
-  
+
     const endedAtIso = mode === 'receipt' ? toIsoFromLocalDateTime(tripEndLocal) : null;
     if (mode === 'receipt' && !endedAtIso) {
       alert('Please select a trip end date/time');
       return;
     }
-  
+
     const validItems = receiptItems.filter((ri) => {
       const price = parseFloat(ri.price || '0');
       const qty = parseFloat(ri.quantity || '1');
       return ri.item && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
     });
-  
+
     if (validItems.length === 0) {
       alert('Please add at least one item with a price');
       return;
     }
-  
+
     const { data: storeData, error: storeErr } = await supabase
       .from('stores')
       .select('id')
       .eq('name', store)
       .single();
-  
+
     if (storeErr || !storeData?.id) {
       alert('Store not found');
       return;
     }
-  
+
     const storeId = storeData.id;
-  
+
     const uniqueNames = Array.from(new Set(validItems.map((x) => x.item)));
-  
+
     const { data: existingItems, error: existingItemsErr } = await supabase
       .from('items')
       .select('id, name')
       .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
-  
+
     if (existingItemsErr) {
       console.error(existingItemsErr);
       alert('Failed to load items. Check your connection and try again.');
       return;
     }
-  
+
     const existingSet = new Set((existingItems || []).map((x: any) => x.name));
     const missing = uniqueNames.filter((n) => !existingSet.has(n));
-  
+
     if (missing.length > 0) {
       const { error: insertItemsErr } = await supabase.from('items').insert(
         missing.map((name) => ({
@@ -326,40 +335,40 @@ export default function Receipts() {
           household_code: householdCode,
         }))
       );
-  
+
       if (insertItemsErr) {
         console.error('Error inserting items:', insertItemsErr);
         alert('Failed to add new items. Check your connection and try again.');
         return;
       }
-  
+
       setItems((prev) => Array.from(new Set([...prev, ...missing])));
     }
-  
+
     const { data: allItemsData, error: allItemsErr } = await supabase
       .from('items')
       .select('id, name')
       .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
-  
+
     if (allItemsErr) {
       console.error(allItemsErr);
       alert('Failed to load item ids. Check your connection and try again.');
       return;
     }
-  
+
     const itemIdByName: Record<string, any> = {};
     (allItemsData || []).forEach((it: any) => {
       itemIdByName[it.name] = it.id;
     });
-  
+
     const createdAt = new Date().toISOString();
-  
+
     const priceRows = validItems
       .map((ri) => {
         const itemId = itemIdByName[ri.item];
         if (!itemId) return null;
-        
+
         const priceRow: any = {
           item_id: itemId,
           item_name: ri.item,
@@ -381,18 +390,18 @@ export default function Receipts() {
         return priceRow;
       })
       .filter(Boolean);
-  
+
     const { error: priceInsertErr } = await supabase.from('price_history').insert(priceRows as any);
-  
+
     if (priceInsertErr) {
       console.error(priceInsertErr);
       alert('Failed to save prices. Check your connection and try again.');
       return;
     }
-  
+
     if (mode === 'receipt' && createPastTrip && endedAtIso) {
       const startedAtIso = new Date(new Date(endedAtIso).getTime() - 5 * 60 * 1000).toISOString();
-  
+
       const { data: tripRow, error: tripErr } = await supabase
         .from('trips')
         .insert({
@@ -404,21 +413,21 @@ export default function Receipts() {
         })
         .select('id')
         .single();
-  
+
       if (tripErr || !tripRow?.id) {
         console.error(tripErr);
         alert('Saved prices, but failed to create the trip.');
       } else {
         const tripId = tripRow.id;
-  
+
         const eventRows = validItems
           .map((ri) => {
             const itemId = itemIdByName[ri.item];
             if (!itemId) return null;
-  
+
             const qtyNum = parseFloat(ri.quantity || '1') || 1;
             const priceNum = parseFloat(ri.price || '0') || 0;
-  
+
             return {
               trip_id: tripId,
               household_code: householdCode,
@@ -432,18 +441,18 @@ export default function Receipts() {
             };
           })
           .filter(Boolean);
-  
+
         const { error: eventsErr } = await supabase
           .from('shopping_list_events')
           .insert(eventRows as any);
-  
+
         if (eventsErr) {
           console.error(eventsErr);
           alert('Saved prices + trip, but failed to save trip items.');
         }
       }
     }
-  
+
     if (mode === 'flyer') {
       alert(
         `Flyer prices saved! Updated ${validItems.length} prices for ${store} (valid ${new Date(
@@ -457,7 +466,7 @@ export default function Receipts() {
         ).toLocaleString()}`
       );
     }
-  
+
     setStore('');
     setDate(new Date().toISOString().split('T')[0]);
     setReceiptItems([{ item: '', quantity: '1', price: '', priceDirty: false }]);
@@ -484,7 +493,7 @@ export default function Receipts() {
                 {mode === 'flyer' ? 'Enter Flyer Prices' : 'Enter Receipt'}
               </h1>
               <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
-                {mode === 'flyer' 
+                {mode === 'flyer'
                   ? 'Quickly update prices from store flyers and ads'
                   : 'Quickly add in missed receipts.'
                 }
@@ -494,37 +503,35 @@ export default function Receipts() {
           </div>
         </div>
       </div>
-      
+
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-0 mt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
-          
+
           {/* Mode Toggle */}
           <div className="w-full bg-white p-3 mb-2">
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
               <div className="flex gap-2">
                 <button
-                  onClick={() => setMode('receipt')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${
-                    mode === 'receipt'
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  onClick={() => router.replace('/receipts?mode=receipt', { scroll: false })}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${mode === 'receipt'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   🧾 Receipt Mode
                 </button>
                 <button
-                  onClick={() => setMode('flyer')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${
-                    mode === 'flyer'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  onClick={() => router.replace('/receipts?mode=flyer', { scroll: false })}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition cursor-pointer ${mode === 'flyer'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   ✄ Flyer Mode
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                {mode === 'flyer' 
+                {mode === 'flyer'
                   ? '💡 Use Flyer Mode to quickly update prices from weekly ads - no trip tracking needed.'
                   : '🧾 Use Receipt Mode to log actual purchases and track shopping trips.'
                 }
@@ -534,7 +541,7 @@ export default function Receipts() {
 
           <div className="w-full bg-white p-3">
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
-          
+
               {/* Store and Date Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                 <div>
@@ -597,7 +604,7 @@ export default function Receipts() {
 
           {/* Create past trip toggle - ONLY show in receipt mode */}
           {mode === 'receipt' && (
-            <div className="w-full bg-white p-3">  
+            <div className="w-full bg-white p-3">
               <div className="border border-slate-200 rounded-2xl shadow-md p-4">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
@@ -618,7 +625,7 @@ export default function Receipts() {
           )}
 
           {/* Items Table */}
-          <div className="w-full bg-white p-3">  
+          <div className="w-full bg-white p-3">
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
               <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
               <div className="space-y-3">
@@ -696,7 +703,7 @@ export default function Receipts() {
 
           {/* Total - only show in receipt mode */}
           {mode === 'receipt' && (
-            <div className="w-full bg-white p-5">    
+            <div className="w-full bg-white p-5">
               <div className="border-t pt-4 mb-6">
                 <div className="flex justify-between items-center">
                   <span className="text-xl font-bold text-gray-800">Total:</span>

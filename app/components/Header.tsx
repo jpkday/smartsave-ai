@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
-    {name: 'Home', path: '/', icon: 'ᯓ ' },
+    { name: 'Home', path: '/', icon: 'ᯓ ' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
     { name: 'Insights', path: '/insights', icon: '💡' },
     { name: 'Local Deals', path: '/deals', icon: '🔥' },
@@ -18,8 +18,8 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Price History', path: '/history', icon: '📊' },
     { name: 'Manage Items', path: '/items', icon: '📋' },
     { name: 'Enter Prices', path: '/prices', icon: '💰' },
-    { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
-    { name: 'Add Flyer', path: '/flyer', icon: '✄' }, 
+    { name: 'Add Receipt', path: '/receipts?mode=receipt', icon: '🧾' },
+    { name: 'Add Flyer', path: '/receipts?mode=flyer', icon: '✄' },
     { name: 'Manage Stores', path: '/stores', icon: '🛍️' },
   ];
 
@@ -34,7 +34,7 @@ export default function Header({ currentPage }: HeaderProps) {
     'Manage Items': 'bg-purple-500 hover:bg-purple-600',
     'Enter Prices': 'bg-blue-600 hover:bg-blue-700',
     'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
-    'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',    
+    'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',
     'Manage Stores': 'bg-pink-500 hover:bg-pink-600',
   };
 
@@ -128,9 +128,8 @@ export default function Header({ currentPage }: HeaderProps) {
             <Link
               key={page.name}
               href={page.path}
-              className={`font-semibold ${
-                currentPage === page.name ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
-              }`}
+              className={`font-semibold ${currentPage === page.name ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
+                }`}
             >
               {page.name}
             </Link>
@@ -140,9 +139,8 @@ export default function Header({ currentPage }: HeaderProps) {
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
-              className={`font-semibold flex items-center gap-1 ${
-                isInMore ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
-              }`}
+              className={`font-semibold flex items-center gap-1 ${isInMore ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'
+                }`}
               aria-haspopup="menu"
               aria-expanded={moreOpen}
             >
@@ -168,11 +166,10 @@ export default function Header({ currentPage }: HeaderProps) {
                     href={p.path}
                     role="menuitem"
                     onClick={() => setMoreOpen(false)}
-                    className={`block px-4 py-2.5 text-sm font-semibold ${
-                      currentPage === p.name
+                    className={`block px-4 py-2.5 text-sm font-semibold ${currentPage === p.name
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {p.name}
                   </Link>
