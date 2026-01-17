@@ -76,9 +76,9 @@ export default function Receipts() {
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10);
       setValidFrom(dateStr);
-      const sevenDaysLater = new Date(today);
-      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-      setValidUntil(sevenDaysLater.toISOString().slice(0, 10));
+      const sixDaysLater = new Date(today);
+      sixDaysLater.setDate(sixDaysLater.getDate() + 6);
+      setValidUntil(sixDaysLater.toISOString().slice(0, 10));
     }
   }, [mode]);
 
