@@ -9,6 +9,12 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
 const MODE_KEY = 'receipt_mode_v1';
 
+type SkuMapping = {
+  item_id: number;
+  store_sku: string;
+  items: { name: string };
+};
+
 type ReceiptMode = 'receipt' | 'flyer';
 
 type ReceiptDraft = {
@@ -24,6 +30,7 @@ interface ReceiptItem {
   item: string;
   quantity: string;
   price: string;
+  sku: string;
   priceDirty?: boolean;
 }
 
@@ -44,8 +51,9 @@ function ReceiptsContent() {
   const [store, setStore] = useState('');
   const [date, setDate] = useState('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
-    { item: '', quantity: '1', price: '', priceDirty: false }
+    { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
   ]);
+  const [skuMappings, setSkuMappings] = useState<Record<string, string>>({}); // itemName -> sku
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [createPastTrip, setCreatePastTrip] = useState(true);
   const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
@@ -55,6 +63,45 @@ function ReceiptsContent() {
   const [mode, setMode] = useState<ReceiptMode>('receipt');
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
+
+  // Fetch SKUs when store changes
+  useEffect(() => {
+    if (!store) {
+      setSkuMappings({});
+      return;
+    }
+
+    const fetchSkus = async () => {
+      // get store id first
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('name', store)
+        .single();
+
+      if (!storeData) return;
+
+      const { data } = await supabase
+        .from('store_item_sku')
+        .select(`
+          store_sku,
+          items!inner(name)
+        `)
+        .eq('store_id', storeData.id);
+
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((row: any) => {
+          if (row.items?.name) {
+            map[row.items.name] = row.store_sku;
+          }
+        });
+        setSkuMappings(map);
+      }
+    };
+
+    fetchSkus();
+  }, [store]);
 
   useEffect(() => {
     loadData();
@@ -101,7 +148,14 @@ function ReceiptsContent() {
       if (draft.store) setStore(draft.store);
       if (draft.date) setDate(draft.date);
       if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
-      if (draft.receiptItems?.length) setReceiptItems(draft.receiptItems);
+      if (draft.receiptItems) {
+        // Ensure SKU exists for old drafts
+        const itemsWithSku = draft.receiptItems.map(item => ({
+          ...item,
+          sku: item.sku || ''
+        }));
+        setReceiptItems(itemsWithSku);
+      }
       if (draft.validFrom) setValidFrom(draft.validFrom);
       if (draft.validUntil) setValidUntil(draft.validUntil);
     } catch (e) {
@@ -180,7 +234,7 @@ function ReceiptsContent() {
   };
 
   const addRow = () => {
-    setReceiptItems([...receiptItems, { item: '', quantity: '1', price: '', priceDirty: false }]);
+    setReceiptItems([...receiptItems, { item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setTimeout(() => {
       const newIndex = receiptItems.length;
       itemRefs.current[newIndex]?.focus();
@@ -219,36 +273,42 @@ function ReceiptsContent() {
     );
   };
 
-  const updateItem = (index: number, field: 'item' | 'quantity' | 'price', value: string) => {
+  const updateItem = (index: number, field: 'item' | 'quantity' | 'price' | 'sku', value: string) => {
     setReceiptItems((prev) => {
-      const updated = [...prev];
-      const row = { ...updated[index] };
+      const newItems = [...prev];
+      const currentRow = { ...newItems[index] };
 
       if (field === 'price') {
-        row.priceDirty = true;
-
+        currentRow.priceDirty = true;
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
-          row.price = '';
+          currentRow.price = '';
         } else {
           const cents = parseInt(digits, 10);
-          row.price = (cents / 100).toFixed(2);
+          currentRow.price = (cents / 100).toFixed(2);
         }
       } else if (field === 'quantity') {
         if (/^\d*\.?\d*$/.test(value)) {
-          row.quantity = value;
+          currentRow.quantity = value;
         }
-      } else {
-        row.item = value;
-
-        const suggested = storePriceLookup[value];
-        if (!row.priceDirty && suggested) {
-          row.price = suggested;
+      } else if (field === 'item') {
+        currentRow.item = value;
+        // Auto-populate price and SKU on item name match (if empty)
+        const suggestedPrice = storePriceLookup[value];
+        if (!currentRow.priceDirty && suggestedPrice) {
+          currentRow.price = suggestedPrice;
         }
+        if (skuMappings[value]) {
+          currentRow.sku = skuMappings[value];
+        } else {
+          currentRow.sku = ''; // Clear SKU if no mapping found for new item
+        }
+      } else if (field === 'sku') {
+        currentRow.sku = value;
       }
 
-      updated[index] = row;
-      return updated;
+      newItems[index] = currentRow;
+      return newItems;
     });
   };
 
@@ -437,6 +497,21 @@ function ReceiptsContent() {
             const qtyNum = parseFloat(ri.quantity || '1') || 1;
             const priceNum = parseFloat(ri.price || '0') || 0;
 
+            // Upsert SKU if provided
+            const sku = ri.sku?.trim();
+            if (sku) {
+              supabase.from('store_item_sku').upsert(
+                {
+                  store_id: storeId,
+                  item_id: itemId,
+                  store_sku: sku
+                },
+                { onConflict: 'store_id,item_id' }
+              ).then(({ error }) => {
+                if (error) console.error('Error upserting SKU:', error);
+              });
+            }
+
             return {
               trip_id: tripId,
               household_code: householdCode,
@@ -478,7 +553,7 @@ function ReceiptsContent() {
 
     setStore('');
     setDate(new Date().toISOString().split('T')[0]);
-    setReceiptItems([{ item: '', quantity: '1', price: '', priceDirty: false }]);
+    setReceiptItems([{ item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setValidFrom('');
     setValidUntil('');
     localStorage.removeItem(RECEIPT_DRAFT_KEY);
@@ -655,6 +730,17 @@ function ReceiptsContent() {
                           <option key={item} value={item} />
                         ))}
                       </datalist>
+                    </div>
+
+                    {/* SKU Input */}
+                    <div className="w-24">
+                      <input
+                        type="text"
+                        placeholder="SKU"
+                        value={ri.sku || ''}
+                        onChange={(e) => updateItem(idx, 'sku', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                      />
                     </div>
 
                     {/* Quantity (only show in receipt mode) */}
