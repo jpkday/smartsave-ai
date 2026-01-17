@@ -253,6 +253,26 @@ export default function ShoppingList() {
   }, [stores]);
 
   // =========================
+  // SMART AUTO-PIN (Device Handoff & Single Trip Convenience)
+  // If I open the app and there is exactly one active trip (and I haven't pinned anything else),
+  // assume that is my trip and pin it.
+  // =========================
+  useEffect(() => {
+    if (!myActiveStoreId && !loading) {
+      const activeStoreIds = Object.keys(activeTrips);
+      // Only auto-pin if there is NO ambiguity (exactly one active trip)
+      if (activeStoreIds.length === 1) {
+        const singleStoreId = activeStoreIds[0];
+        // Double check valid id
+        if (singleStoreId && singleStoreId.length > 0) {
+          console.log('Smart Auto-Pin: Claiming single active trip', singleStoreId);
+          pinStore(singleStoreId);
+        }
+      }
+    }
+  }, [activeTrips, myActiveStoreId, loading]);
+
+  // =========================
   // Store preference override
   // =========================
   const [storePrefs, setStorePrefs] = useState<Record<string, StoreChoice>>({});
@@ -1837,18 +1857,19 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         const isPinned = storeId === myActiveStoreId;
 
                         return (
-                          <div key={store}>
-                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">
-                                  {isPinned && <span className="mr-1" title="Pinned to top">📍</span>}
-                                  {store} (Active Store)
+                          <div key={store} className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm overflow-hidden">
+                            <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-indigo-50 p-3.5 border-b border-indigo-100">
+                              <div className="flex items-center gap-3">
+                                <span className="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-sm flex items-center shadow-sm">
+                                  {isPinned && <span className="mr-1.5" title="Pinned to top">📍</span>}
+                                  {store}
+                                  <span className="font-bold ml-1">(Active)</span>
                                 </span>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-gray-500 font-medium">
                                   {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
                                 </span>
                               </div>
-                              <span className="text-lg font-bold text-teal-600">
+                              <span className="text-xl font-bold text-teal-700">
                                 $
                                 {storeItems
                                   .reduce((sum, item) => {
@@ -1861,7 +1882,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                             </h3>
 
                             {/* ONE cohesive store panel, categories are sections inside */}
-                            <div className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm p-3 space-y-4">
+                            <div className="p-3 space-y-4">
                               {Object.entries(
                                 storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
                                   const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
@@ -2025,8 +2046,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         })}
                                       </div>
 
-                                      {/* Divider between categories */}
-                                      <div className="h-px bg-gray-200/70 mt-2" />
+
                                     </div>
                                   );
                                 })}
@@ -2188,22 +2208,6 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                     })}
                                   </div>
 
-                                  {/* Divider between categories (except last) */}
-                                  {Object.keys(
-                                    itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
-                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
-                                      (acc[cat] ||= []).push(item);
-                                      return acc;
-                                    }, {})
-                                  ).indexOf(category) < Object.keys(
-                                    itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
-                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
-                                      (acc[cat] ||= []).push(item);
-                                      return acc;
-                                    }, {})
-                                  ).length - 1 && (
-                                      <div className="h-px bg-gray-200/70 mt-2" />
-                                    )}
                                 </div>
                               );
                             })}
@@ -2235,21 +2239,21 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         }, {});
 
                         return (
-                          <div key={store}>
-                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm">{store}</span>
-                                <span className="text-sm text-gray-500">
+                          <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                            <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-gray-50 p-3.5 border-b border-gray-200">
+                              <div className="flex items-center gap-3">
+                                <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
+                                <span className="text-sm text-gray-500 font-medium">
                                   {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
                                 </span>
                               </div>
-                              <span className="text-lg font-bold text-teal-600">
+                              <span className="text-xl font-bold text-teal-700">
                                 ${storeTotal.toFixed(2)}
                               </span>
                             </h3>
 
                             {/* ONE cohesive store panel with categories inside */}
-                            <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
+                            <div className="p-3 space-y-4">
                               {Object.entries(itemsByCategory)
                                 // Sort categories by rank
                                 .sort(([catA], [catB]) => {
@@ -2277,12 +2281,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                     <div key={category} className="space-y-2">
                                       {/* Category header */}
                                       <div
-                                        className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
+                                        className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColor(
                                           category
                                         )}`}
                                       >
-                                        <div className="font-bold text-gray-700">{category}</div>
-                                        <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
+                                        <div className="font-bold text-gray-800 text-base">{category}</div>
+                                        <div className="text-sm font-bold text-teal-700 opacity-90">${categoryTotal.toFixed(2)}</div>
                                       </div>
 
                                       {/* Category items */}
@@ -2298,22 +2302,35 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           return (
                                             <div
                                               key={item.id}
-                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                              onClick={() => {
+                                                if (mobileMode == 'build') return;
+                                                toggleChecked(item.id);
+                                              }}
+                                              className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
                                                 ? 'bg-gray-100 border-gray-300'
                                                 : isFavorite
                                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                                   : 'bg-white border-gray-300 hover:bg-gray-50'
+                                                } ${mobileMode == 'build' ? 'cursor-default' : 'cursor-pointer'
                                                 }`}
                                             >
                                               <input
                                                 type="checkbox"
                                                 checked={item.checked}
                                                 disabled={mobileMode == 'build'}
-                                                onChange={() => {
+                                                onChange={() => { }} // Supress React warning, logic handled by parent click or custom handler below
+                                                onClick={(e) => {
+                                                  // Prevent double-toggle when clicking the checkbox directly
+                                                  // Actually let's just let the row handle it and make this purely visual/controlled
+                                                  // But for a checkbox, native behavior is weird.
+                                                  // Best: e.stopPropagation() and call toggleChecked here manually?
+                                                  // OR: e.stopPropagation() and let the native change happen?
+                                                  // With React controlled components, we need to call logic.
+                                                  e.stopPropagation();
                                                   if (mobileMode == 'build') return;
                                                   toggleChecked(item.id);
                                                 }}
-                                                className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
                                                   }`}
                                               />
 
@@ -2321,7 +2338,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                   <button
                                                     type="button"
-                                                    onClick={() => openEditModal(item)}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openEditModal(item);
+                                                    }}
                                                     className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                                       }`}
                                                   >
@@ -2407,10 +2427,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         })}
                                       </div>
 
-                                      {/* Divider between categories (except last) */}
-                                      {Object.keys(itemsByCategory).indexOf(category) < Object.keys(itemsByCategory).length - 1 && (
-                                        <div className="h-px bg-gray-200/70 mt-2" />
-                                      )}
+
                                     </div>
                                   );
                                 })}
