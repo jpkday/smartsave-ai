@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { useWakeLock } from '../hooks/useWakeLock';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
@@ -23,6 +24,12 @@ interface PriceData {
 type StoreChoice = 'AUTO' | string;
 
 export default function ShoppingList() {
+  const { request: requestWakeLock } = useWakeLock();
+
+  useEffect(() => {
+    requestWakeLock();
+  }, [requestWakeLock]);
+
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
