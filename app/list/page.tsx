@@ -220,6 +220,24 @@ export default function ShoppingList() {
   };
 
 
+  // =========================
+  // LOCAL STORE PINNING (Concurrent Shopping Fix)
+  // =========================
+  const [myActiveStoreId, setMyActiveStoreId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('my_active_store_id');
+      if (stored) setMyActiveStoreId(stored);
+    }
+  }, []);
+
+  const pinStore = (storeId: string) => {
+    console.log('Pinning store:', storeId);
+    setMyActiveStoreId(storeId);
+    localStorage.setItem('my_active_store_id', storeId);
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem('last_price_store');
     if (stored && stores.includes(stored)) {
@@ -622,7 +640,7 @@ export default function ShoppingList() {
 
     const { data: tripsData, error: tripsError } = await supabase
       .from('trips')
-      .select('id, store_id')
+      .select('id, store_id, started_at')
       .eq('household_code', householdCode)
       .is('ended_at', null)
       .order('started_at', { ascending: false });
@@ -632,15 +650,26 @@ export default function ShoppingList() {
       setActiveTrips({});
     } else {
       const tripsByStore: { [store_id: string]: string } = {};
+      const STALE_TRIP_MS = 24 * 60 * 60 * 1000; // 24 hours
+      const now = new Date();
 
       (tripsData ?? []).forEach((trip) => {
-        if (trip.store_id && !tripsByStore[trip.store_id]) {
-          tripsByStore[trip.store_id] = trip.id;
+        if (trip.store_id) {
+          const startDate = new Date(trip.started_at);
+          const isStale = (now.getTime() - startDate.getTime()) > STALE_TRIP_MS;
+
+          if (isStale) {
+            // Auto-close stale trip silently
+            supabase.from('trips').update({ ended_at: now.toISOString() }).eq('id', trip.id).then(({ error }) => {
+              if (error) console.error('Failed to auto-close stale trip:', trip.id, error);
+            });
+          } else if (!tripsByStore[trip.store_id]) {
+            tripsByStore[trip.store_id] = trip.id;
+          }
         }
       });
 
       setActiveTrips(tripsByStore);
-      console.log('tripsError?', !!tripsError, 'tripsData length', tripsData?.length);
     }
 
     // ✅ Load all items with IDs
@@ -1061,17 +1090,43 @@ export default function ShoppingList() {
       setListItems(nextListItems);
 
       if (newCheckedState) {
-        const effectiveStoreName = getEffectiveStore(item.item_name); // store grouping used in UI
+        let effectiveStoreName = getEffectiveStore(item.item_name);
+
+        // IMPLICIT STORE SWAP: If we have an active pinned store AND it has a verified active trip in DB
+        // This prevents swapping when just "looking" at a pinned store or if the trip is stale
+        if (myActiveStoreId && effectiveStoreName && activeTrips[myActiveStoreId]) {
+          const activeStoreName = Object.keys(storesByName).find(key => storesByName[key] === myActiveStoreId);
+
+          if (activeStoreName && activeStoreName !== effectiveStoreName) {
+            console.log(`Implicitly swapping ${item.item_name} from ${effectiveStoreName} to active store ${activeStoreName}`);
+            setItemStorePreference(item.item_name, activeStoreName);
+            effectiveStoreName = activeStoreName; // Override for downstream logic
+          }
+        }
 
         if (effectiveStoreName) {
+          // AUTO-PIN: When checking an item, pin this store locally
+          const storeId = storesByName[effectiveStoreName];
+          if (storeId) pinStore(storeId);
+
           const uncheckedRemainingForStore = nextListItems.some((li) => {
             const s = getEffectiveStore(li.item_name);
+            // Check implicit swap consequences in local state calculation? 
+            // We just updated pref, so getEffectiveStore might not reflect immediately in render 
+            // but for this calculation we should assume the swap happened.
+            // Actually getEffectiveStore uses `storePrefs` state which was just set via setItemStorePreference...
+            // React state updates aren't immediate.
+            // However, `setItemStorePreference` updates the `storePrefs` state asynchronously.
+            // For the purpose of "Trip Complete" toast, this might be slightly off for one frame, 
+            // but the Critical part is sending the correct store_id to the API.
             return s === effectiveStoreName && !li.checked;
           });
 
           if (!uncheckedRemainingForStore) {
             setTimeout(() => {
               showTripCompleteToast(effectiveStoreName);
+              // Optional: Clear pin when trip complete? 
+              // keeping it pinned might be safer until they explicitly move or leave.
             }, TRIP_COMPLETE_DELAY_MS);
           }
         }
@@ -1758,16 +1813,28 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         const storeId = storesByName[store];
                         return storeId && activeTrips[storeId];
                       })
-                      .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                      .sort(([storeA], [storeB]) => {
+                        const idA = storesByName[storeA];
+                        const idB = storesByName[storeB];
+                        const isPinnedA = idA === myActiveStoreId;
+                        const isPinnedB = idB === myActiveStoreId;
+
+                        if (isPinnedA && !isPinnedB) return -1;
+                        if (!isPinnedA && isPinnedB) return 1;
+
+                        return storeA.localeCompare(storeB);
+                      })
                       .map(([store, storeItems]) => {
                         const storeId = storesByName[store];
                         const hasActiveTrip = !!(storeId && activeTrips[storeId]);
+                        const isPinned = storeId === myActiveStoreId;
 
                         return (
                           <div key={store}>
                             <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="bg-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm">
+                                  {isPinned && <span className="mr-1" title="Pinned to top">📍</span>}
                                   {store} (Active Store)
                                 </span>
                                 <span className="text-sm text-gray-500">

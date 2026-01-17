@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
 
     // 3. If no store provided, we're done (bought elsewhere or manual entry)
     if (!store_id) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Item checked (no store tracking)' 
+      return NextResponse.json({
+        success: true,
+        message: 'Item checked (no store tracking)'
       });
     }
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // 6. Find or create today's trip for this household + store
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     let { data: trip } = await supabase
       .from('trips')
       .select('*')
@@ -85,28 +85,62 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // Create new trip if none found for today
+    // Create new trip OR RE-OPEN recent one if none actively running
     if (!trip) {
-      const { data: newTrip, error: tripError } = await supabase
-        .from('trips')
-        .insert({
-          household_code: listItem.household_code,
-          store_id: store_id,
-          store: storeName,
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      // GRACE PERIOD: Check for a recently closed trip to re-open (within 30 mins)
+      const GRACE_PERIOD_MS = 30 * 60 * 1000;
+      const graceCutoff = new Date(Date.now() - GRACE_PERIOD_MS).toISOString();
 
-      if (tripError) {
-        console.error('Failed to create trip:', tripError);
-        return NextResponse.json(
-          { error: 'Failed to create trip' },
-          { status: 500 }
-        );
+      const { data: recentClosedTrip } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('household_code', listItem.household_code)
+        .eq('store_id', store_id)
+        .gte('started_at', `${today}T00:00:00`)
+        .not('ended_at', 'is', null)
+        .gt('ended_at', graceCutoff) // Closed recently
+        .order('ended_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentClosedTrip) {
+        console.log(`[TRIP RE-OPEN] Re-opening trip ${recentClosedTrip.id} (closed < 30m ago)`);
+
+        const { data: reopenedTrip, error: reopenError } = await supabase
+          .from('trips')
+          .update({ ended_at: null }) // Re-open
+          .eq('id', recentClosedTrip.id)
+          .select()
+          .single();
+
+        if (!reopenError && reopenedTrip) {
+          trip = reopenedTrip;
+        }
       }
 
-      trip = newTrip;
+      // If still no trip (didn't re-open one), create a NEW one
+      if (!trip) {
+        const { data: newTrip, error: tripError } = await supabase
+          .from('trips')
+          .insert({
+            household_code: listItem.household_code,
+            store_id: store_id,
+            store: storeName,
+            started_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (tripError) {
+          console.error('Failed to create trip:', tripError);
+          return NextResponse.json(
+            { error: 'Failed to create trip' },
+            { status: 500 }
+          );
+        }
+
+        trip = newTrip;
+      }
     }
 
     // 7. Create shopping_list_event WITH PRICE
@@ -129,9 +163,9 @@ export async function POST(request: NextRequest) {
       // Don't fail the request - item is already checked
     }
 
-// 8. Check if ALL items for this store are now checked
+    // 8. Check if ALL items for this store are now checked
     // CRITICAL: Only count items CURRENTLY on the shopping list (not removed with X)
-    
+
     let tripEnded = false;
 
     // Get ALL unchecked items still on the shopping list for this household
@@ -154,9 +188,9 @@ export async function POST(request: NextRequest) {
 
       if (storeItemPrices) {
         const storeItemIds = new Set(storeItemPrices.map(p => p.item_id));
-        
+
         // Count unchecked items that belong to this store
-        const uncheckedForThisStore = allUncheckedItems.filter(item => 
+        const uncheckedForThisStore = allUncheckedItems.filter(item =>
           storeItemIds.has(item.item_id)
         );
 
