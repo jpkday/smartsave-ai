@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
+import Link from 'next/link';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface ListItem {
@@ -1393,10 +1394,14 @@ export default function ShoppingList() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400">
       <div className="sticky top-0 z-50 bg-white shadow-lg">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
             <Header currentPage="Shopping List" />
           </div>
         </div>
@@ -1423,506 +1428,577 @@ export default function ShoppingList() {
           </div>
         </div>
 
-        {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
-        <div
-          className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4 md:mb-6`}
-        >
-          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-            <button
-              onClick={() => setFilterLetter('All')}
-              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+        <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
+          {/* LEFT COLUMN: Filter, Search, Select Items */}
+          <div className="w-full md:w-1/3 space-y-4">
+
+            {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
+            <div
+              className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4`}
             >
-              All
-            </button>
-            {alphabet.map((letter) => {
-              const hasItems = allItems.some((it) => it.name.toUpperCase().startsWith(letter));
-              if (!hasItems) {
-                return (
-                  <button
-                    key={letter}
-                    disabled
-                    className="px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold text-gray-300 cursor-default"
-                  >
-                    {letter}
-                  </button>
-                );
-              }
-              return (
+              <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
                 <button
-                  key={letter}
-                  onClick={() => toggleLetter(letter)}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setFilterLetter('All')}
+                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
-                  {letter}
+                  All
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Add to List Widget - Desktop + Mobile(Build) */}
-        {(!isMobile || mobileMode === 'build') && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
-
-            <div className="relative autocomplete-container">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Select existing or add new"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                  value={newItem}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-                  onFocus={() => {
-                    const listIds = new Set(
-                      listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
-                    );
-                    const available = allItems
-                      .filter((it) => !listIds.has(it.id))
-                      .map((it) => it.name);
-
-                    setAutocompleteItems(available);
-                    setShowAutocomplete(available.length > 0);
-                  }}
-                />
-
-                <button
-                  onClick={addNewItem}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                >
-                  Add
-                </button>
-              </div>
-
-              {showAutocomplete && autocompleteItems.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                  {autocompleteItems.slice(0, 10).map((item) => (
+                {alphabet
+                  .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
+                  .map((letter) => (
                     <button
-                      key={item}
-                      onClick={() => selectItem(item)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                      key={letter}
+                      onClick={() => toggleLetter(letter)}
+                      className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
                     >
-                      {item}
+                      {letter}
                     </button>
                   ))}
-                </div>
-              )}
+              </div>
             </div>
 
-            {/*
-///////////////
-HIDDEN UNTIL WE REFACTOR MODALS
-//////////////
-    Status + tip row
-    <div className="mt-2 text-xs text-gray-500 flex justify-between">
-      <span>
-        {newItem.trim() && !items.includes(newItem.trim())
-          ? `"${newItem}" will be added as a new item`
-          : loading
-          ? 'Loading…'
-          : `${filtered.length} shown / ${items.length} total`}
-      </span>
-      <span className="hidden sm:inline">Tip: search → tap item → rename</span>
-    </div>
-*/}
+            {/* Add to List Widget - Desktop + Mobile(Build) */}
+            {(!isMobile || mobileMode === 'build') && (
+              <div className="bg-white rounded-2xl shadow-lg p-4">
+                <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
 
-
-          </div>
-        )}
-
-        {/* =======================================================
-BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
-=========================================================== */}
-
-        {isMobile && mobileMode === 'build' && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            {(() => {
-              // ------------------------------------------------------------
-              // Make build mode respect the Alphabet Filter (filterLetter)
-              // across ALL 3 filters: ALL / FAVORITES / RECENT
-              // ------------------------------------------------------------
-
-              let list: ItemRow[] = buildModeAvailableAll;
-
-              if (selectItemsFilter === 'FAVORITES') {
-                const favSet = new Set(favorites);
-                list = list.filter((it) => favSet.has(it.name));
-              } else if (selectItemsFilter === 'RECENT') {
-                list = list
-                  .filter((it) => recentRank.has(it.id))
-                  .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
-              } else {
-                list = list.slice();
-              }
-
-              if (filterLetter !== 'All') {
-                const L = filterLetter.toUpperCase();
-                list = list.filter((it) => it.name.toUpperCase().startsWith(L));
-              }
-
-              const renderList = list.slice(0, 250);
-
-              const toggleFavorite = async (itemName: string) => {
-                if (!householdCode) return;
-
-                // Find item ID
-                const item = allItems.find(i => i.name === itemName);
-                if (!item) return;
-
-                const isFav = favorites.includes(itemName);
-
-                // Optimistically update UI
-                if (isFav) {
-                  setFavorites(prev => prev.filter(n => n !== itemName));
-                  setFavoritesIds(prev => prev.filter(id => id !== item.id));
-                } else {
-                  setFavorites(prev => [...prev, itemName]);
-                  setFavoritesIds(prev => [...prev, item.id]);
-                }
-
-                // Update database
-                if (isFav) {
-                  const { error } = await supabase
-                    .from('household_item_favorites')
-                    .delete()
-                    .eq('household_code', householdCode)
-                    .eq('item_id', item.id);
-
-                  if (error) {
-                    // Rollback on error
-                    setFavorites(prev => [...prev, itemName]);
-                    setFavoritesIds(prev => [...prev, item.id]);
-                    alert('Failed to update favorite. Check your connection and try again.');
-                  }
-                } else {
-                  const { error } = await supabase
-                    .from('household_item_favorites')
-                    .insert({
-                      household_code: householdCode,
-                      item_id: item.id,
-                    });
-
-                  if (error) {
-                    // Rollback on error
-                    setFavorites(prev => prev.filter(n => n !== itemName));
-                    setFavoritesIds(prev => prev.filter(id => id !== item.id));
-                    alert('Failed to update favorite. Check your connection and try again.');
-                  }
-                }
-              };
-
-              return (
-                <>
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-                    <span className="text-xs text-gray-500">{list.length} available</span>
-                  </div>
-
-                  <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
-                    <button
-                      onClick={() => setSelectItemsFilter('ALL')}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-                        }`}
-                    >
-                      All Items
-                    </button>
-
-                    <button
-                      onClick={() => setSelectItemsFilter('FAVORITES')}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
-                        ? 'bg-amber-600 text-white border-amber-600'
-                        : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                        }`}
-                    >
-                      Favorites
-                    </button>
-
-                    <button
-                      onClick={() => setSelectItemsFilter('RECENT')}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'RECENT'
-                        ? 'bg-rose-600 text-white border-rose-600'
-                        : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
-                        }`}
-                    >
-                      Recent
-                    </button>
-                  </div>
-
-                  {list.length === 0 ? (
-                    <div className="text-sm text-gray-500">All items added for this letter.</div>
-                  ) : (
-                    <div className="space-y-2 max-h-114 overflow-y-auto">
-                      {renderList.map((it: ItemRow) => {
-                        const isFavorite = favorites.includes(it.name);
-
-                        // ✅ Price logic — matches Code Block 2 formatting
-                        const effStore = getEffectiveStore(it.name);
-                        const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
-                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
-
-                        return (
-                          <div
-                            key={it.id}
-                            className={`flex items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
-                              ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                              : 'bg-white border-gray-300 hover:bg-gray-50'
-                              }`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-800 truncate">{it.name}</div>
-
-                              {priceData ? (
-                                <p className="text-xs text-green-600 mt-0.5">
-                                  {formatMoney(price)}{' '}
-                                  <span className="text-gray-400 ml-1">
-                                    ({getDaysAgo(priceData.date)})
-                                  </span>
-                                </p>
-                              ) : (
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                  No price data available
-                                </p>
-                              )}
-                            </div>
-
-                            <button
-                              onClick={() => toggleItemById(it.id, it.name)}
-                              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
-                            >
-                              Add
-                            </button>
-                          </div>
+                <div className="relative autocomplete-container">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Select existing or add new"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                      value={newItem}
+                      onChange={(e) => handleInputChange(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
+                      onFocus={() => {
+                        const listIds = new Set(
+                          listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
                         );
-                      })}
+                        const available = allItems
+                          .filter((it) => !listIds.has(it.id))
+                          .map((it) => it.name);
+
+                        setAutocompleteItems(available);
+                        setShowAutocomplete(available.length > 0);
+                      }}
+                    />
+
+                    <button
+                      onClick={addNewItem}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {showAutocomplete && autocompleteItems.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                      {autocompleteItems.slice(0, 10).map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => selectItem(item)}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                        >
+                          {item}
+                        </button>
+                      ))}
                     </div>
                   )}
-                </>
-              );
-            })()}
-          </div>
-        )}
-
-
-
-        {/* Favorites Widget - Hidden on Mobile */}
-        {filteredFavorites.length > 0 && (
-          <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-4 md:mb-6">
-            <div className="flex justify-between items-center mb-3">
-              <button
-                onClick={() => setShowFavorites(!showFavorites)}
-                className="flex items-center gap-2 text-lg md:text-xl font-bold text-gray-800 cursor-pointer hover:text-blue-600 transition"
-              >
-                <span className="text-gray-400">{showFavorites ? '▼' : '▶'}</span>
-                <span>⭐ Select Favorites</span>
-              </button>
-              <button
-                onClick={
-                  allFavoritesSelected
-                    ? () => {
-                      favorites.forEach((fav) => {
-                        const row = allItems.find((it) => it.name === fav);
-                        if (row) toggleItemById(row.id, row.name);
-                      });
-                    }
-                    : addFavorites
-                }
-                className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-2xl font-semibold transition cursor-pointer"
-              >
-                {allFavoritesSelected ? 'Deselect All' : 'Add All'}
-              </button>
-            </div>
-            {showFavorites && (
-              <div className="flex flex-wrap gap-2">
-                {filteredFavorites.map((name) => {
-                  const row = allItems.find((it) => it.name === name);
-                  const isInList = row ? listItems.some((li) => li.item_id === row.id) : listItems.find((li) => li.item_name === name);
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => {
-                        if (row) toggleItemById(row.id, row.name);
-                        else selectItem(name);
-                      }}
-                      className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${isInList
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
-                        }`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Add Items Section - Hidden on Mobile */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
-          <button
-            onClick={() => setShowAddItems(!showAddItems)}
-            className="flex items-center gap-2 text-xl font-bold mb-4 text-gray-800 cursor-pointer hover:text-blue-600 transition"
-          >
-            <span className="text-gray-400">{showAddItems ? '▼' : '▶'}</span>
-            <span>Select Items</span>
-          </button>
-
-          {showAddItems && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto" style={{ maxHeight: '252px' }}>
-              {filteredItemRows.map((it) => {
-                const isFavorite = favorites.includes(it.name);
-                const isInList = listItems.some((li) => li.item_id === it.id);
-
-                return (
-                  <button
-                    key={it.id}
-                    onClick={() => toggleItemById(it.id, it.name)}
-                    className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${isInList
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : isFavorite
-                        ? 'bg-yellow-50 border-yellow-200 text-gray-700 hover:bg-yellow-100'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                      }`}
-                  >
-                    {it.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* SHOPPING LIST MODAL */}
-
-        {loading ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-            <p className="text-slate-500 mt-4">Loading Shopping List...</p>
-          </div>
-        ) : listItems.length > 0 ? (
-          <>
-            {/* SHOPPING LIST HEADER */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                  Shopping List ({listItems.filter((i) => !i.checked).length} items)
-                </h2>
-                <div className="flex gap-2">
-
-                  {listItems.some((i) => i.checked) && (
-                    <button
-                      onClick={() => setShowCheckedItems(!showCheckedItems)}
-                      className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
-                    >
-                      {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
-                    </button>
-                  )}
                 </div>
               </div>
+            )}
 
-              {/* Group items by effective store (Auto or override) */}
-              {(() => {
-                const itemsByStore: { [store: string]: ListItem[] } = {};
-                const itemsWithoutPrice: ListItem[] = [];
+            {/* Combined Select Items Widget - Desktop + Mobile(Build) */}
+            {((isMobile && mobileMode === 'build') || !isMobile) && (
+              <div className="bg-white rounded-2xl shadow-lg p-4">
+                {(() => {
+                  // ------------------------------------------------------------
+                  // Make build mode respect the Alphabet Filter (filterLetter)
+                  // across ALL 3 filters: ALL / FAVORITES / RECENT
+                  // ------------------------------------------------------------
 
-                const displayItems = !showCheckedItems ? listItems.filter((item) => !item.checked) : listItems;
+                  let list: ItemRow[] = buildModeAvailableAll;
 
-                displayItems
-                  .sort((a, b) => {
-                    const aIsFav = favorites.includes(a.item_name);
-                    const bIsFav = favorites.includes(b.item_name);
-                    if (aIsFav && !bIsFav) return -1;
-                    if (!aIsFav && bIsFav) return 1;
-                    return a.item_name.localeCompare(b.item_name);
-                  })
-                  .forEach((item) => {
-                    const effStore = getEffectiveStore(item.item_name);
-                    if (effStore) {
-                      if (!itemsByStore[effStore]) itemsByStore[effStore] = [];
-                      itemsByStore[effStore].push(item);
+                  if (selectItemsFilter === 'FAVORITES') {
+                    const favSet = new Set(favorites);
+                    list = list.filter((it) => favSet.has(it.name));
+                  } else if (selectItemsFilter === 'RECENT') {
+                    list = list
+                      .filter((it) => recentRank.has(it.id))
+                      .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
+                  } else {
+                    list = list.slice();
+                  }
+
+                  if (filterLetter !== 'All') {
+                    const L = filterLetter.toUpperCase();
+                    list = list.filter((it) => it.name.toUpperCase().startsWith(L));
+                  }
+
+                  const renderList = list.slice(0, 250);
+
+                  const toggleFavorite = async (itemName: string) => {
+                    if (!householdCode) return;
+
+                    // Find item ID
+                    const item = allItems.find(i => i.name === itemName);
+                    if (!item) return;
+
+                    const isFav = favorites.includes(itemName);
+
+                    // Optimistically update UI
+                    if (isFav) {
+                      setFavorites(prev => prev.filter(n => n !== itemName));
+                      setFavoritesIds(prev => prev.filter(id => id !== item.id));
                     } else {
-                      itemsWithoutPrice.push(item);
+                      setFavorites(prev => [...prev, itemName]);
+                      setFavoritesIds(prev => [...prev, item.id]);
                     }
-                  });
 
-                const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
-                  const storeIdA = storesByName[storeA];
-                  const storeIdB = storesByName[storeB];
+                    // Update database
+                    if (isFav) {
+                      const { error } = await supabase
+                        .from('household_item_favorites')
+                        .delete()
+                        .eq('household_code', householdCode)
+                        .eq('item_id', item.id);
 
-                  const hasActiveTripA = storeIdA && activeTrips[storeIdA];
-                  const hasActiveTripB = storeIdB && activeTrips[storeIdB];
+                      if (error) {
+                        // Rollback on error
+                        setFavorites(prev => [...prev, itemName]);
+                        setFavoritesIds(prev => [...prev, item.id]);
+                        alert('Failed to update favorite. Check your connection and try again.');
+                      }
+                    } else {
+                      const { error } = await supabase
+                        .from('household_item_favorites')
+                        .insert({
+                          household_code: householdCode,
+                          item_id: item.id,
+                        });
 
-                  if (hasActiveTripA && !hasActiveTripB) return -1;
-                  if (!hasActiveTripA && hasActiveTripB) return 1;
+                      if (error) {
+                        // Rollback on error
+                        setFavorites(prev => prev.filter(n => n !== itemName));
+                        setFavoritesIds(prev => prev.filter(id => id !== item.id));
+                        alert('Failed to update favorite. Check your connection and try again.');
+                      }
+                    }
+                  };
 
-                  return storeA.localeCompare(storeB);
-                });
+                  return (
+                    <>
+                      <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
+                        <span className="text-xs text-gray-500">{list.length} available</span>
+                      </div>
 
-                return (
-                  <div className="space-y-6">
+                      <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+                        <button
+                          onClick={() => setSelectItemsFilter('ALL')}
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          All Items
+                        </button>
 
-                    {/* Show First: Active trip stores */}
-                    {storeEntries
-                      .filter(([store]) => {
-                        const storeId = storesByName[store];
-                        return storeId && activeTrips[storeId];
+                        <button
+                          onClick={() => setSelectItemsFilter('FAVORITES')}
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
+                            ? 'bg-amber-600 text-white border-amber-600'
+                            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+                            }`}
+                        >
+                          Favorites
+                        </button>
+
+                        <button
+                          onClick={() => setSelectItemsFilter('RECENT')}
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'RECENT'
+                            ? 'bg-rose-600 text-white border-rose-600'
+                            : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          Recent
+                        </button>
+                      </div>
+
+                      {list.length === 0 ? (
+                        <div className="text-sm text-gray-500">All items added for this letter.</div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 max-h-96 md:max-h-[70vh] overflow-y-auto">
+                          {renderList.map((it: ItemRow) => {
+                            const isFavorite = favorites.includes(it.name);
+
+                            // ✅ Price logic
+                            const effStore = getEffectiveStore(it.name);
+                            const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
+                            const price = priceData?.price ? parseFloat(priceData.price) : 0;
+
+                            return (
+                              <div
+                                key={it.id}
+                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
+                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                  : 'bg-white border-gray-300 hover:bg-gray-50'
+                                  }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-gray-800 truncate">{it.name}</div>
+
+                                  {priceData ? (
+                                    <p className="text-xs text-green-600 mt-0.5">
+                                      {formatMoney(price)}{' '}
+                                      <span className="text-gray-400 ml-1">
+                                        ({getDaysAgo(priceData.date)})
+                                      </span>
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      No price data available
+                                    </p>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={() => toggleItemById(it.id, it.name)}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+          </div>
+
+          {/* RIGHT COLUMN: Shopping List */}
+          <div className="w-full md:w-2/3 mt-4 md:mt-0">
+
+            {/* SHOPPING LIST MODAL */}
+
+            {loading ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+                <p className="text-slate-500 mt-4">Loading Shopping List...</p>
+              </div>
+            ) : listItems.length > 0 ? (
+              <>
+                {/* SHOPPING LIST HEADER */}
+                <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                      Shopping List ({listItems.filter((i) => !i.checked).length} items)
+                    </h2>
+                    <div className="flex gap-2">
+
+                      {listItems.some((i) => i.checked) && (
+                        <button
+                          onClick={() => setShowCheckedItems(!showCheckedItems)}
+                          className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
+                        >
+                          {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Group items by effective store (Auto or override) */}
+                  {(() => {
+                    const itemsByStore: { [store: string]: ListItem[] } = {};
+                    const itemsWithoutPrice: ListItem[] = [];
+
+                    const displayItems = !showCheckedItems ? listItems.filter((item) => !item.checked) : listItems;
+
+                    displayItems
+                      .sort((a, b) => {
+                        const aIsFav = favorites.includes(a.item_name);
+                        const bIsFav = favorites.includes(b.item_name);
+                        if (aIsFav && !bIsFav) return -1;
+                        if (!aIsFav && bIsFav) return 1;
+                        return a.item_name.localeCompare(b.item_name);
                       })
-                      .sort(([storeA], [storeB]) => {
-                        const idA = storesByName[storeA];
-                        const idB = storesByName[storeB];
-                        const isPinnedA = idA === myActiveStoreId;
-                        const isPinnedB = idB === myActiveStoreId;
+                      .forEach((item) => {
+                        const effStore = getEffectiveStore(item.item_name);
+                        if (effStore) {
+                          if (!itemsByStore[effStore]) itemsByStore[effStore] = [];
+                          itemsByStore[effStore].push(item);
+                        } else {
+                          itemsWithoutPrice.push(item);
+                        }
+                      });
 
-                        if (isPinnedA && !isPinnedB) return -1;
-                        if (!isPinnedA && isPinnedB) return 1;
+                    const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
+                      const storeIdA = storesByName[storeA];
+                      const storeIdB = storesByName[storeB];
 
-                        return storeA.localeCompare(storeB);
-                      })
-                      .map(([store, storeItems]) => {
-                        const storeId = storesByName[store];
-                        const hasActiveTrip = !!(storeId && activeTrips[storeId]);
-                        const isPinned = storeId === myActiveStoreId;
+                      const hasActiveTripA = storeIdA && activeTrips[storeIdA];
+                      const hasActiveTripB = storeIdB && activeTrips[storeIdB];
 
-                        return (
-                          <div key={store} className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm overflow-hidden">
-                            <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-indigo-50 p-3.5 border-b border-indigo-100">
-                              <div className="flex items-center gap-3">
-                                <span className="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-sm flex items-center shadow-sm">
-                                  {isPinned && <span className="mr-1.5" title="Pinned to top">📍</span>}
-                                  {store}
-                                  <span className="font-bold ml-1">(Active)</span>
-                                </span>
-                                <span className="text-sm text-gray-500 font-medium">
-                                  {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                      if (hasActiveTripA && !hasActiveTripB) return -1;
+                      if (!hasActiveTripA && hasActiveTripB) return 1;
+
+                      return storeA.localeCompare(storeB);
+                    });
+
+                    return (
+                      <div className="space-y-6">
+
+                        {/* Show First: Active trip stores */}
+                        {storeEntries
+                          .filter(([store]) => {
+                            const storeId = storesByName[store];
+                            return storeId && activeTrips[storeId];
+                          })
+                          .sort(([storeA], [storeB]) => {
+                            const idA = storesByName[storeA];
+                            const idB = storesByName[storeB];
+                            const isPinnedA = idA === myActiveStoreId;
+                            const isPinnedB = idB === myActiveStoreId;
+
+                            if (isPinnedA && !isPinnedB) return -1;
+                            if (!isPinnedA && isPinnedB) return 1;
+
+                            return storeA.localeCompare(storeB);
+                          })
+                          .map(([store, storeItems]) => {
+                            const storeId = storesByName[store];
+                            const hasActiveTrip = !!(storeId && activeTrips[storeId]);
+                            const isPinned = storeId === myActiveStoreId;
+
+                            return (
+                              <div key={store} className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm overflow-hidden">
+                                <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-indigo-50 p-3.5 border-b border-indigo-100">
+                                  <div className="flex items-center gap-3">
+                                    <span className="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-sm flex items-center shadow-sm">
+                                      {isPinned && <span className="mr-1.5" title="Pinned to top">📍</span>}
+                                      {store}
+                                      <span className="font-bold ml-1">(Active)</span>
+                                    </span>
+                                    <span className="text-sm text-gray-500 font-medium">
+                                      {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xl font-bold text-teal-700">
+                                    $
+                                    {storeItems
+                                      .reduce((sum, item) => {
+                                        const priceData = prices[`${store}-${item.item_name}`];
+                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                        return sum + price * item.quantity;
+                                      }, 0)
+                                      .toFixed(2)}
+                                  </span>
+                                </h3>
+
+                                {/* ONE cohesive store panel, categories are sections inside */}
+                                <div className="p-3 space-y-4">
+                                  {Object.entries(
+                                    storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
+                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                      (acc[cat] ||= []).push(item);
+                                      return acc;
+                                    }, {})
+                                  )
+                                    // Sort categories by your preferred rank (e.g. Produce first)
+                                    .sort(([catA], [catB]) => {
+                                      const ra = categoryRank(catA);
+                                      const rb = categoryRank(catB);
+                                      if (ra !== rb) return ra - rb;
+                                      return catA.localeCompare(catB);
+                                    })
+                                    .map(([category, categoryItems]) => {
+                                      // Items within category: unchecked first, then alpha
+                                      categoryItems.sort((a, b) => {
+                                        if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                                        return a.item_name.localeCompare(b.item_name);
+                                      });
+
+                                      const categoryTotal = categoryItems.reduce((sum, item) => {
+                                        const effStore = getEffectiveStore(item.item_name) || store;
+                                        const priceData = prices[`${effStore}-${item.item_name}`];
+                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                        return sum + price * item.quantity;
+                                      }, 0);
+
+                                      return (
+                                        <div key={category} className="space-y-2">
+                                          {/* Category header bar (tinted), NOT a separate card */}
+                                          <div
+                                            className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
+                                              category
+                                            )}`}
+                                          >
+                                            <div className="font-bold text-gray-700">{category}</div>
+                                            <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
+                                          </div>
+
+                                          {/* Items */}
+                                          <div className="space-y-2">
+                                            {categoryItems.map((item) => {
+                                              const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
+                                              const effStore = getEffectiveStore(item.item_name) || store;
+                                              const priceData = prices[`${effStore}-${item.item_name}`];
+                                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                              const cat = itemCategoryByName[item.item_name];
+                                              const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
+
+                                              return (
+                                                <div
+                                                  key={item.id}
+                                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                                    ? 'bg-gray-100 border-gray-300'
+                                                    : isFavorite
+                                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                                      : 'bg-white border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={item.checked}
+                                                    disabled={mobileMode == 'build'}
+                                                    onChange={() => {
+                                                      if (mobileMode == 'build') return;
+                                                      toggleChecked(item.id);
+                                                    }}
+                                                    className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                      }`}
+                                                  />
+
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => openEditModal(item)}
+                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                          }`}
+                                                      >
+                                                        {dealsItemNames.has(item.item_name) && (
+                                                          <span className="mr-1" title="On sale today!">🔥</span>
+                                                        )}
+                                                        {item.item_name}
+                                                        {item.quantity > 1 && (
+                                                          <span className="ml-1 font-bold text-indigo-600">
+                                                            (Qty: {item.quantity})
+                                                          </span>
+                                                        )}
+                                                      </button>
+                                                    </div>
+
+                                                    {/* Show Item Price and Recency */}
+                                                    <div className="mt-0.5 flex items-center gap-2">
+                                                      <p className="text-xs text-green-600 min-w-0">
+                                                        {formatMoney(price)}{' '}
+                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                        {priceData?.date ? (
+                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                        ) : null}
+                                                      </p>
+
+                                                      {/* Add Category button */}
+                                                      {missingCategory && (
+                                                        <button
+                                                          onClick={() => openEditModal(item, 'category')}
+                                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                        >
+                                                          Add Category
+                                                        </button>
+                                                      )}
+
+                                                    </div>
+                                                  </div>
+
+                                                  <div className="hidden md:flex items-center gap-2">
+                                                    <button
+                                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                    >
+                                                      −
+                                                    </button>
+                                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                    <button
+                                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                    >
+                                                      +
+                                                    </button>
+                                                  </div>
+
+                                                  <button
+                                                    onClick={() => openStoreModal(item.item_name)}
+                                                    className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                      ? 'text-indigo-600 hover:text-indigo-700'
+                                                      : 'text-gray-300 hover:text-gray-500'
+                                                      }`}
+                                                    title="Swap store"
+                                                    aria-label="Swap store"
+                                                  >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                      />
+                                                    </svg>
+                                                  </button>
+
+                                                  <button
+                                                    onClick={() => removeItem(item.id)}
+                                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                    title="Remove from list"
+                                                    aria-label="Remove from list"
+                                                  >
+                                                    ✖️
+                                                  </button>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+
+
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+
+                        {/* Second: Items without price data - WITH CATEGORY GROUPING */}
+                        {itemsWithoutPrice.length > 0 && (
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
+                                <span className="text-sm text-gray-500">
+                                  {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
                                 </span>
                               </div>
-                              <span className="text-xl font-bold text-teal-700">
-                                $
-                                {storeItems
-                                  .reduce((sum, item) => {
-                                    const priceData = prices[`${store}-${item.item_name}`];
-                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                    return sum + price * item.quantity;
-                                  }, 0)
-                                  .toFixed(2)}
-                              </span>
                             </h3>
 
-                            {/* ONE cohesive store panel, categories are sections inside */}
-                            <div className="p-3 space-y-4">
+                            {/* Group items by category */}
+                            <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
                               {Object.entries(
-                                storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
+                                itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
                                   const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
                                   (acc[cat] ||= []).push(item);
                                   return acc;
                                 }, {})
                               )
-                                // Sort categories by your preferred rank (e.g. Produce first)
                                 .sort(([catA], [catB]) => {
                                   const ra = categoryRank(catA);
                                   const rb = categoryRank(catB);
@@ -1930,40 +2006,32 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                   return catA.localeCompare(catB);
                                 })
                                 .map(([category, categoryItems]) => {
-                                  // Items within category: unchecked first, then alpha
+                                  // Sort items: unchecked first, then alphabetical
                                   categoryItems.sort((a, b) => {
                                     if (a.checked !== b.checked) return a.checked ? 1 : -1;
                                     return a.item_name.localeCompare(b.item_name);
                                   });
 
-                                  const categoryTotal = categoryItems.reduce((sum, item) => {
-                                    const effStore = getEffectiveStore(item.item_name) || store;
-                                    const priceData = prices[`${effStore}-${item.item_name}`];
-                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                    return sum + price * item.quantity;
-                                  }, 0);
-
                                   return (
                                     <div key={category} className="space-y-2">
-                                      {/* Category header bar (tinted), NOT a separate card */}
+                                      {/* Category header */}
                                       <div
                                         className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
                                           category
                                         )}`}
                                       >
                                         <div className="font-bold text-gray-700">{category}</div>
-                                        <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
                                       </div>
 
-                                      {/* Items */}
+                                      {/* Category items */}
                                       <div className="space-y-2">
                                         {categoryItems.map((item) => {
-                                          const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
-                                          const effStore = getEffectiveStore(item.item_name) || store;
-                                          const priceData = prices[`${effStore}-${item.item_name}`];
-                                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                          const isFavorite = favorites.includes(item.item_name);
                                           const cat = itemCategoryByName[item.item_name];
                                           const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
+                                          const effStore = getEffectiveStore(item.item_name);
+                                          const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
+                                          const missingPrice = !priceData;
 
                                           return (
                                             <div
@@ -2007,17 +2075,18 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   </button>
                                                 </div>
 
-                                                {/* Show Item Price and Recency */}
-                                                <div className="mt-0.5 flex items-center gap-2">
-                                                  <p className="text-xs text-green-600 min-w-0">
-                                                    {formatMoney(price)}{' '}
-                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                    {priceData?.date ? (
-                                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                    ) : null}
-                                                  </p>
+                                                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                                  {/* Add Price — only if missing */}
+                                                  {missingPrice && (
+                                                    <button
+                                                      onClick={() => openEditModal(item, 'price')}
+                                                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                    >
+                                                      Add Price
+                                                    </button>
+                                                  )}
 
-                                                  {/* Add Category button */}
+                                                  {/* Add Category — missing OR "Other" */}
                                                   {missingCategory && (
                                                     <button
                                                       onClick={() => openEditModal(item, 'category')}
@@ -2026,29 +2095,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                       Add Category
                                                     </button>
                                                   )}
-
                                                 </div>
-                                              </div>
-
-                                              <div className="hidden md:flex items-center gap-2">
-                                                <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                >
-                                                  −
-                                                </button>
-                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                                <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                >
-                                                  +
-                                                </button>
                                               </div>
 
                                               <button
                                                 onClick={() => openStoreModal(item.item_name)}
-                                                className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                                   ? 'text-indigo-600 hover:text-indigo-700'
                                                   : 'text-gray-300 hover:text-gray-500'
                                                   }`}
@@ -2078,969 +2130,703 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         })}
                                       </div>
 
-
                                     </div>
                                   );
                                 })}
                             </div>
                           </div>
-                        );
-                      })}
+                        )}
 
+                        {/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
+                        {storeEntries
+                          .filter(([store]) => {
+                            const storeId = storesByName[store];
+                            return !(storeId && activeTrips[storeId]);
+                          })
+                          .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
+                          .map(([store, storeItems]) => {
+                            // Calculate store total
+                            const storeTotal = storeItems.reduce((sum, item) => {
+                              const effStore = getEffectiveStore(item.item_name) || store;
+                              const priceData = prices[`${effStore}-${item.item_name}`];
+                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                              return sum + price * item.quantity;
+                            }, 0);
 
-                    {/* Second: Items without price data - WITH CATEGORY GROUPING */}
-                    {itemsWithoutPrice.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
-                            <span className="text-sm text-gray-500">
-                              {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
-                            </span>
-                          </div>
-                        </h3>
-
-                        {/* Group items by category */}
-                        <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
-                          {Object.entries(
-                            itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
+                            // Group items by category
+                            const itemsByCategory = storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
                               const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
                               (acc[cat] ||= []).push(item);
                               return acc;
-                            }, {})
-                          )
-                            .sort(([catA], [catB]) => {
-                              const ra = categoryRank(catA);
-                              const rb = categoryRank(catB);
-                              if (ra !== rb) return ra - rb;
-                              return catA.localeCompare(catB);
-                            })
-                            .map(([category, categoryItems]) => {
-                              // Sort items: unchecked first, then alphabetical
-                              categoryItems.sort((a, b) => {
-                                if (a.checked !== b.checked) return a.checked ? 1 : -1;
-                                return a.item_name.localeCompare(b.item_name);
-                              });
+                            }, {});
 
-                              return (
-                                <div key={category} className="space-y-2">
-                                  {/* Category header */}
-                                  <div
-                                    className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
-                                      category
-                                    )}`}
-                                  >
-                                    <div className="font-bold text-gray-700">{category}</div>
+                            return (
+                              <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                                <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-gray-50 p-3.5 border-b border-gray-200">
+                                  <div className="flex items-center gap-3">
+                                    <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
+                                    <span className="text-sm text-gray-500 font-medium">
+                                      {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                                    </span>
                                   </div>
+                                  <span className="text-xl font-bold text-teal-700">
+                                    ${storeTotal.toFixed(2)}
+                                  </span>
+                                </h3>
 
-                                  {/* Category items */}
-                                  <div className="space-y-2">
-                                    {categoryItems.map((item) => {
-                                      const isFavorite = favorites.includes(item.item_name);
-                                      const cat = itemCategoryByName[item.item_name];
-                                      const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
-                                      const effStore = getEffectiveStore(item.item_name);
-                                      const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
-                                      const missingPrice = !priceData;
+                                {/* ONE cohesive store panel with categories inside */}
+                                <div className="p-3 space-y-4">
+                                  {Object.entries(itemsByCategory)
+                                    // Sort categories by rank
+                                    .sort(([catA], [catB]) => {
+                                      const ra = categoryRank(catA);
+                                      const rb = categoryRank(catB);
+                                      if (ra !== rb) return ra - rb;
+                                      return catA.localeCompare(catB);
+                                    })
+                                    .map(([category, categoryItems]) => {
+                                      // Sort items: unchecked first, then alphabetical
+                                      categoryItems.sort((a, b) => {
+                                        if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                                        return a.item_name.localeCompare(b.item_name);
+                                      });
+
+                                      // Calculate category subtotal
+                                      const categoryTotal = categoryItems.reduce((sum, item) => {
+                                        const effStore = getEffectiveStore(item.item_name) || store;
+                                        const priceData = prices[`${effStore}-${item.item_name}`];
+                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                        return sum + price * item.quantity;
+                                      }, 0);
 
                                       return (
-                                        <div
-                                          key={item.id}
-                                          className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
-                                            ? 'bg-gray-100 border-gray-300'
-                                            : isFavorite
-                                              ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                              : 'bg-white border-gray-300 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={item.checked}
-                                            disabled={mobileMode == 'build'}
-                                            onChange={() => {
-                                              if (mobileMode == 'build') return;
-                                              toggleChecked(item.id);
-                                            }}
-                                            className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                              }`}
-                                          />
-
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <button
-                                                type="button"
-                                                onClick={() => openEditModal(item)}
-                                                className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                  }`}
-                                              >
-                                                {dealsItemNames.has(item.item_name) && (
-                                                  <span className="mr-1" title="On sale today!">🔥</span>
-                                                )}
-                                                {item.item_name}
-                                                {item.quantity > 1 && (
-                                                  <span className="ml-1 font-bold text-indigo-600">
-                                                    (Qty: {item.quantity})
-                                                  </span>
-                                                )}
-                                              </button>
-                                            </div>
-
-                                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                              {/* Add Price — only if missing */}
-                                              {missingPrice && (
-                                                <button
-                                                  onClick={() => openEditModal(item, 'price')}
-                                                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                >
-                                                  Add Price
-                                                </button>
-                                              )}
-
-                                              {/* Add Category — missing OR "Other" */}
-                                              {missingCategory && (
-                                                <button
-                                                  onClick={() => openEditModal(item, 'category')}
-                                                  className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                >
-                                                  Add Category
-                                                </button>
-                                              )}
-                                            </div>
+                                        <div key={category} className="space-y-2">
+                                          {/* Category header */}
+                                          <div
+                                            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColor(
+                                              category
+                                            )}`}
+                                          >
+                                            <div className="font-bold text-gray-800 text-base">{category}</div>
+                                            <div className="text-sm font-bold text-teal-700 opacity-90">${categoryTotal.toFixed(2)}</div>
                                           </div>
 
-                                          <button
-                                            onClick={() => openStoreModal(item.item_name)}
-                                            className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                              ? 'text-indigo-600 hover:text-indigo-700'
-                                              : 'text-gray-300 hover:text-gray-500'
-                                              }`}
-                                            title="Swap store"
-                                            aria-label="Swap store"
-                                          >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                              />
-                                            </svg>
-                                          </button>
+                                          {/* Category items */}
+                                          <div className="space-y-2">
+                                            {categoryItems.map((item) => {
+                                              const isFavorite = favorites.includes(item.item_name);
+                                              const effStore = getEffectiveStore(item.item_name) || store;
+                                              const priceData = prices[`${effStore}-${item.item_name}`];
+                                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
+                                              const cat = itemCategoryByName[item.item_name];
+                                              const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
-                                          <button
-                                            onClick={() => removeItem(item.id)}
-                                            className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                            title="Remove from list"
-                                            aria-label="Remove from list"
-                                          >
-                                            ✖️
-                                          </button>
+                                              return (
+                                                <div
+                                                  key={item.id}
+                                                  onClick={() => {
+                                                    if (mobileMode == 'build') return;
+                                                    toggleChecked(item.id);
+                                                  }}
+                                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
+                                                    ? 'bg-gray-100 border-gray-300'
+                                                    : isFavorite
+                                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                                                      : 'bg-white border-gray-300 hover:bg-gray-50'
+                                                    } ${mobileMode == 'build' ? 'cursor-default' : 'cursor-pointer'
+                                                    }`}
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={item.checked}
+                                                    disabled={mobileMode == 'build'}
+                                                    onChange={() => { }} // Supress React warning, logic handled by parent click or custom handler below
+                                                    onClick={(e) => {
+                                                      // Prevent double-toggle when clicking the checkbox directly
+                                                      // Actually let's just let the row handle it and make this purely visual/controlled
+                                                      // But for a checkbox, native behavior is weird.
+                                                      // Best: e.stopPropagation() and call toggleChecked here manually?
+                                                      // OR: e.stopPropagation() and let the native change happen?
+                                                      // With React controlled components, we need to call logic.
+                                                      e.stopPropagation();
+                                                      if (mobileMode == 'build') return;
+                                                      toggleChecked(item.id);
+                                                    }}
+                                                    className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                      }`}
+                                                  />
+
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          openEditModal(item);
+                                                        }}
+                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                          }`}
+                                                      >
+                                                        {dealsItemNames.has(item.item_name) && (
+                                                          <span className="mr-1" title="On sale today!">🔥</span>
+                                                        )}
+                                                        {item.item_name}
+                                                        {item.quantity > 1 && (
+                                                          <span className="ml-1 font-bold text-indigo-600">
+                                                            (Qty: {item.quantity})
+                                                          </span>
+                                                        )}
+                                                      </button>
+                                                    </div>
+
+                                                    {/* Show Item Price and Recency */}
+                                                    <div className="mt-0.5 flex items-center gap-2">
+                                                      <p className="text-xs text-green-600 min-w-0">
+                                                        {formatMoney(price)}{' '}
+                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                        {priceData?.date ? (
+                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                        ) : null}
+                                                      </p>
+
+                                                      {/* Add Category button */}
+                                                      {missingCategory && (
+                                                        <button
+                                                          onClick={() => openEditModal(item, 'category')}
+                                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                        >
+                                                          Add Category
+                                                        </button>
+                                                      )}
+                                                    </div>
+                                                  </div>
+
+                                                  <div className="hidden md:flex items-center gap-2">
+                                                    <button
+                                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                    >
+                                                      −
+                                                    </button>
+                                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                    <button
+                                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                    >
+                                                      +
+                                                    </button>
+                                                  </div>
+
+                                                  <button
+                                                    onClick={() => openStoreModal(item.item_name)}
+                                                    className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                      ? 'text-indigo-600 hover:text-indigo-700'
+                                                      : 'text-gray-300 hover:text-gray-500'
+                                                      }`}
+                                                    title="Swap store"
+                                                    aria-label="Swap store"
+                                                  >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                      />
+                                                    </svg>
+                                                  </button>
+
+                                                  <button
+                                                    onClick={() => removeItem(item.id)}
+                                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                    title="Remove from list"
+                                                    aria-label="Remove from list"
+                                                  >
+                                                    ✖️
+                                                  </button>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+
+
                                         </div>
                                       );
                                     })}
-                                  </div>
-
                                 </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
-                    {storeEntries
-                      .filter(([store]) => {
-                        const storeId = storesByName[store];
-                        return !(storeId && activeTrips[storeId]);
-                      })
-                      .sort(([storeA], [storeB]) => storeA.localeCompare(storeB))
-                      .map(([store, storeItems]) => {
-                        // Calculate store total
-                        const storeTotal = storeItems.reduce((sum, item) => {
-                          const effStore = getEffectiveStore(item.item_name) || store;
-                          const priceData = prices[`${effStore}-${item.item_name}`];
-                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                          return sum + price * item.quantity;
-                        }, 0);
-
-                        // Group items by category
-                        const itemsByCategory = storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
-                          const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
-                          (acc[cat] ||= []).push(item);
-                          return acc;
-                        }, {});
-
-                        return (
-                          <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                            <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-gray-50 p-3.5 border-b border-gray-200">
-                              <div className="flex items-center gap-3">
-                                <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
-                                <span className="text-sm text-gray-500 font-medium">
-                                  {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
-                                </span>
                               </div>
-                              <span className="text-xl font-bold text-teal-700">
-                                ${storeTotal.toFixed(2)}
-                              </span>
-                            </h3>
-
-                            {/* ONE cohesive store panel with categories inside */}
-                            <div className="p-3 space-y-4">
-                              {Object.entries(itemsByCategory)
-                                // Sort categories by rank
-                                .sort(([catA], [catB]) => {
-                                  const ra = categoryRank(catA);
-                                  const rb = categoryRank(catB);
-                                  if (ra !== rb) return ra - rb;
-                                  return catA.localeCompare(catB);
-                                })
-                                .map(([category, categoryItems]) => {
-                                  // Sort items: unchecked first, then alphabetical
-                                  categoryItems.sort((a, b) => {
-                                    if (a.checked !== b.checked) return a.checked ? 1 : -1;
-                                    return a.item_name.localeCompare(b.item_name);
-                                  });
-
-                                  // Calculate category subtotal
-                                  const categoryTotal = categoryItems.reduce((sum, item) => {
-                                    const effStore = getEffectiveStore(item.item_name) || store;
-                                    const priceData = prices[`${effStore}-${item.item_name}`];
-                                    const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                    return sum + price * item.quantity;
-                                  }, 0);
-
-                                  return (
-                                    <div key={category} className="space-y-2">
-                                      {/* Category header */}
-                                      <div
-                                        className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColor(
-                                          category
-                                        )}`}
-                                      >
-                                        <div className="font-bold text-gray-800 text-base">{category}</div>
-                                        <div className="text-sm font-bold text-teal-700 opacity-90">${categoryTotal.toFixed(2)}</div>
-                                      </div>
-
-                                      {/* Category items */}
-                                      <div className="space-y-2">
-                                        {categoryItems.map((item) => {
-                                          const isFavorite = favorites.includes(item.item_name);
-                                          const effStore = getEffectiveStore(item.item_name) || store;
-                                          const priceData = prices[`${effStore}-${item.item_name}`];
-                                          const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                          const cat = itemCategoryByName[item.item_name];
-                                          const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
-
-                                          return (
-                                            <div
-                                              key={item.id}
-                                              onClick={() => {
-                                                if (mobileMode == 'build') return;
-                                                toggleChecked(item.id);
-                                              }}
-                                              className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
-                                                ? 'bg-gray-100 border-gray-300'
-                                                : isFavorite
-                                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                                  : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                } ${mobileMode == 'build' ? 'cursor-default' : 'cursor-pointer'
-                                                }`}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                checked={item.checked}
-                                                disabled={mobileMode == 'build'}
-                                                onChange={() => { }} // Supress React warning, logic handled by parent click or custom handler below
-                                                onClick={(e) => {
-                                                  // Prevent double-toggle when clicking the checkbox directly
-                                                  // Actually let's just let the row handle it and make this purely visual/controlled
-                                                  // But for a checkbox, native behavior is weird.
-                                                  // Best: e.stopPropagation() and call toggleChecked here manually?
-                                                  // OR: e.stopPropagation() and let the native change happen?
-                                                  // With React controlled components, we need to call logic.
-                                                  e.stopPropagation();
-                                                  if (mobileMode == 'build') return;
-                                                  toggleChecked(item.id);
-                                                }}
-                                                className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                  }`}
-                                              />
-
-                                              <div className="flex-1">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      openEditModal(item);
-                                                    }}
-                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                      }`}
-                                                  >
-                                                    {dealsItemNames.has(item.item_name) && (
-                                                      <span className="mr-1" title="On sale today!">🔥</span>
-                                                    )}
-                                                    {item.item_name}
-                                                    {item.quantity > 1 && (
-                                                      <span className="ml-1 font-bold text-indigo-600">
-                                                        (Qty: {item.quantity})
-                                                      </span>
-                                                    )}
-                                                  </button>
-                                                </div>
-
-                                                {/* Show Item Price and Recency */}
-                                                <div className="mt-0.5 flex items-center gap-2">
-                                                  <p className="text-xs text-green-600 min-w-0">
-                                                    {formatMoney(price)}{' '}
-                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                    {priceData?.date ? (
-                                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                    ) : null}
-                                                  </p>
-
-                                                  {/* Add Category button */}
-                                                  {missingCategory && (
-                                                    <button
-                                                      onClick={() => openEditModal(item, 'category')}
-                                                      className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                    >
-                                                      Add Category
-                                                    </button>
-                                                  )}
-                                                </div>
-                                              </div>
-
-                                              <div className="hidden md:flex items-center gap-2">
-                                                <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                >
-                                                  −
-                                                </button>
-                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                                <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                >
-                                                  +
-                                                </button>
-                                              </div>
-
-                                              <button
-                                                onClick={() => openStoreModal(item.item_name)}
-                                                className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                  ? 'text-indigo-600 hover:text-indigo-700'
-                                                  : 'text-gray-300 hover:text-gray-500'
-                                                  }`}
-                                                title="Swap store"
-                                                aria-label="Swap store"
-                                              >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                  />
-                                                </svg>
-                                              </button>
-
-                                              <button
-                                                onClick={() => removeItem(item.id)}
-                                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                                title="Remove from list"
-                                                aria-label="Remove from list"
-                                              >
-                                                ✖️
-                                              </button>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-
-
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                );
-              })()}
-
-              <div className="mt-1 pt-1">
-                <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
-              </div>
-
-              <div className="mt-6 pt-4 border-t-2 border-gray-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-gray-800">Total</span>
-                  <span className="text-2xl font-bold text-teal-600">
-                    {formatMoney(
-                      listItems.reduce((sum, item) => {
-                        const effStore = getEffectiveStore(item.item_name);
-                        if (!effStore) return sum;
-                        const pd = prices[`${effStore}-${item.item_name}`];
-                        const p = pd ? parseFloat(pd.price) : 0;
-                        return sum + p * item.quantity;
-                      }, 0)
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* STORE MODE -- "QUICK ADD" MODAL */}
-            {/* =============================== */}
-            {(!isMobile || mobileMode === 'store') && (
-              <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-                <h2 className="text-xl font-semibold mb-3 text-gray-800">Quick Add To List</h2>
-                <div className="relative autocomplete-container">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Select existing or add new"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                      value={newItem}
-                      onChange={(e) => handleInputChange(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                      onFocus={() => {
-                        const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
-                        const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
-                        setAutocompleteItems(available);
-                        setShowAutocomplete(available.length > 0);
-                      }}
-                    />
-                    <button
-                      onClick={addNewItem}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  {showAutocomplete && autocompleteItems.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                      {autocompleteItems.slice(0, 10).map((item) => (
-                        <button
-                          key={item}
-                          onClick={() => selectItem(item)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
-              </div>
-            )}
-
-            {/* Best Store Recommendation - Desktop Only */}
-            {sortedStores.length > 0 && (
-              <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Best Single Store</h2>
-                <div className="space-y-3">
-                  {sortedStores.map(([store, data], idx) => {
-                    const coveragePercent = ((data.coverage / data.itemCount) * 100).toFixed(0);
-                    const isComplete = data.coverage === data.itemCount;
-
-                    return (
-                      <div key={store} className={`p-4 rounded-2xl border-2 ${idx === 0 ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xl text-gray-800">{store}</span>
-                              {idx === 0 && <span className="text-sm bg-green-500 text-white px-3 py-1 rounded-full">Best Deal!</span>}
-                            </div>
-                            {listItems.length > 1 && (
-                              <p className={`text-xs md:text-sm mt-1 flex items-center gap-1 ${isComplete ? 'text-green-600' : 'text-orange-600'}`}>
-                                <span>
-                                  {data.coverage}/{data.itemCount} items ({coveragePercent}% coverage)
-                                  {!isComplete && ' ⚠️'}
-                                </span>
-                                {isComplete && listItems.length > 1 && <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">✓</span>}
-                              </p>
-                            )}
-                            {listItems.length > 0 && (
-                              <div className="mt-1 space-y-0.5">
-                                {listItems.map((item) => {
-                                  const priceData = prices[`${store}-${item.item_name}`];
-                                  if (priceData) {
-                                    const price = parseFloat(priceData.price);
-                                    const classification = getPriceClassification(item.item_name, price);
-                                    return (
-                                      <p key={item.id} className="text-xs text-gray-600">
-                                        {item.item_name}: {formatMoney(price)}
-                                        {item.quantity > 1 && ` × ${item.quantity}`}
-                                        {priceData?.date ? (
-                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        ) : null}
-                                        {classification && (
-                                          <span className={`ml-1 font-semibold ${classification.color}`}>
-                                            {classification.emoji} {classification.label}
-                                          </span>
-                                        )}
-                                      </p>
-                                    );
-                                  }
-                                  return (
-                                    <p key={item.id} className="text-xs text-gray-400">
-                                      {item.item_name}: no price
-                                    </p>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-2xl font-bold text-gray-800">{formatMoney(data.total)}</span>
-                        </div>
+                            );
+                          })}
                       </div>
                     );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-            <p className="text-gray-500 text-lg mb-4">🛒 Your shopping list is empty.</p>
-            {favorites.length > 0 && (
-              <button
-                onClick={addFavorites}
-                className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2"
-              >
-                <span className="text-xl">⭐</span>
-                Add Favorites to Get Started
-              </button>
-            )}
+                  })()}
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4 mt-6 max-w-2xl mx-auto">
-              <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
-              <div className="relative autocomplete-container">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Select or add new item..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                    value={newItem}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                    onFocus={() => {
-                      {
-                        const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
-                        const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
-                        setAutocompleteItems(available);
-                        setShowAutocomplete(available.length > 0);
-                      }
-                    }}
-                  />
-                  <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
-                    Add
-                  </button>
-                </div>
-
-                {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                    {autocompleteItems.slice(0, 10).map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => selectItem(item)}
-                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                      >
-                        {item}
-                      </button>
-                    ))}
+                  <div className="mt-1 pt-1">
+                    <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
                   </div>
+
+                  <div className="mt-6 pt-4 border-t-2 border-gray-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xl font-bold text-gray-800">Total</span>
+                      <span className="text-2xl font-bold text-teal-600">
+                        {formatMoney(
+                          listItems.reduce((sum, item) => {
+                            const effStore = getEffectiveStore(item.item_name);
+                            if (!effStore) return sum;
+                            const pd = prices[`${effStore}-${item.item_name}`];
+                            const p = pd ? parseFloat(pd.price) : 0;
+                            return sum + p * item.quantity;
+                          }, 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+
+              </>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
+                <p className="text-gray-500 text-lg mb-4">🛒 Your shopping list is empty.</p>
+                {favorites.length > 0 && (
+                  <button
+                    onClick={addFavorites}
+                    className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2"
+                  >
+                    <span className="text-xl">⭐</span>
+                    Add Favorites to Get Started
+                  </button>
                 )}
+
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4 mt-6 max-w-2xl mx-auto">
+                  <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
+                  <div className="relative autocomplete-container">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Select or add new item..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                        value={newItem}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                        onFocus={() => {
+                          {
+                            const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
+                            const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+                            setAutocompleteItems(available);
+                            setShowAutocomplete(available.length > 0);
+                          }
+                        }}
+                      />
+                      <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
+                        Add
+                      </button>
+                    </div>
+
+                    {showAutocomplete && autocompleteItems.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                        {autocompleteItems.slice(0, 10).map((item) => (
+                          <button
+                            key={item}
+                            onClick={() => selectItem(item)}
+                            className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
-            </div>
-          </div>
-        )}
+            )}
+
+          </div> {/* End Right Column */}
+        </div> {/* End Flex Container */}
 
         {/* SWAP STORE MODAL      */}
         {/* ===================== */}
-        {storeModalOpen && activeItemForStoreModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                      />
-                    </svg>
-                    <span>Swap Store</span>
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
-                </div>
-                <button
-                  onClick={closeStoreModal}
-                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-                  title="Close"
-                  aria-label="Close"
-                >
-                  ✖️
-                </button>
-              </div>
-
-              {(() => {
-                const options = getStoreOptionsForItem(activeItemForStoreModal);
-                const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-
-                // Find stores WITHOUT price data
-                const storesWithoutPrice = stores.filter(
-                  (store) => !options.find((opt) => opt.store === store)
-                );
-
-                if (options.length === 0) {
-                  return (
-                    <p className="text-gray-500 text-sm">No stores with price data available.</p>
-                  );
-                }
-
-                return (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      {/* Auto option */}
-                      <button
-                        onClick={() => {
-                          setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                          closeStoreModal();
-                        }}
-                        className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                          }`}
+        {
+          storeModalOpen && activeItemForStoreModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                          <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-                        </div>
-                        <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
-                      </button>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                        />
+                      </svg>
+                      <span>Swap Store</span>
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
+                  </div>
+                  <button
+                    onClick={closeStoreModal}
+                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    ✖️
+                  </button>
+                </div>
 
-                      {/* Store options - only stores with prices */}
-                      {options.map(({ store, price }, idx) => {
-                        const isSelected = pref === store;
-                        const isBestPrice = idx === 0;
+                {(() => {
+                  const options = getStoreOptionsForItem(activeItemForStoreModal);
+                  const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
 
-                        return (
-                          <button
-                            key={store}
-                            onClick={() => {
-                              setItemStorePreference(activeItemForStoreModal, store);
-                              closeStoreModal();
-                            }}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-800">{store}</span>
-                              {isBestPrice && (
-                                <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                  Best Price
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-bold text-gray-800">{formatMoney(price)}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                  // Find stores WITHOUT price data
+                  const storesWithoutPrice = stores.filter(
+                    (store) => !options.find((opt) => opt.store === store)
+                  );
 
-                    {/* Add Price For section */}
-                    {storesWithoutPrice.length > 0 && (
-                      <div className="pt-3 border-t-2 border-dashed border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-600 mb-2">Add Price For:</h4>
-                        <div className="space-y-2">
-                          {storesWithoutPrice.map((store) => (
+                  if (options.length === 0) {
+                    return (
+                      <p className="text-gray-500 text-sm">No stores with price data available.</p>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        {/* Auto option */}
+                        <button
+                          onClick={() => {
+                            setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                            closeStoreModal();
+                          }}
+                          className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">Auto (cheapest)</span>
+                            <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
+                          </div>
+                          <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
+                        </button>
+
+                        {/* Store options - only stores with prices */}
+                        {options.map(({ store, price }, idx) => {
+                          const isSelected = pref === store;
+                          const isBestPrice = idx === 0;
+
+                          return (
                             <button
                               key={store}
                               onClick={() => {
-                                // Find the item in the list
-                                const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
-                                if (item) {
-                                  // Close swap modal and open edit modal with this store pre-selected
-                                  closeStoreModal();
-                                  setEditModalItem(item);
-                                  setEditModalName(item.item_name);
-                                  setEditModalQuantity(String(item.quantity ?? 1));
-                                  setEditModalStore(store);
-                                  setEditModalPrice('');
-                                  setEditModalOriginalPrice('');
-                                  setEditModalOpen(true);
-                                }
+                                setItemStorePreference(activeItemForStoreModal, store);
+                                closeStoreModal();
                               }}
-                              className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-gray-300 hover:bg-gray-50 transition text-left"
+                              className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
+                                }`}
                             >
-                              <span className="font-semibold text-gray-800">{store}</span>
-                              <span className="text-sm text-indigo-600 font-semibold">+ Add Price</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-800">{store}</span>
+                                {isBestPrice && (
+                                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                                    Best Price
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold text-gray-800">{formatMoney(price)}</span>
                             </button>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
+
+                      {/* Add Price For section */}
+                      {storesWithoutPrice.length > 0 && (
+                        <div className="pt-3 border-t-2 border-dashed border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-600 mb-2">Add Price For:</h4>
+                          <div className="space-y-2">
+                            {storesWithoutPrice.map((store) => (
+                              <button
+                                key={store}
+                                onClick={() => {
+                                  // Find the item in the list
+                                  const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
+                                  if (item) {
+                                    // Close swap modal and open edit modal with this store pre-selected
+                                    closeStoreModal();
+                                    setEditModalItem(item);
+                                    setEditModalName(item.item_name);
+                                    setEditModalQuantity(String(item.quantity ?? 1));
+                                    setEditModalStore(store);
+                                    setEditModalPrice('');
+                                    setEditModalOriginalPrice('');
+                                    setEditModalOpen(true);
+                                  }
+                                }}
+                                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-gray-300 hover:bg-gray-50 transition text-left"
+                              >
+                                <span className="font-semibold text-gray-800">{store}</span>
+                                <span className="text-sm text-indigo-600 font-semibold">+ Add Price</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* ========================= */}
         {/* EDIT ITEM MODAL */}
         {/* ========================= */}
-        {editModalOpen && editModalItem && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
-              <div className="flex justify-between items-start mb-5">
-                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Edit Item Details
-                </h3>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-                  aria-label="Close"
-                >
-                  ✖️
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Details Section */}
-                <div
-                  className={`rounded-2xl p-4 border transition-colors ${getCategoryColor(editModalCategory)
-                    .split(' ')
-                    .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
-                    .join(' ')
-                    }`}
-                >
-
-                  <div className="space-y-3">
-                    {/* Name */}
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Name</label>
-                      <input
-                        autoFocus={editModalFocusField === 'name'}
-                        type="text"
-                        value={editModalName}
-                        onChange={(e) => setEditModalName(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                      />
-                    </div>
-
-                    {/* Category */}
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Category</label>
-                      <select
-                        autoFocus={editModalFocusField === 'category'}
-                        value={editModalCategory}
-                        onChange={(e) => setEditModalCategory(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                      >
-                        {CATEGORY_OPTIONS.map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Quantity */}
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={editModalQuantity}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (/^\d*\.?\d*$/.test(val)) {
-                            setEditModalQuantity(val);
-                          }
-                        }}
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
-                              font-semibold text-gray-800
-                              focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-                      />
-                    </div>
-                  </div>
+        {
+          editModalOpen && editModalItem && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
+                <div className="flex justify-between items-start mb-5">
+                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit Item Details
+                  </h3>
+                  <button
+                    onClick={closeEditModal}
+                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                    aria-label="Close"
+                  >
+                    ✖️
+                  </button>
                 </div>
 
-                {/* Price Section */}
-                <div className="rounded-2xl border border-blue-300 bg-blue-100 p-4 shadow-sm">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Price</label>
-                      <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
-                        <span className="text-gray-600 font-semibold mr-1">$</span>
+                <div className="space-y-4">
+                  {/* Details Section */}
+                  <div
+                    className={`rounded-2xl p-4 border transition-colors ${getCategoryColor(editModalCategory)
+                      .split(' ')
+                      .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
+                      .join(' ')
+                      }`}
+                  >
 
+                    <div className="space-y-3">
+                      {/* Name */}
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Name</label>
                         <input
-                          autoFocus={editModalFocusField === 'price'}
+                          autoFocus={editModalFocusField === 'name'}
+                          type="text"
+                          value={editModalName}
+                          onChange={(e) => setEditModalName(e.target.value)}
+                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                        />
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Category</label>
+                        <select
+                          autoFocus={editModalFocusField === 'category'}
+                          value={editModalCategory}
+                          onChange={(e) => setEditModalCategory(e.target.value)}
+                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                        >
+                          {CATEGORY_OPTIONS.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Quantity */}
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                        <input
                           type="text"
                           inputMode="decimal"
-                          placeholder="0.00"
-                          value={editModalPrice || ''}
+                          placeholder="1"
+                          value={editModalQuantity}
                           onChange={(e) => {
-                            setEditModalPriceDirty(true);
-                            const digits = e.target.value.replace(/\D/g, '');
-                            let priceValue = '';
-                            if (digits !== '') {
-                              const cents = parseInt(digits, 10);
-                              priceValue = (cents / 100).toFixed(2);
-                            }
-
-                            setEditModalPrice(priceValue);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              if (!editModalStore) {
-                                e.preventDefault();
-
-                                // show friendly guidance
-                                setNeedsStoreHint(true);
-
-                                // guide user to store selection
-                                setTimeout(() => {
-                                  storeSelectRef.current?.focus();
-                                }, 50);
-                              }
+                            const val = e.target.value;
+                            if (/^\d*\.?\d*$/.test(val)) {
+                              setEditModalQuantity(val);
                             }
                           }}
-                          className="w-full text-right font-semibold text-gray-600 focus:outline-none"
-                          aria-label="Price"
+                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
+                              font-semibold text-gray-800
+                              focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                         />
                       </div>
                     </div>
-
-                    {/* Store Selection */}
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">Store</label>
-                      <select
-                        ref={storeSelectRef}
-                        value={editModalStore}
-                        onChange={(e) => {
-                          const newStore = e.target.value;
-                          setEditModalStore(newStore);
-
-                          // clear hint once resolved
-                          if (newStore) setNeedsStoreHint(false);
-
-                          if (editModalItem && newStore) {
-                            setItemStorePreference(editModalItem.item_name, newStore);
-                          }
-                        }}
-
-                        className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
-                      >
-                        <option value="">Select a store</option>
-                        {stores.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
 
-                  {editModalOriginalPrice && editModalPrice !== editModalOriginalPrice && (
-                    <p className="text-xs text-gray-700 mt-2">
-                      Was <span className="font-semibold">${editModalOriginalPrice}</span>
-                    </p>
-                  )}
-                </div>
+                  {/* Price Section */}
+                  <div className="rounded-2xl border border-blue-300 bg-blue-100 p-4 shadow-sm">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Price</label>
+                        <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
+                          <span className="text-gray-600 font-semibold mr-1">$</span>
 
-                <div className="flex justify-end gap-2 mt-6">
-                  <button
-                    onClick={closeEditModal}
-                    className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveEdit}
-                    disabled={savingEdit}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {savingEdit ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            )
+                          <input
+                            autoFocus={editModalFocusField === 'price'}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            value={editModalPrice || ''}
+                            onChange={(e) => {
+                              setEditModalPriceDirty(true);
+                              const digits = e.target.value.replace(/\D/g, '');
+                              let priceValue = '';
+                              if (digits !== '') {
+                                const cents = parseInt(digits, 10);
+                                priceValue = (cents / 100).toFixed(2);
+                              }
 
-            {/* ========================= */}
-            {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
-            {/* ========================= */}
-            {storeRequiredOpen && (
-              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
-                {/* Backdrop */}
-                <div
-                  className="absolute inset-0 bg-black/70"
-                  onClick={() => setStoreRequiredOpen(false)}
-                />
+                              setEditModalPrice(priceValue);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                if (!editModalStore) {
+                                  e.preventDefault();
 
-                {/* Card */}
-                <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        You found{' '}
-                        <span className="font-semibold text-gray-900">
-                          {editModalName}
-                        </span>
-                        {' for'}
-                        <span className="font-semibold text-gray-900">
-                          {' $'}{editModalPrice}
-                        </span>
-                        ? Awesome!
-                        Let me know what store that applies to.
-                      </p>
+                                  // show friendly guidance
+                                  setNeedsStoreHint(true);
+
+                                  // guide user to store selection
+                                  setTimeout(() => {
+                                    storeSelectRef.current?.focus();
+                                  }, 50);
+                                }
+                              }
+                            }}
+                            className="w-full text-right font-semibold text-gray-600 focus:outline-none"
+                            aria-label="Price"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Store Selection */}
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Store</label>
+                        <select
+                          ref={storeSelectRef}
+                          value={editModalStore}
+                          onChange={(e) => {
+                            const newStore = e.target.value;
+                            setEditModalStore(newStore);
+
+                            // clear hint once resolved
+                            if (newStore) setNeedsStoreHint(false);
+
+                            if (editModalItem && newStore) {
+                              setItemStorePreference(editModalItem.item_name, newStore);
+                            }
+                          }}
+
+                          className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
+                        >
+                          <option value="">Select a store</option>
+                          {stores.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => setStoreRequiredOpen(false)}
-                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-                      aria-label="Close"
-                      type="button"
-                    >
-                      ✖️
-                    </button>
+                    {editModalOriginalPrice && editModalPrice !== editModalOriginalPrice && (
+                      <p className="text-xs text-gray-700 mt-2">
+                        Was <span className="font-semibold">${editModalOriginalPrice}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex justify-end gap-2 mt-6">
                     <button
-                      type="button"
-                      onClick={() => {
-                        setStoreRequiredOpen(false);
-                        setTimeout(() => storeSelectRef.current?.focus(), 50);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      onClick={closeEditModal}
+                      className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
                     >
-                      Choose Store
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveEdit}
+                      disabled={savingEdit}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {savingEdit ? 'Saving…' : 'Save'}
                     </button>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+              )
+
+              {/* ========================= */}
+              {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
+              {/* ========================= */}
+              {storeRequiredOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
+                  {/* Backdrop */}
+                  <div
+                    className="absolute inset-0 bg-black/70"
+                    onClick={() => setStoreRequiredOpen(false)}
+                  />
+
+                  {/* Card */}
+                  <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          You found{' '}
+                          <span className="font-semibold text-gray-900">
+                            {editModalName}
+                          </span>
+                          {' for'}
+                          <span className="font-semibold text-gray-900">
+                            {' $'}{editModalPrice}
+                          </span>
+                          ? Awesome!
+                          Let me know what store that applies to.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setStoreRequiredOpen(false)}
+                        className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                        aria-label="Close"
+                        type="button"
+                      >
+                        ✖️
+                      </button>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStoreRequiredOpen(false);
+                          setTimeout(() => storeSelectRef.current?.focus(), 50);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      >
+                        Choose Store
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        }
 
 
         {/* =========================
@@ -3049,32 +2835,34 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         ITEM REMOVED FROM SHOPPING LIST
         (WITH UNDO BUTTON)
         ========================= */}
-        {mounted && removedFromListToastItem && (
-          <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
+        {
+          mounted && removedFromListToastItem && (
+            <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+                <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
 
-              <button
-                onClick={undoRemove}
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-              >
-                Undo
-              </button>
+                <button
+                  onClick={undoRemove}
+                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+                >
+                  Undo
+                </button>
 
-              <button
-                onClick={() => {
-                  if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
-                  setUndoRemoveItem(null);
-                  setUndoRemoveTimeout(null);
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-                aria-label="Dismiss"
-              >
-                ✖
-              </button>
+                <button
+                  onClick={() => {
+                    if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
+                    setUndoRemoveItem(null);
+                    setUndoRemoveTimeout(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-xl"
+                  aria-label="Dismiss"
+                >
+                  ✖
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* =========================
         TOAST NOTIFICATION
@@ -3082,32 +2870,34 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         ITEM ADDED TO SHOPPING LIST
         (WITH UNDO BUTTON)
         ========================= */}
-        {mounted && addedToListToastItem && (
-          <div key={addedToListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">Added "{addedToListToastItem.item_name}" to your shopping list.</span>
+        {
+          mounted && addedToListToastItem && (
+            <div key={addedToListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+                <span className="flex-1 font-medium">Added "{addedToListToastItem.item_name}" to your shopping list.</span>
 
-              <button
-                onClick={undoAdd}
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-              >
-                Undo
-              </button>
+                <button
+                  onClick={undoAdd}
+                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+                >
+                  Undo
+                </button>
 
-              <button
-                onClick={() => {
-                  if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
-                  setUndoAddItem(null);
-                  setUndoAddTimeout(null);
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-                aria-label="Dismiss"
-              >
-                ✖
-              </button>
+                <button
+                  onClick={() => {
+                    if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
+                    setUndoAddItem(null);
+                    setUndoAddTimeout(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-xl"
+                  aria-label="Dismiss"
+                >
+                  ✖
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* =========================
         TOAST NOTIFICATION
@@ -3115,34 +2905,36 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         CHECKED ITEM OFF SHOPPING LIST
         (WITH UNDO BUTTON)
         ========================= */}
-        {mounted && checkedOffListToastItem && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-medium">
-                Checked off "{checkedOffListToastItem.item_name}" from your shopping list!
-              </span>
+        {
+          mounted && checkedOffListToastItem && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+                <span className="flex-1 font-medium">
+                  Checked off "{checkedOffListToastItem.item_name}" from your shopping list!
+                </span>
 
-              <button
-                onClick={undoCheck}
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-              >
-                Undo
-              </button>
+                <button
+                  onClick={undoCheck}
+                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+                >
+                  Undo
+                </button>
 
-              <button
-                onClick={() => {
-                  if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
-                  setUndoCheckItem(null);
-                  setUndoCheckTimeout(null);
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-                aria-label="Dismiss"
-              >
-                ✖
-              </button>
+                <button
+                  onClick={() => {
+                    if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
+                    setUndoCheckItem(null);
+                    setUndoCheckTimeout(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-xl"
+                  aria-label="Dismiss"
+                >
+                  ✖
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* =========================
         TOAST NOTIFICATION
@@ -3150,29 +2942,31 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         TRIP COMPLETE AT ACTIVE STORE
         ========================= */}
 
-        {mounted && tripCompleteToastStore && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-            <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-              <span className="flex-1 font-semibold text-xl">
-                <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
-              </span>
+        {
+          mounted && tripCompleteToastStore && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+              <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+                <span className="flex-1 font-semibold text-xl">
+                  <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
+                </span>
 
-              <button
-                onClick={() => {
-                  if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
-                  setTripCompleteToastStore(null);
-                  setTripCompleteToastTimeout(null);
-                  tripCompleteToastLockRef.current = null;
-                }}
-                className="text-gray-400 hover:text-white text-xl"
-                aria-label="Dismiss"
-              >
-                ✖
-              </button>
+                <button
+                  onClick={() => {
+                    if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+                    setTripCompleteToastStore(null);
+                    setTripCompleteToastTimeout(null);
+                    tripCompleteToastLockRef.current = null;
+                  }}
+                  className="text-gray-400 hover:text-white text-xl"
+                  aria-label="Dismiss"
+                >
+                  ✖
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )
+        }
+      </div >
+    </div >
   );
 }

@@ -568,27 +568,28 @@ function ReceiptsContent() {
   }, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
-                {mode === 'flyer' ? 'Enter Flyer Prices' : 'Enter Receipt'}
-              </h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
-                {mode === 'flyer'
-                  ? 'Quickly update prices from store flyers and ads'
-                  : 'Quickly add in missed receipts.'
-                }
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              {/* Dynamic Header title passed via prop or handled inside Header?
+                  Actually Header just takes `currentPage`.
+                  The title "Enter Receipt" or "Add Flyer" was previously shown.
+                  User said "remove page headers... make it clean".
+                  So I will remove the dynamic title text.
+              */}
+              <Header currentPage={mode === 'flyer' ? 'Add Flyer' : 'Add Receipt'} />
             </div>
-            <Header currentPage={mode === 'flyer' ? 'Add Flyer' : 'Add Receipt'} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-0 mt-6">
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
 
           {/* Mode Toggle */}

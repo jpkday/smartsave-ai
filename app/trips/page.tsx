@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
@@ -147,10 +148,10 @@ export default function TripsPage() {
 
     const tripsWithEvents: TripWithEvents[] = tripsData.map(trip => {
       const tripEvents = eventsData?.filter(e => e.trip_id === trip.id) || [];
-      
+
       const eventsWithDetails: TripEvent[] = tripEvents.map(event => {
         const itemInfo = itemMap[event.item_id];
-        
+
         return {
           item_id: event.item_id,
           item_name: itemInfo?.name || 'Unknown Item',
@@ -167,14 +168,14 @@ export default function TripsPage() {
         }
         return sum;
       }, 0);
-      
+
       let duration = 'In Progress';
       if (trip.ended_at) {
         const start = new Date(trip.started_at);
         const end = new Date(trip.ended_at);
         const diffMs = end.getTime() - start.getTime();
         const diffMins = Math.floor(diffMs / 60000);
-        
+
         if (diffMins < 60) {
           duration = `${diffMins} min`;
         } else {
@@ -208,9 +209,9 @@ export default function TripsPage() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
     } else {
-      return date.toLocaleDateString('en-US', { 
+      return date.toLocaleDateString('en-US', {
         weekday: 'short',
-        month: 'short', 
+        month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit'
@@ -252,28 +253,33 @@ export default function TripsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
       {/* Premium Header - Sticky */}
-      <div className="sticky top-0 z-50 bg-white shadow-lg">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
-            <Header currentPage="Recent Trips" />
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              <Header currentPage="Recent Trips" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
+      <div className="max-w-5xl mx-auto px-2 md:px-8 pt-6">
         {/* Time Range Selector */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-6">
           {[7, 14, 30].map(days => (
             <button
               key={days}
               onClick={() => setDaysToShow(days)}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                daysToShow === days
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-              }`}
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${daysToShow === days
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                }`}
             >
               {days} days
             </button>
@@ -293,65 +299,65 @@ export default function TripsPage() {
           </div>
         ) : (
           <>
-{/* Summary Stats */}
-<div className="grid grid-cols-4 gap-4 mb-4">
-  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-    <div className="text-3xl font-bold text-indigo-500">{trips.length}</div>
-    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
-  </div>
-  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-    <div className="text-3xl font-bold text-purple-600">
-      {trips.reduce((sum, t) => sum + t.itemCount, 0)}
-    </div>
-    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
-  </div>
-  <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-    <div className="text-3xl font-bold text-emerald-600">
-      {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
-    </div>
-    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Total Spend</div>
-  </div>
-</div>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                <div className="text-3xl font-bold text-indigo-500">{trips.length}</div>
+                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
+              </div>
+              <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                <div className="text-3xl font-bold text-purple-600">
+                  {trips.reduce((sum, t) => sum + t.itemCount, 0)}
+                </div>
+                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
+              </div>
+              <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                <div className="text-3xl font-bold text-emerald-600">
+                  {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
+                </div>
+                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Total Spend</div>
+              </div>
+            </div>
 
-{/* Category Breakdown */}
-<div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
-  <div className="bg-gradient-to-r from-indigo-500 to-indigo-500 px-6 md:px-8 py-4">
-    <h2 className="text-lg font-bold text-white">Spending by Category</h2>
-  </div>
-  <div className="p-4 md:p-8">
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {(() => {
-        const categoryTotals: { [category: string]: number } = {};
-        
-        trips.forEach(trip => {
-          trip.events.forEach(event => {
-            const cat = event.category || 'Other';
-            if (event.price) {
-              if (!categoryTotals[cat]) {
-                categoryTotals[cat] = 0;
-              }
-              categoryTotals[cat] += event.price * event.quantity;
-            }
-          });
-        });
+            {/* Category Breakdown */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
+              <div className="bg-gradient-to-r from-indigo-500 to-indigo-500 px-6 md:px-8 py-4">
+                <h2 className="text-lg font-bold text-white">Spending by Category</h2>
+              </div>
+              <div className="p-4 md:p-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {(() => {
+                    const categoryTotals: { [category: string]: number } = {};
 
-        const sortedCategories = Object.entries(categoryTotals)
-          .sort(([, a], [, b]) => b - a);
+                    trips.forEach(trip => {
+                      trip.events.forEach(event => {
+                        const cat = event.category || 'Other';
+                        if (event.price) {
+                          if (!categoryTotals[cat]) {
+                            categoryTotals[cat] = 0;
+                          }
+                          categoryTotals[cat] += event.price * event.quantity;
+                        }
+                      });
+                    });
 
-        return sortedCategories.map(([category, total]) => (
-          <button
-            key={category}
-            onClick={() => openCategoryModal(category)}
-            className={`rounded-xl p-3 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
-          >
-            <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
-            <div className="text-2xl font-bold">{formatMoney(total)}</div>
-          </button>
-        ));
-      })()}
-    </div>
-  </div>
-</div>
+                    const sortedCategories = Object.entries(categoryTotals)
+                      .sort(([, a], [, b]) => b - a);
+
+                    return sortedCategories.map(([category, total]) => (
+                      <button
+                        key={category}
+                        onClick={() => openCategoryModal(category)}
+                        className={`rounded-xl p-3 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
+                        <div className="text-2xl font-bold">{formatMoney(total)}</div>
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
 
             {/* Trips list */}
             <div className="space-y-4">
@@ -463,11 +469,11 @@ export default function TripsPage() {
             </div>
           </>
         )}
-{/* Category Detail Modal */}
-{categoryModalOpen && selectedCategory && (
+        {/* Category Detail Modal */}
+        {categoryModalOpen && selectedCategory && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col min-h-0">
-            {/* Header - Fixed */}
+              {/* Header - Fixed */}
               <div className="flex justify-between items-start p-6 pb-4 border-b border-gray-200">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">
@@ -489,7 +495,7 @@ export default function TripsPage() {
               {(() => {
                 // Collect all items from this category across all trips
                 const categoryItems: Array<TripEvent & { trip_date: string; store: string }> = [];
-                
+
                 trips.forEach(trip => {
                   trip.events
                     .filter(event => (event.category || 'Other') === selectedCategory)

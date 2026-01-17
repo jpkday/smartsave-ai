@@ -57,9 +57,9 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
-      <div className="text-center text-white max-w-xs md:max-w-2xl w-full">
-        <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-6">ᯓ SmartSaveAI</h1>
-        <p className="text-base md:text-xl mb-6 md:mb-10 px-2">Stop overpaying for groceries. Shop smart and save.</p>
+      <div className="text-center text-white max-w-xs md:max-w-5xl w-full">
+        <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-8">ᯓ SmartSaveAI</h1>
+        <p className="text-base md:text-xl mb-12 md:mb-20 px-2">Stop overpaying for groceries. Shop smart and save.</p>
 
         {/* Mobile: Primary 5 buttons */}
         <div className="grid grid-cols-1 gap-3 md:hidden">
@@ -126,118 +126,104 @@ function HomeContent() {
           )}
         </div>
 
-        {/* Desktop: All buttons in 2 columns */}
-        <div className="hidden md:grid grid-cols-2 gap-4">
-          {isLocked ? (
-            <>
-              <button onClick={handleLockedClick} className="bg-yellow-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📝</span>
-                <span className="flex-1 ml-6">Shopping List</span>
-              </button>
+        {/* Desktop: All buttons in 3 columns */}
+        {/* Desktop: 3 Logical Columns (Shop, Analyze, Add) */}
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6 items-start text-left">
 
-              <button onClick={handleLockedClick} className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📋</span>
-                <span className="flex-1 ml-6">Manage Items</span>
-              </button>
+          {/* Column 1: Shop */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-white/90 font-bold uppercase tracking-wider text-sm mb-1 px-1">Shop</h3>
+            {isLocked ? (
+              <>
+                <button onClick={handleLockedClick} className="bg-yellow-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  <span className="flex-1">Shopping List</span>
+                </button>
+                <button onClick={handleLockedClick} className="bg-red-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                  </svg>
+                  <span className="flex-1">Local Deals</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/list" className="bg-yellow-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  <span className="flex-1">Shopping List</span>
+                </Link>
+                <Link href="/deals" className="bg-red-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                  </svg>
+                  <span className="flex-1">Local Deals</span>
+                </Link>
+              </>
+            )}
+          </div>
 
-              <button onClick={handleLockedClick} className="bg-lime-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-lime-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🛒</span>
-                <span className="flex-1 ml-6">Recent Trips</span>
-              </button>
+          {/* Column 2: Analyze */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-white/90 font-bold uppercase tracking-wider text-sm mb-1 px-1">Analyze</h3>
+            {isLocked ? (
+              <>
+                <button onClick={handleLockedClick} className="bg-violet-700 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-violet-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
+                  <span className="flex-1">Insights</span>
+                </button>
+                <button onClick={handleLockedClick} className="bg-lime-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-lime-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span className="flex-1">Recent Trips</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/insights" className="bg-violet-700 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-violet-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
+                  <span className="flex-1">Insights</span>
+                </Link>
+                <Link href="/trips" className="bg-lime-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-lime-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span className="flex-1">Recent Trips</span>
+                </Link>
+              </>
+            )}
+          </div>
 
-              <button onClick={handleLockedClick} className="bg-violet-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">💡</span>
-                <span className="flex-1 ml-6">Insights</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-emerald-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare Items</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Local Deals</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📊</span>
-                <span className="flex-1 ml-6">Price History</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🧾</span>
-                <span className="flex-1 ml-6">Enter Receipt</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">💰</span>
-                <span className="flex-1 ml-6">Enter Prices</span>
-              </button>
-
-              <button onClick={handleLockedClick} className="bg-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🛍️</span>
-                <span className="flex-1 ml-6">Manage Stores</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/list" className="bg-yellow-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📝</span>
-                <span className="flex-1 ml-6">Shopping List</span>
-              </Link>
-
-              <Link href="/items" className="bg-purple-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📋</span>
-                <span className="flex-1 ml-6">Manage Items</span>
-              </Link>
-
-              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Local Deals</span>
-              </Link>
-
-              <Link href="/compare" className="bg-emerald-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-emerald-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">⚖️</span>
-                <span className="flex-1 ml-6">Compare Items</span>
-              </Link>
-
-              <Link href="/prices" className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">💰</span>
-                <span className="flex-1 ml-6">Enter Prices</span>
-              </Link>
-
-              <Link href="/trips" className="bg-lime-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-lime-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🛒</span>
-                <span className="flex-1 ml-6">Recent Trips</span>
-              </Link>
-
-              <Link href="/insights" className="bg-violet-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">💡</span>
-                <span className="flex-1 ml-6">Insights</span>
-              </Link>
-
-              <Link href="/receipts?mode=receipt" className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🧾</span>
-                <span className="flex-1 ml-6">Enter Receipt</span>
-              </Link>
-
-              <Link href="/history" className="bg-amber-700 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-amber-800 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">📊</span>
-                <span className="flex-1 ml-6">Price History</span>
-              </Link>
-
-              <Link href="/stores" className="bg-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🛍️</span>
-                <span className="flex-1 ml-6">Manage Stores</span>
-              </Link>
-            </>
-          )}
+          {/* Column 3: Contribute */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-white/90 font-bold uppercase tracking-wider text-sm mb-1 px-1">Contribute</h3>
+            {isLocked ? (
+              <>
+                <button onClick={handleLockedClick} className="bg-orange-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <span className="flex-1">Add Receipt</span>
+                </button>
+                <button onClick={handleLockedClick} className="bg-indigo-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                  <span className="flex-1">Add Flyer</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/receipts?mode=receipt" className="bg-orange-500 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <span className="flex-1">Add Receipt</span>
+                </Link>
+                <Link href="/receipts?mode=flyer" className="bg-indigo-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                  <span className="flex-1">Add Flyer</span>
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Beta Code Section at Bottom */}
         {!isLoadingCode && (
-          <div className="mt-8 md:mt-12 text-center">
+          <div className="mt-12 md:mt-20 text-center">
             {isLocked ? (
               <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 pt-1 pb-3 text-left">
                 <div className="text-xs uppercase tracking-wider text-gray-300 mb-0.5">
@@ -322,7 +308,12 @@ function HomeContent() {
 
               <Link href="/receipts?mode=receipt" onClick={() => setShowMoreMenu(false)} className="w-full bg-orange-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-orange-600 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4 text-xl">🧾</span>
-                <span className="flex-1 ml-6">Enter Receipt</span>
+                <span className="flex-1 ml-6">Add Receipt</span>
+              </Link>
+
+              <Link href="/receipts?mode=flyer" onClick={() => setShowMoreMenu(false)} className="w-full bg-indigo-600 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-indigo-700 transition cursor-pointer text-center relative flex items-center">
+                <span className="absolute left-4 text-xl">✄</span>
+                <span className="flex-1 ml-6">Add Flyer</span>
               </Link>
 
               <Link href="/stores" onClick={() => setShowMoreMenu(false)} className="w-full bg-pink-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-pink-600 transition cursor-pointer text-center relative flex items-center">

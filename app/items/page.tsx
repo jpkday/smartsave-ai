@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Header from '../components/Header';
+import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import { useSearchParams } from 'next/navigation';
 
@@ -65,7 +66,7 @@ function ItemsContent() {
   const editRowRef = useRef<HTMLDivElement | null>(null);
 
   const [selectItemsFilter, setSelectItemsFilter] =
-  useState<'ALL' | 'FAVORITES'>('ALL');
+    useState<'ALL' | 'FAVORITES'>('ALL');
 
   const CATEGORY_OPTIONS: string[] = [
     'Produce',
@@ -77,7 +78,7 @@ function ItemsContent() {
     'Refrigerated',
     'Other',
   ];
-  
+
   useEffect(() => {
     loadItems();
   }, [householdCode]);
@@ -179,10 +180,10 @@ function ItemsContent() {
           household_code: householdCode || 'ASDF',
         });
       }
-      const defaultItems = DEFAULT_ITEMS.map((name, idx) => ({ 
+      const defaultItems = DEFAULT_ITEMS.map((name, idx) => ({
         id: idx + 1, // temporary IDs
         name,
-        category: 'Other',              
+        category: 'Other',
         household_code: householdCode || 'ASDF',
       }));
       setItems(defaultItems);
@@ -201,10 +202,10 @@ function ItemsContent() {
   // Handle URL param for direct item editing
   useEffect(() => {
     if (items.length === 0) return;
-    
+
     const itemParam = searchParams.get('item');
     if (!itemParam) return;
-    
+
     try {
       const itemName = JSON.parse(itemParam);
       const found = items.find(i => i.name === itemName);
@@ -228,7 +229,7 @@ function ItemsContent() {
       const filteredItems = items
         .filter((item) => item.name.toLowerCase().includes(value.toLowerCase()))
         .map((item) => item.name);
-      
+
       setAutocompleteItems(filteredItems);
       setShowAutocomplete(filteredItems.length > 0);
     } else {
@@ -279,7 +280,7 @@ function ItemsContent() {
     setEditFavorite(favoritedIds.has(item.id));
     setSheetOpen(true);
     setSaving(false);
-  
+
     setTimeout(() => {
       const el = document.getElementById('item-rename-input') as HTMLInputElement | null;
       if (el) {
@@ -289,8 +290,8 @@ function ItemsContent() {
       }
     }, 50);
   };
-  
-  
+
+
   const closeSheet = () => {
     setSheetOpen(false);
     setSelected(null);
@@ -383,14 +384,14 @@ function ItemsContent() {
 
   const deleteItem = async (item: Item) => {
     const canDelete = canDeleteItem(item);
-    
+
     if (!canDelete) {
       alert('You can only delete items you created.');
       return;
     }
-  
+
     if (!confirm('Delete this item? This will also remove it from all shopping lists.')) return;
-  
+
     try {
       // Delete from dependent tables FIRST (to avoid foreign key constraint errors)
       const { error: shoppingListError } = await supabase
@@ -398,32 +399,32 @@ function ItemsContent() {
         .delete()
         .eq('item_name', item.name)
         .eq('user_id', SHARED_USER_ID);
-  
+
       if (shoppingListError) {
         throw shoppingListError;
       }
-  
+
       const { error: priceError } = await supabase
         .from('price_history')
         .delete()
         .eq('item_name', item.name)
         .eq('user_id', SHARED_USER_ID);
-  
+
       if (priceError) {
         throw priceError;
       }
-  
+
       // Now delete from items table (safe because no references exist)
       const { error: itemError } = await supabase
         .from('items')
         .delete()
         .eq('id', item.id)
         .eq('user_id', SHARED_USER_ID);
-  
+
       if (itemError) {
         throw itemError;
       }
-  
+
       // Update UI
       setItems((prev) => prev.filter((i) => i.id !== item.id));
       setFavoritedIds(prev => {
@@ -431,10 +432,10 @@ function ItemsContent() {
         next.delete(item.id);
         return next;
       });
-  
+
       if (selected?.id === item.id) closeSheet();
       if (editingName === item.name) cancelInlineEdit();
-  
+
     } catch (error) {
       console.error('Error deleting item:', error);
       alert('Failed to delete item. Check your connection and try again.');
@@ -482,16 +483,16 @@ function ItemsContent() {
 
   const saveRename = async () => {
     if (!selected || !householdCode) return;
-  
+
     const itemId = selected.id;
     const nextCategory = (editCategory || 'Other').trim() || 'Other';
     const nextFavorite = !!editFavorite;
-  
+
     const prevItems = items;
     const prevFavorites = favoritedIds;
-  
+
     setSaving(true);
-  
+
     // Optimistic UI update
     setItems((prev) =>
       prev.map((i) =>
@@ -508,7 +509,7 @@ function ItemsContent() {
         return next;
       });
     }
-  
+
     try {
       // Update category
       const { error: catError } = await supabase
@@ -516,7 +517,7 @@ function ItemsContent() {
         .update({ category: nextCategory })
         .eq('id', itemId)
         .eq('user_id', SHARED_USER_ID);
-  
+
       if (catError) throw catError;
 
       // Update favorite
@@ -537,20 +538,20 @@ function ItemsContent() {
           .eq('item_id', itemId);
         if (unfavError) throw unfavError;
       }
-  
+
       closeSheet();
     } catch (e) {
       console.error('Save failed:', e);
-  
+
       // rollback
       setItems(prevItems);
       setFavoritedIds(prevFavorites);
-  
+
       alert('Failed to save changes. Check your connection and try again.');
       setSaving(false);
     }
   };
-  
+
 
   const startInlineEdit = (name: string) => {
     setEditingName(name);
@@ -716,301 +717,300 @@ function ItemsContent() {
   const itemExists = items.some((i) => i.name.toLowerCase() === inputValue.trim().toLowerCase());
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-3">
-          <div className="flex justify-between items-start">
-            <div className="min-w-0 hidden sm:block">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Items</h1>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">{/* intentionally blank */}</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              <Header currentPage="Manage Items" />
             </div>
-            <Header currentPage="Manage Items" />
           </div>
         </div>
+      </div>
 
-<div className="px-2 md:px-6 py-0">
-<div className="max-w-5xl mx-auto space-y-3">
+      <div className="max-w-5xl mx-auto px-2 md:px-6 pt-4">
+        <div className="max-w-5xl mx-auto space-y-3">
 
- {/* Alphabet Filter */}
- <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-1 md:mb-6">
-          <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-            <button
-              type="button"
-              onClick={() => setFilterLetter('All')}
-              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                filterLetter === 'All'
+          {/* Alphabet Filter */}
+          <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-1 md:mb-6">
+            <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
+              <button
+                type="button"
+                onClick={() => setFilterLetter('All')}
+                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All'
                   ? 'bg-indigo-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
+                  }`}
+              >
+                All
+              </button>
 
-            {alphabet
-              .filter((letter) => items.some((it) => it.name.toUpperCase().startsWith(letter)))
-              .map((letter) => (
-                <button
-                  key={letter}
-                  type="button"
-                  onClick={() => toggleLetter(letter)}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                    filterLetter === letter
+              {alphabet
+                .filter((letter) => items.some((it) => it.name.toUpperCase().startsWith(letter)))
+                .map((letter) => (
+                  <button
+                    key={letter}
+                    type="button"
+                    onClick={() => toggleLetter(letter)}
+                    className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {letter}
-                </button>
-              ))}
+                      }`}
+                  >
+                    {letter}
+                  </button>
+                ))}
+            </div>
           </div>
-        </div>
 
-      {/* SEARCH ITEMS MODAL */}
+          {/* SEARCH ITEMS MODAL */}
 
-        <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-0">
-          <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Search Items</div>
+          <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-0">
+            <div className="bg-white rounded-xl shadow-lg p-3">
+              <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Search Items</div>
 
-            <div className="relative autocomplete-container">
-              <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addItem()}
-                  placeholder="Search or add new item"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                />
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
-                >
-                  Add
-                </button>
+              <div className="relative autocomplete-container">
+                <div className="flex gap-2">
+                  <input
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                    placeholder="Search or add new item"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {showAutocomplete && autocompleteItems.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                    {autocompleteItems.slice(0, 10).map((item) => {
+                      const itemData = items.find((i) => i.name === item);
+                      const isFavorite = itemData ? favoritedIds.has(itemData.id) : false;
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => selectFromAutocomplete(item)}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
+                        >
+                          {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {showAutocomplete && autocompleteItems.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                  {autocompleteItems.slice(0, 10).map((item) => {
-                    const itemData = items.find((i) => i.name === item);
-                    const isFavorite = itemData ? favoritedIds.has(itemData.id) : false;
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => selectFromAutocomplete(item)}
-                        className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
-                      >
-                        {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
-                        {item}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-2 text-xs text-gray-500 flex justify-between">
-              <span>
-                {inputValue.trim() && !itemExists
-                  ? `"${inputValue}" will be added as a new item`
-                  : loading
-                  ? 'Loading…'
-                  : `${filtered.length} shown / ${items.length} total`}
-              </span>
-              <span className="hidden sm:inline">Tip: search → tap item → rename</span>
+              <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                <span>
+                  {inputValue.trim() && !itemExists
+                    ? `"${inputValue}" will be added as a new item`
+                    : loading
+                      ? 'Loading…'
+                      : `${filtered.length} shown / ${items.length} total`}
+                </span>
+                <span className="hidden sm:inline">Tip: search → tap item → rename</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* ALL ITEMS MODAL */}
-        <div className="bg-white rounded-xl shadow-lg p-3 pt-2 sm:p-4">
-          {loading ? (
-            <div className="text-gray-600 text-sm">Loading items…</div>
-          ) : (
-            (() => {
-              const isFavoritesView = selectItemsFilter === 'FAVORITES';
+          {/* ALL ITEMS MODAL */}
+          <div className="bg-white rounded-xl shadow-lg p-3 pt-2 sm:p-4">
+            {loading ? (
+              <div className="text-gray-600 text-sm">Loading items…</div>
+            ) : (
+              (() => {
+                const isFavoritesView = selectItemsFilter === 'FAVORITES';
 
-              // One unified list:
-              // - ALL: favorites + regular, but sorted alphabetically (no favorites-on-top)
-              // - FAVORITES: favorites only
-              const unifiedItems = (isFavoritesView ? favorites : [...favorites, ...regular])
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name));
+                // One unified list:
+                // - ALL: favorites + regular, but sorted alphabetically (no favorites-on-top)
+                // - FAVORITES: favorites only
+                const unifiedItems = (isFavoritesView ? favorites : [...favorites, ...regular])
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name));
 
-              const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto';
+                const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto';
 
-              return (
-                <>
-                  {/* Filters - All Items and Favorites */}
-                  <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-                      {isFavoritesView ? 'Favorites' : 'All Items'}
-                    </h2>
-                    <span className="text-xs text-gray-500">{unifiedItems.length} shown</span>
-                  </div>
+                return (
+                  <>
+                    {/* Filters - All Items and Favorites */}
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                        {isFavoritesView ? 'Favorites' : 'All Items'}
+                      </h2>
+                      <span className="text-xs text-gray-500">{unifiedItems.length} shown</span>
+                    </div>
 
-                  <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
-                    <button
-                      onClick={() => setSelectItemsFilter('ALL')}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                        selectItemsFilter === 'ALL'
+                    <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+                      <button
+                        onClick={() => setSelectItemsFilter('ALL')}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      All Items
-                    </button>
+                          }`}
+                      >
+                        All Items
+                      </button>
 
-                    <button
-                      onClick={() => setSelectItemsFilter('FAVORITES')}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                        selectItemsFilter === 'FAVORITES'
+                      <button
+                        onClick={() => setSelectItemsFilter('FAVORITES')}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
                           ? 'bg-amber-600 text-white border-amber-600'
                           : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                      }`}
-                    >
-                      Favorites
-                    </button>
-                  </div>
-
-                  {/* Empty states */}
-                  {isFavoritesView && favorites.length === 0 ? (
-                    <div className="text-sm text-gray-500 italic">
-                      Favorite your high-frequency items to keep them on top.
+                          }`}
+                      >
+                        Favorites
+                      </button>
                     </div>
-                  ) : !isFavoritesView && unifiedItems.length === 0 ? (
-                    <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
-                  ) : (
-                    <>
-                      {/* ONE list (mobile + desktop), preserves favorite styling + star behavior */}
-                      <div className={`md:hidden space-y-2 ${LIST_MAX}`}>
-                        {unifiedItems.map((item) => {
-                          const isFavorite = favoritedIds.has(item.id);
-                          return renderMobileRow(item, isFavorite);
-                        })}
+
+                    {/* Empty states */}
+                    {isFavoritesView && favorites.length === 0 ? (
+                      <div className="text-sm text-gray-500 italic">
+                        Favorite your high-frequency items to keep them on top.
                       </div>
+                    ) : !isFavoritesView && unifiedItems.length === 0 ? (
+                      <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
+                    ) : (
+                      <>
+                        {/* ONE list (mobile + desktop), preserves favorite styling + star behavior */}
+                        <div className={`md:hidden space-y-2 ${LIST_MAX}`}>
+                          {unifiedItems.map((item) => {
+                            const isFavorite = favoritedIds.has(item.id);
+                            return renderMobileRow(item, isFavorite);
+                          })}
+                        </div>
 
-                      <div className={`hidden md:block space-y-2 ${LIST_MAX}`}>
-                        {unifiedItems.map((item) => {
-                          const isFavorite = favoritedIds.has(item.id);
-                          return renderDesktopRow(item, isFavorite);
-                        })}
-                      </div>
-                    </>
-                  )}
-                </>
-              );
-            })()
-          )}
-        </div>
-      </div>
-
-{/* EDIT ITEM bottom-slideup (mobile only) */}
-{sheetOpen && selected && (
-  <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
-    <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
-
-    <div
-      className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
-      style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
-    >
-      <div className="max-h-[85vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={closeSheet}
-            className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
-            aria-label="Close"
-            disabled={saving}
-          >
-            ✕
-          </button>
-
-          <div className="font-semibold text-gray-800">Edit Item</div>
-
-          {canDeleteItem(selected) && (
-            <button
-              type="button"
-              onClick={() => deleteItem(selected)}
-              className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
-              disabled={saving}
-            >
-              Delete
-            </button>
-          )}
-          {!canDeleteItem(selected) && <div className="w-16"></div>}
-        </div>
-
-        {/* Name + Favorite Star */}
-        <div className="mt-3">
-          <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
-          <div className="mt-1 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setEditFavorite((p) => !p)}
-              className={
-                editFavorite
-                  ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
-                  : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
-              }
-              
-              aria-label={editFavorite ? 'Unfavorite item' : 'Favorite item'}
-              title={editFavorite ? 'Unfavorite' : 'Favorite'}
-              disabled={saving}
-            >
-              {editFavorite ? '⭐' : '☆'}
-            </button>
-
-            <input
-              ref={nameInputRef}
-              id="item-rename-input"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && saveRename()}
-              className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
-              placeholder="e.g., Grapefruit (ct)"
-              disabled={saving}
-            />
+                        <div className={`hidden md:block space-y-2 ${LIST_MAX}`}>
+                          {unifiedItems.map((item) => {
+                            const isFavorite = favoritedIds.has(item.id);
+                            return renderDesktopRow(item, isFavorite);
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()
+            )}
           </div>
         </div>
 
-        {/* Category Select */}
-        <div className="mt-3">
-          <label className="text-sm font-semibold text-gray-700">Category</label>
-          <select
-            value={editCategory}
-            onChange={(e) => setEditCategory(e.target.value)}
-            className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
-          >
-            {CATEGORY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Save Button */}
-        <div className="flex justify-end mt-4">
-          <button
-            type="button"
-            onClick={saveRename}
-            className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+        {/* EDIT ITEM bottom-slideup (mobile only) */}
+        {sheetOpen && selected && (
+          <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
+            <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
+
+            <div
+              className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
+              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            >
+              <div className="max-h-[85vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    type="button"
+                    onClick={closeSheet}
+                    className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    aria-label="Close"
+                    disabled={saving}
+                  >
+                    ✕
+                  </button>
+
+                  <div className="font-semibold text-gray-800">Edit Item</div>
+
+                  {canDeleteItem(selected) && (
+                    <button
+                      type="button"
+                      onClick={() => deleteItem(selected)}
+                      className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
+                      disabled={saving}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  {!canDeleteItem(selected) && <div className="w-16"></div>}
+                </div>
+
+                {/* Name + Favorite Star */}
+                <div className="mt-3">
+                  <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditFavorite((p) => !p)}
+                      className={
+                        editFavorite
+                          ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
+                          : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+                      }
+
+                      aria-label={editFavorite ? 'Unfavorite item' : 'Favorite item'}
+                      title={editFavorite ? 'Unfavorite' : 'Favorite'}
+                      disabled={saving}
+                    >
+                      {editFavorite ? '⭐' : '☆'}
+                    </button>
+
+                    <input
+                      ref={nameInputRef}
+                      id="item-rename-input"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+                      className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
+                      placeholder="e.g., Grapefruit (ct)"
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+
+                {/* Category Select */}
+                <div className="mt-3">
+                  <label className="text-sm font-semibold text-gray-700">Category</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end mt-4">
+                  <button
+                    type="button"
+                    onClick={saveRename}
+                    className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
-  </div>
-)}
 
-    </div>
-  </div>
-</div>
   );
 }
 

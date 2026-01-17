@@ -111,16 +111,16 @@ export default function Deals() {
       if (!itemInfo) return; // Skip if item not found
 
       const currentPrice = p.price;
-      
+
       // Sort prices to calculate percentiles
       const sorted = [...history].sort((a, b) => a - b);
       const low = sorted[0];
       const high = sorted[sorted.length - 1];
-      
+
       // Calculate 75th percentile (typical high price)
       const p75Index = Math.floor(sorted.length * 0.75);
       const typicalHighPrice = sorted[p75Index];
-      
+
       // Calculate discount % from typical high price
       const discountPercent = ((typicalHighPrice - currentPrice) / typicalHighPrice) * 100;
 
@@ -128,7 +128,7 @@ export default function Deals() {
 
       // Skip if discount is less than 5%
       if (discountPercent < 5) return;
-      
+
       // Calculate average price
       const sum = history.reduce((acc, val) => acc + val, 0);
       const avg = sum / history.length;
@@ -185,7 +185,7 @@ export default function Deals() {
     if (currentHouseholdCode) {
       const itemIds = dealsData.map(d => d.item_id);
       console.log('Item IDs to check:', itemIds);
-      
+
       const { data: listItems, error: listError } = await supabase
         .from('shopping_list')
         .select('item_id, item_name')
@@ -197,7 +197,7 @@ export default function Deals() {
 
       const onListSet = new Set((listItems || []).map((item: any) => item.item_id));
       console.log('Items on list (Set):', Array.from(onListSet));
-      
+
       // Mark which deals are already on the list
       dealsData.forEach(deal => {
         deal.isOnList = onListSet.has(deal.item_id);
@@ -262,9 +262,9 @@ export default function Deals() {
     }
 
     // Update the deals state to mark this item as on list
-    setDeals(prevDeals => 
-      prevDeals.map(deal => 
-        deal.item_id === itemId 
+    setDeals(prevDeals =>
+      prevDeals.map(deal =>
+        deal.item_id === itemId
           ? { ...deal, isOnList: true }
           : deal
       )
@@ -273,8 +273,8 @@ export default function Deals() {
     alert('Added to your list!');
   };
 
-  const filteredDeals = selectedStore === 'all' 
-    ? deals 
+  const filteredDeals = selectedStore === 'all'
+    ? deals
     : deals.filter(d => d.store === selectedStore);
 
   const getDealBadge = (quality: 'good' | 'great' | 'best') => {
@@ -289,22 +289,22 @@ export default function Deals() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
-                🔥 Local Deals
-              </h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
-                {filteredDeals.length} items on sale near you right now!
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              <Header currentPage="Local Deals" />
             </div>
-            <Header currentPage="Local Deals" />
           </div>
         </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
 
         {/* Store Filter */}
         <div className="px-2 sm:px-4 md:px-0 mb-4">
@@ -370,7 +370,7 @@ export default function Deals() {
                           </h3>
                           <p className="text-sm font-semibold text-gray-600">{deal.store}</p>
                         </div>
-                        
+
                         {/* Discount Badge */}
                         <div className="flex-shrink-0">
                           <div className="bg-red-500 text-white rounded-xl px-4 py-2 text-center">
@@ -433,11 +433,10 @@ export default function Deals() {
                             }
                           }}
                           disabled={deal.isOnList}
-                          className={`px-4 py-2 rounded-xl font-semibold transition cursor-pointer text-sm ${
-                            deal.isOnList
-                              ? 'bg-gray-400 text-white cursor-default'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
+                          className={`px-4 py-2 rounded-xl font-semibold transition cursor-pointer text-sm ${deal.isOnList
+                            ? 'bg-gray-400 text-white cursor-default'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
                         >
                           {deal.isOnList ? '✓ On List' : '+ Add to List'}
                         </button>

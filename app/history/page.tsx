@@ -410,37 +410,22 @@ function HistoryContent() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
-          {/* Desktop */}
-          <div className="hidden md:flex justify-between items-start">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-4xl font-bold text-gray-800">Price History</h1>
-              <div className="flex items-center gap-3 mt-2">
-                <p className="text-xs md:text-sm text-gray-600">Track how prices change over time</p>
-                <button
-                  onClick={shareLink}
-                  className="relative text-teal-500 hover:text-teal-600 transition cursor-pointer"
-                  title="Share this page"
-                >
-                  <span className="text-base">🔗</span>
-                  {showCopied && (
-                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                      Copied!
-                    </span>
-                  )}
-                </button>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              <Header currentPage="Price History" />
             </div>
-            <Header currentPage="Price History" />
-          </div>
-
-          {/* Mobile */}
-          <div className="md:hidden">
-            <Header currentPage="Price History" />
           </div>
         </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
 
         {/* Filters - Desktop: Item then Store */}
         <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">

@@ -66,22 +66,22 @@ export default function InsightsPage() {
   const priceIncreases = priceTrends.filter(item => parseFloat(item.pct_change) > 0).reverse();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">
-                💡 Shopping Insights
-              </h1>
-              <p className="hidden md:block text-xs md:text-sm text-gray-600 mt-2">
-                Your grocery patterns and price trends
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+      <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <span className="text-2xl">ᯓ</span>
+              <span className="hidden sm:inline">SmartSaveAI</span>
+            </Link>
+            <div className="w-auto">
+              <Header currentPage="Insights" />
             </div>
-            <Header currentPage="Insights" />
           </div>
         </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
 
         {loading ? (
           <div className="px-2 sm:px-4 md:px-0">
@@ -97,122 +97,122 @@ export default function InsightsPage() {
           </div>
         ) : (
           <div className="px-2 sm:px-4 md:px-0">
-           
-           {/* Most Purchased Items */}
+
+            {/* Most Purchased Items */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">
                 🛒 Frequently Purchased
-            </h2>
-            {frequentItems.filter(item => item.purchase_count > 1).length > 0 ? (
+              </h2>
+              {frequentItems.filter(item => item.purchase_count > 1).length > 0 ? (
                 <div className="max-h-64 overflow-y-auto space-y-3">
-                {frequentItems
+                  {frequentItems
                     .filter(item => item.purchase_count > 1)
                     .sort((a, b) => b.purchase_count - a.purchase_count)
                     .map((item) => {
-                    const categoryStyle = getCategoryColor(item.category);
-                    return (
+                      const categoryStyle = getCategoryColor(item.category);
+                      return (
                         <div
-                        key={item.item_id}
-                        className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${categoryStyle}`}
+                          key={item.item_id}
+                          className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${categoryStyle}`}
                         >
-                        <div className="flex-1">
-                        <Link 
-                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                            className="hover:text-blue-600 hover:underline"
-                        >
-                            <p className="font-medium text-gray-800">{item.item_name}</p>
-                        </Link>
-                        <p className="text-sm text-gray-600">
-                            Avg paid: ${parseFloat(item.avg_price_paid).toFixed(2)}
-                        </p>
-                        </div>
-                        <div className="text-right">
+                          <div className="flex-1">
+                            <Link
+                              href={`/history?item=${encodeURIComponent(item.item_name)}`}
+                              className="hover:text-blue-600 hover:underline"
+                            >
+                              <p className="font-medium text-gray-800">{item.item_name}</p>
+                            </Link>
+                            <p className="text-sm text-gray-600">
+                              Avg paid: ${parseFloat(item.avg_price_paid).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="text-right">
                             <p className="text-2xl font-bold text-gray-800">
-                            {item.purchase_count}
+                              {item.purchase_count}
                             </p>
                             <p className="text-xs text-gray-600">times</p>
+                          </div>
                         </div>
-                        </div>
-                    );
+                      );
                     })}
                 </div>
-            ) : (
+              ) : (
                 <p className="text-gray-600">No frequently purchased items yet. Buy items multiple times to see patterns!</p>
-            )}
+              )}
             </div>
 
             {/* Price Decreases */}
             {priceDecreases.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                📉 Prices Going Down (Last 30 Days)
+                  📉 Prices Going Down (Last 30 Days)
                 </h2>
                 <div className="max-h-96 overflow-y-auto space-y-3">
-                {priceDecreases.map((item, idx) => {
+                  {priceDecreases.map((item, idx) => {
                     const categoryStyle = getCategoryColor(item.category);
                     return (
-                    <div
+                      <div
                         key={idx}
                         className={`flex items-center justify-between p-3 rounded-lg border ${categoryStyle}`}
-                    >
-                    <div className="flex-1">
-                    <Link 
-                        href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                        className="hover:text-blue-600 hover:underline"
-                    >
-                        <p className="font-medium text-gray-800">{item.item_name}</p>
-                    </Link>
-                    <p className="text-sm text-gray-600">
-                        {item.store_name}: ${item.price_30_days_ago} → ${item.current_price}
-                    </p>
-                    </div>
-                        <div className="text-right">
-                        <p className="text-xl font-bold text-green-600">
-                            {Math.round(parseFloat(item.pct_change))}%
-                        </p>
+                      >
+                        <div className="flex-1">
+                          <Link
+                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
+                            className="hover:text-blue-600 hover:underline"
+                          >
+                            <p className="font-medium text-gray-800">{item.item_name}</p>
+                          </Link>
+                          <p className="text-sm text-gray-600">
+                            {item.store_name}: ${item.price_30_days_ago} → ${item.current_price}
+                          </p>
                         </div>
-                    </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-green-600">
+                            {Math.round(parseFloat(item.pct_change))}%
+                          </p>
+                        </div>
+                      </div>
                     );
-                })}
+                  })}
                 </div>
-            </div>
+              </div>
             )}
 
             {/* Price Increases */}
             {priceIncreases.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                📈 Prices Going Up (Last 30 Days)
+                  📈 Prices Going Up (Last 30 Days)
                 </h2>
                 <div className="max-h-96 overflow-y-auto space-y-3">
-                {priceIncreases.map((item, idx) => {
+                  {priceIncreases.map((item, idx) => {
                     const categoryStyle = getCategoryColor(item.category);
                     return (
-                    <div
+                      <div
                         key={idx}
                         className={`flex items-center justify-between p-3 rounded-lg border ${categoryStyle}`}
-                    >
+                      >
                         <div className="flex-1">
-                        <Link 
+                          <Link
                             href={`/history?item=${encodeURIComponent(item.item_name)}`}
                             className="hover:text-blue-600 hover:underline"
-                        >
+                          >
                             <p className="font-medium text-gray-800">{item.item_name}</p>
-                        </Link>
-                        <p className="text-sm text-gray-600">
+                          </Link>
+                          <p className="text-sm text-gray-600">
                             {item.store_name}: ${item.price_30_days_ago} → ${item.current_price}
-                        </p>
+                          </p>
                         </div>
                         <div className="text-right">
-                        <p className="text-xl font-bold text-red-600">
+                          <p className="text-xl font-bold text-red-600">
                             +{Math.round(parseFloat(item.pct_change))}%
-                        </p>
+                          </p>
                         </div>
-                    </div>
+                      </div>
                     );
-                })}
+                  })}
                 </div>
-            </div>
+              </div>
             )}
 
             {/* No Changes Message */}
