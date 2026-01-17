@@ -49,9 +49,9 @@ export default function ShoppingList() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
 
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
-  const CATEGORY_OPTIONS = ['Produce','Pantry','Dairy','Beverage','Meat','Frozen','Refrigerated','Other'];
+  const CATEGORY_OPTIONS = ['Produce', 'Pantry', 'Dairy', 'Beverage', 'Meat', 'Frozen', 'Refrigerated', 'Other'];
   //const itemsWithoutCategory = listItems.filter(item => {const cat = itemCategoryByName[item.item_name];return !cat || cat === 'Other' || cat.trim() === '';});
-  
+
   const CATEGORY_ORDER = [
     'Produce',
     'Meat',
@@ -65,12 +65,12 @@ export default function ShoppingList() {
     'Health',
     'Other',
   ];
-  
+
   const categoryRank = (cat: string) => {
     const idx = CATEGORY_ORDER.indexOf(cat);
     return idx === -1 ? 999 : idx;
   };
-  
+
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
       'Produce': 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -87,7 +87,7 @@ export default function ShoppingList() {
     };
     return colors[category] || 'bg-slate-50 border-slate-200 text-slate-700';
   };
-  
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -146,10 +146,10 @@ export default function ShoppingList() {
     }
   };
 
-   // ITEM REMOVED FROM SHOPPING LIST (to feed toast notification)
-   const [removedFromListToastItem, setUndoRemoveItem] = useState<ListItem | null>(null);
-   const [removedFromListToastTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
-   
+  // ITEM REMOVED FROM SHOPPING LIST (to feed toast notification)
+  const [removedFromListToastItem, setUndoRemoveItem] = useState<ListItem | null>(null);
+  const [removedFromListToastTimeout, setUndoRemoveTimeout] = useState<NodeJS.Timeout | null>(null);
+
   // ITEM CHECKED OFF SHOPPING LIST (to feed toast notification)
   const [checkedOffListToastItem, setUndoCheckItem] = useState<ListItem | null>(null);
   const [checkedOffListToastTimeout, setUndoCheckTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -169,21 +169,21 @@ export default function ShoppingList() {
 
   const undoCheck = async () => {
     if (!checkedOffListToastItem) return;
-  
+
     if (checkedOffListToastTimeout) {
       clearTimeout(checkedOffListToastTimeout);
       setUndoCheckTimeout(null);
     }
-  
+
     try {
       const { error } = await supabase
         .from('shopping_list')
         .update({ checked: false })
         .eq('id', checkedOffListToastItem.id)
         .eq('user_id', SHARED_USER_ID);
-  
+
       if (error) throw error;
-  
+
       await loadData();
     } catch (e) {
       console.error('Error undoing check:', e);
@@ -192,32 +192,32 @@ export default function ShoppingList() {
       setUndoCheckItem(null);
     }
   };
-  
+
   // TRIP COMPLETE toast (all items for a store are checked)
-const [tripCompleteToastStore, setTripCompleteToastStore] = useState<string | null>(null);
-const [tripCompleteToastTimeout, setTripCompleteToastTimeout] = useState<NodeJS.Timeout | null>(null);
-const TRIP_COMPLETE_DELAY_MS = 5000;
+  const [tripCompleteToastStore, setTripCompleteToastStore] = useState<string | null>(null);
+  const [tripCompleteToastTimeout, setTripCompleteToastTimeout] = useState<NodeJS.Timeout | null>(null);
+  const TRIP_COMPLETE_DELAY_MS = 5000;
 
-// Prevent double-firing for the same store while the toast is visible
-const tripCompleteToastLockRef = useRef<string | null>(null);
+  // Prevent double-firing for the same store while the toast is visible
+  const tripCompleteToastLockRef = useRef<string | null>(null);
 
-const showTripCompleteToast = (storeName: string) => {
-  // lock per-store so we don't fire twice due to re-renders / loadData
-  if (tripCompleteToastLockRef.current === storeName) return;
+  const showTripCompleteToast = (storeName: string) => {
+    // lock per-store so we don't fire twice due to re-renders / loadData
+    if (tripCompleteToastLockRef.current === storeName) return;
 
-  if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+    if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
 
-  tripCompleteToastLockRef.current = storeName;
-  setTripCompleteToastStore(storeName);
+    tripCompleteToastLockRef.current = storeName;
+    setTripCompleteToastStore(storeName);
 
-  const t = setTimeout(() => {
-    setTripCompleteToastStore(null);
-    setTripCompleteToastTimeout(null);
-    tripCompleteToastLockRef.current = null;
-  }, 5000);
+    const t = setTimeout(() => {
+      setTripCompleteToastStore(null);
+      setTripCompleteToastTimeout(null);
+      tripCompleteToastLockRef.current = null;
+    }, 5000);
 
-  setTripCompleteToastTimeout(t);
-};
+    setTripCompleteToastTimeout(t);
+  };
 
 
   useEffect(() => {
@@ -233,9 +233,15 @@ const showTripCompleteToast = (storeName: string) => {
   const [storePrefs, setStorePrefs] = useState<Record<string, StoreChoice>>({});
   const STORE_PREF_KEY = 'store_prefs_by_item';
 
-  const loadStorePrefs = () => {
+  const loadStorePrefs = (currentHouseholdCode?: string | null) => {
     try {
-      const raw = localStorage.getItem(STORE_PREF_KEY);
+      // If we have a household code, use that specific key
+      // Otherwise fallback to global key (legacy behavior or no-household)
+      const key = currentHouseholdCode
+        ? `${STORE_PREF_KEY}_${currentHouseholdCode}`
+        : STORE_PREF_KEY;
+
+      const raw = localStorage.getItem(key);
       if (!raw) return {};
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') return parsed as Record<string, StoreChoice>;
@@ -245,9 +251,13 @@ const showTripCompleteToast = (storeName: string) => {
     }
   };
 
-  const persistStorePrefs = (prefs: Record<string, StoreChoice>) => {
+  const persistStorePrefs = (prefs: Record<string, StoreChoice>, currentHouseholdCode?: string | null) => {
     try {
-      localStorage.setItem(STORE_PREF_KEY, JSON.stringify(prefs));
+      const key = currentHouseholdCode
+        ? `${STORE_PREF_KEY}_${currentHouseholdCode}`
+        : STORE_PREF_KEY;
+
+      localStorage.setItem(key, JSON.stringify(prefs));
     } catch {
       // ignore
     }
@@ -256,7 +266,7 @@ const showTripCompleteToast = (storeName: string) => {
   const setItemStorePreference = (itemName: string, choice: StoreChoice) => {
     setStorePrefs((prev) => {
       const next = { ...prev, [itemName]: choice };
-      persistStorePrefs(next);
+      persistStorePrefs(next, householdCode);
       return next;
     });
   };
@@ -301,13 +311,13 @@ const showTripCompleteToast = (storeName: string) => {
   const [editModalPrice, setEditModalPrice] = useState('');
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
-  const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name): [];
+  const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name) : [];
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
   const storeSelectRef = useRef<HTMLSelectElement | null>(null);
   const [needsStoreHint, setNeedsStoreHint] = useState(false);
   const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
   const [editModalPriceDirty, setEditModalPriceDirty] = useState(false);
-  
+
 
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
     setEditModalItem(item);
@@ -352,69 +362,69 @@ const showTripCompleteToast = (storeName: string) => {
     setEditModalPriceDirty(false);
     setNeedsStoreHint(false);
   };
-  
-// SAVE EDIT FUNCTION
-const saveEdit = async () => {
-  if (!editModalItem || !editModalName.trim()) return;
 
-  const newName = editModalName.trim();
-  const oldName = editModalItem.item_name;
+  // SAVE EDIT FUNCTION
+  const saveEdit = async () => {
+    if (!editModalItem || !editModalName.trim()) return;
 
-  setSavingEdit(true);
+    const newName = editModalName.trim();
+    const oldName = editModalItem.item_name;
 
-  try {
-    // 1) Rename + category update (items table)
-    if (newName !== oldName) {
-      const { data: existingItem, error: existingErr } = await supabase
-        .from('items')
-        .select('id')
-        .eq('name', newName)
-        .eq('user_id', SHARED_USER_ID)
-        .maybeSingle();
+    setSavingEdit(true);
 
-      if (existingErr) throw existingErr;
+    try {
+      // 1) Rename + category update (items table)
+      if (newName !== oldName) {
+        const { data: existingItem, error: existingErr } = await supabase
+          .from('items')
+          .select('id')
+          .eq('name', newName)
+          .eq('user_id', SHARED_USER_ID)
+          .maybeSingle();
 
-      if (existingItem && existingItem.id !== editModalItem.item_id) {
-        alert('An item with this name already exists.');
-        setSavingEdit(false);
-        return;
+        if (existingErr) throw existingErr;
+
+        if (existingItem && existingItem.id !== editModalItem.item_id) {
+          alert('An item with this name already exists.');
+          setSavingEdit(false);
+          return;
+        }
+
+        const { error: itemError } = await supabase
+          .from('items')
+          .update({ name: newName, category: editModalCategory || 'Other' })
+          .eq('id', editModalItem.item_id)
+          .eq('user_id', SHARED_USER_ID);
+
+        if (itemError) throw itemError;
+
+        const { error: listError } = await supabase
+          .from('shopping_list')
+          .update({ item_name: newName })
+          .eq('item_id', editModalItem.item_id)
+          .eq('user_id', SHARED_USER_ID);
+
+        if (listError) throw listError;
+
+        const { error: phError } = await supabase
+          .from('price_history')
+          .update({ item_name: newName })
+          .eq('item_id', editModalItem.item_id)
+          .eq('user_id', SHARED_USER_ID);
+
+        if (phError) throw phError;
+      } else {
+        // no rename — just update category
+        const { error: catErr } = await supabase
+          .from('items')
+          .update({ category: editModalCategory || 'Other' })
+          .eq('id', editModalItem.item_id)
+          .eq('user_id', SHARED_USER_ID);
+
+        if (catErr) throw catErr;
       }
 
-      const { error: itemError } = await supabase
-        .from('items')
-        .update({ name: newName, category: editModalCategory || 'Other' })
-        .eq('id', editModalItem.item_id)
-        .eq('user_id', SHARED_USER_ID);
-
-      if (itemError) throw itemError;
-
-      const { error: listError } = await supabase
-        .from('shopping_list')
-        .update({ item_name: newName })
-        .eq('item_id', editModalItem.item_id)
-        .eq('user_id', SHARED_USER_ID);
-
-      if (listError) throw listError;
-
-      const { error: phError } = await supabase
-        .from('price_history')
-        .update({ item_name: newName })
-        .eq('item_id', editModalItem.item_id)
-        .eq('user_id', SHARED_USER_ID);
-
-      if (phError) throw phError;
-    } else {
-      // no rename — just update category
-      const { error: catErr } = await supabase
-        .from('items')
-        .update({ category: editModalCategory || 'Other' })
-        .eq('id', editModalItem.item_id)
-        .eq('user_id', SHARED_USER_ID);
-
-      if (catErr) throw catErr;
-    }
-
-    // 2) Quantity update
+      // 2) Quantity update
       const qtyNum = parseFloat(editModalQuantity || '0');
       const a = Math.round((qtyNum || 0) * 1000) / 1000;
       const b = Math.round((editModalItem.quantity || 0) * 1000) / 1000;
@@ -425,55 +435,55 @@ const saveEdit = async () => {
           .update({ quantity: qtyNum })
           .eq('id', editModalItem.id)
           .eq('user_id', SHARED_USER_ID);
-      
+
         if (qtyError) throw qtyError;
       }
-    
 
-    // ✅ GUARD: Price changed but no store selected → show modal instead of crashing
-    const priceChanged = !!editModalPrice && editModalPrice !== editModalOriginalPrice;
-    const storeMissing = !editModalStore || editModalStore.trim() === '';
-    if (priceChanged && storeMissing) {
-      setSavingEdit(false);
-      setStoreRequiredOpen(true);
-      return;
-    }
 
-    // 3) Price insert
-    if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
-      const priceNum = parseFloat(editModalPrice);
-      if (!isNaN(priceNum) && priceNum > 0) {
-        const storeId = storesByName[editModalStore];
-        if (!storeId) throw new Error('Store not found');
-
-        const recordedDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-        const { error: priceError } = await supabase.from('price_history').insert({
-          item_id: editModalItem.item_id,
-          item_name: newName, // safe (same as oldName if no rename)
-          store_id: storeId,
-          store: editModalStore,
-          price: priceNum.toFixed(2),
-          user_id: SHARED_USER_ID,
-          household_code: householdCode,
-          recorded_date: recordedDate,
-        });
-
-        if (priceError) throw priceError;
-
-        setLastUsedStore(editModalStore);
-        localStorage.setItem('last_price_store', editModalStore);
+      // ✅ GUARD: Price changed but no store selected → show modal instead of crashing
+      const priceChanged = !!editModalPrice && editModalPrice !== editModalOriginalPrice;
+      const storeMissing = !editModalStore || editModalStore.trim() === '';
+      if (priceChanged && storeMissing) {
+        setSavingEdit(false);
+        setStoreRequiredOpen(true);
+        return;
       }
-    }
 
-    await loadData();
-    closeEditModal();
-  } catch (error) {
-    console.error('Error saving edit:', error);
-    alert('Failed to save changes. Check your connection and try again.');
-    setSavingEdit(false);
-  }
-};
+      // 3) Price insert
+      if (editModalPrice && editModalPrice !== editModalOriginalPrice) {
+        const priceNum = parseFloat(editModalPrice);
+        if (!isNaN(priceNum) && priceNum > 0) {
+          const storeId = storesByName[editModalStore];
+          if (!storeId) throw new Error('Store not found');
+
+          const recordedDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+          const { error: priceError } = await supabase.from('price_history').insert({
+            item_id: editModalItem.item_id,
+            item_name: newName, // safe (same as oldName if no rename)
+            store_id: storeId,
+            store: editModalStore,
+            price: priceNum.toFixed(2),
+            user_id: SHARED_USER_ID,
+            household_code: householdCode,
+            recorded_date: recordedDate,
+          });
+
+          if (priceError) throw priceError;
+
+          setLastUsedStore(editModalStore);
+          localStorage.setItem('last_price_store', editModalStore);
+        }
+      }
+
+      await loadData();
+      closeEditModal();
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      alert('Failed to save changes. Check your connection and try again.');
+      setSavingEdit(false);
+    }
+  };
 
 
   // =========================
@@ -560,7 +570,7 @@ const saveEdit = async () => {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setStorePrefs(loadStorePrefs());
+      setStorePrefs(loadStorePrefs(householdCode));
     }
 
     if (householdCode) {
@@ -569,33 +579,33 @@ const saveEdit = async () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdCode]);
 
-// IN EDIT ITEM, WHEN STORE SELECTED, UPDATE PRICE IMMEDIATELY
-useEffect(() => {
-  if (!editModalOpen || !editModalItem) return;
+  // IN EDIT ITEM, WHEN STORE SELECTED, UPDATE PRICE IMMEDIATELY
+  useEffect(() => {
+    if (!editModalOpen || !editModalItem) return;
 
-  // ✅ If user has started typing a new price, never overwrite it
-  if (editModalPriceDirty) return;
+    // ✅ If user has started typing a new price, never overwrite it
+    if (editModalPriceDirty) return;
 
-  // No store selected → clear price context
-  if (!editModalStore) {
-    setEditModalOriginalPrice('');
-    setEditModalPrice('');
-    return;
-  }
+    // No store selected → clear price context
+    if (!editModalStore) {
+      setEditModalOriginalPrice('');
+      setEditModalPrice('');
+      return;
+    }
 
-  const key = `${editModalStore}-${editModalItem.item_name}`;
-  const priceData = prices[key];
+    const key = `${editModalStore}-${editModalItem.item_name}`;
+    const priceData = prices[key];
 
-  if (priceData?.price) {
-    setEditModalPrice(priceData.price);
-    setEditModalOriginalPrice(priceData.price);
-  } else {
-    setEditModalPrice('');
-    setEditModalOriginalPrice('');
-  }
-}, [editModalStore, editModalOpen, editModalItem, prices, editModalPriceDirty]);
+    if (priceData?.price) {
+      setEditModalPrice(priceData.price);
+      setEditModalOriginalPrice(priceData.price);
+    } else {
+      setEditModalPrice('');
+      setEditModalOriginalPrice('');
+    }
+  }, [editModalStore, editModalOpen, editModalItem, prices, editModalPriceDirty]);
 
-  
+
   // LOAD DATA CONSTANT
 
   const loadData = async () => {
@@ -610,61 +620,61 @@ useEffect(() => {
     }
 
     const { data: tripsData, error: tripsError } = await supabase
-    .from('trips')
-    .select('id, store_id')
-    .eq('household_code', householdCode)
-    .is('ended_at', null)
-    .order('started_at', { ascending: false });
-  
-  if (tripsError) {
-    console.error('Error loading trips:', tripsError);
-    setActiveTrips({});
-  } else {
-    const tripsByStore: { [store_id: string]: string } = {};
-  
-    (tripsData ?? []).forEach((trip) => {
-      if (trip.store_id && !tripsByStore[trip.store_id]) {
-        tripsByStore[trip.store_id] = trip.id;
-      }
-    });
-  
-    setActiveTrips(tripsByStore);
-    console.log('tripsError?', !!tripsError, 'tripsData length', tripsData?.length);
-  }
+      .from('trips')
+      .select('id, store_id')
+      .eq('household_code', householdCode)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false });
+
+    if (tripsError) {
+      console.error('Error loading trips:', tripsError);
+      setActiveTrips({});
+    } else {
+      const tripsByStore: { [store_id: string]: string } = {};
+
+      (tripsData ?? []).forEach((trip) => {
+        if (trip.store_id && !tripsByStore[trip.store_id]) {
+          tripsByStore[trip.store_id] = trip.id;
+        }
+      });
+
+      setActiveTrips(tripsByStore);
+      console.log('tripsError?', !!tripsError, 'tripsData length', tripsData?.length);
+    }
 
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
-    .from('items')
-    .select('id, name, category')
-    .eq('user_id', SHARED_USER_ID)
-    .order('name');
+      .from('items')
+      .select('id, name, category')
+      .eq('user_id', SHARED_USER_ID)
+      .order('name');
 
     if (itemsData) {
-    const map: Record<string, string> = {};
-    itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
-    setItemCategoryByName(map);
+      const map: Record<string, string> = {};
+      itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
+      setItemCategoryByName(map);
     }
 
     if (itemsError) console.error('Error loading items:', itemsError);
 
     if (itemsData) {
-    setAllItems(itemsData as ItemRow[]);
-    setItems(itemsData.map((i) => i.name));
+      setAllItems(itemsData as ItemRow[]);
+      setItems(itemsData.map((i) => i.name));
     }
 
     // Load favorites from junction table
     const { data: favData } = await supabase
-    .from('household_item_favorites')
-    .select('item_id')
-    .eq('household_code', householdCode);
+      .from('household_item_favorites')
+      .select('item_id')
+      .eq('household_code', householdCode);
 
     const favIds = favData?.map(f => f.item_id) || [];
     setFavoritesIds(favIds);
 
     // Convert IDs to names for UI
     if (itemsData) {
-    const favNames = itemsData.filter((i) => favIds.includes(i.id)).map((i) => i.name);
-    setFavorites(favNames);
+      const favNames = itemsData.filter((i) => favIds.includes(i.id)).map((i) => i.name);
+      setFavorites(favNames);
     }
 
     const { data: listData, error: listError } = await supabase
@@ -699,80 +709,80 @@ useEffect(() => {
       setPrices(pricesObj);
     }
 
-// Load deals - items with valid flyer prices that are good deals
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+    // Load deals - items with valid flyer prices that are good deals
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-const { data: flyerPrices } = await supabase
-  .from('price_history')
-  .select('*')
-  .gte('valid_until', today.toISOString())
-  .order('recorded_date', { ascending: false });
+    const { data: flyerPrices } = await supabase
+      .from('price_history')
+      .select('*')
+      .gte('valid_until', today.toISOString())
+      .order('recorded_date', { ascending: false });
 
-if (flyerPrices && flyerPrices.length > 0) {
-  const dealItems = new Set<string>();
+    if (flyerPrices && flyerPrices.length > 0) {
+      const dealItems = new Set<string>();
 
-  flyerPrices.forEach((flyer: any) => {
-    const itemName = flyer.item_name;
-    const flyerPrice = parseFloat(flyer.price);
+      flyerPrices.forEach((flyer: any) => {
+        const itemName = flyer.item_name;
+        const flyerPrice = parseFloat(flyer.price);
 
-    // Get all regular prices for this item from price_history
-    const itemRegularPrices = pricesData?.filter((p: any) => p.item_name === itemName) || [];
-    const itemPrices = itemRegularPrices
-      .map((p: any) => parseFloat(p.price))
-      .filter((p: number) => !isNaN(p) && p > 0);
+        // Get all regular prices for this item from price_history
+        const itemRegularPrices = pricesData?.filter((p: any) => p.item_name === itemName) || [];
+        const itemPrices = itemRegularPrices
+          .map((p: any) => parseFloat(p.price))
+          .filter((p: number) => !isNaN(p) && p > 0);
 
-    if (itemPrices.length > 0) {
-      // Calculate 75th percentile (typical price)
-      const sorted = [...itemPrices].sort((a, b) => a - b);
-      const index = Math.ceil(sorted.length * 0.75) - 1;
-      const percentile75 = sorted[Math.max(0, index)];
+        if (itemPrices.length > 0) {
+          // Calculate 75th percentile (typical price)
+          const sorted = [...itemPrices].sort((a, b) => a - b);
+          const index = Math.ceil(sorted.length * 0.75) - 1;
+          const percentile75 = sorted[Math.max(0, index)];
 
-      // If flyer price is better than typical price, it's a deal
-      if (flyerPrice < percentile75) {
-        dealItems.add(itemName);
+          // If flyer price is better than typical price, it's a deal
+          if (flyerPrice < percentile75) {
+            dealItems.add(itemName);
+          }
+        }
+      });
+
+      setDealsItemNames(dealItems);
+    }
+
+    // =========================
+    // Recent items (ID-based; preserves checked_at desc order)
+    // =========================
+    if (!householdCode) {
+      setRecentItemIds([]);
+    } else {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: recentData, error: recentErr } = await supabase
+        .from('shopping_list_events')
+        .select('item_id, checked_at')
+        .eq('household_code', householdCode)
+        .not('checked_at', 'is', null)
+        .gte('checked_at', thirtyDaysAgo)
+        .order('checked_at', { ascending: false })
+        .limit(250);
+
+      if (recentErr) {
+        console.error('[RECENT] query error:', recentErr);
+        setRecentItemIds([]);
+      } else {
+        const seen = new Set<number>();
+        const uniqueRecentIds = (recentData ?? [])
+          .map((r) => r.item_id)
+          .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+          .filter((id) => {
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          })
+          .slice(0, 50);
+
+        setRecentItemIds(uniqueRecentIds);
       }
     }
-  });
-
-  setDealsItemNames(dealItems);
-}    
-
-// =========================
-// Recent items (ID-based; preserves checked_at desc order)
-// =========================
-if (!householdCode) {
-  setRecentItemIds([]);
-} else {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  const { data: recentData, error: recentErr } = await supabase
-    .from('shopping_list_events')
-    .select('item_id, checked_at')
-    .eq('household_code', householdCode)
-    .not('checked_at', 'is', null)
-    .gte('checked_at', thirtyDaysAgo)
-    .order('checked_at', { ascending: false })
-    .limit(250);
-
-  if (recentErr) {
-    console.error('[RECENT] query error:', recentErr);
-    setRecentItemIds([]);
-  } else {
-    const seen = new Set<number>();
-    const uniqueRecentIds = (recentData ?? [])
-      .map((r) => r.item_id)
-      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
-      .filter((id) => {
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      })
-      .slice(0, 50);
-
-    setRecentItemIds(uniqueRecentIds);
-  }
-}
 
     setLoading(false);
   };
@@ -1044,7 +1054,7 @@ if (!householdCode) {
         li.id === id ? { ...li, checked: newCheckedState } : li
       );
       setListItems(nextListItems);
-      
+
       if (newCheckedState) {
         const effectiveStoreName = getEffectiveStore(item.item_name); // store grouping used in UI
 
@@ -1053,11 +1063,11 @@ if (!householdCode) {
             const s = getEffectiveStore(li.item_name);
             return s === effectiveStoreName && !li.checked;
           });
-      
+
           if (!uncheckedRemainingForStore) {
             setTimeout(() => {
               showTripCompleteToast(effectiveStoreName);
-            }, TRIP_COMPLETE_DELAY_MS);            
+            }, TRIP_COMPLETE_DELAY_MS);
           }
         }
 
@@ -1075,7 +1085,7 @@ if (!householdCode) {
         if (!response.ok) throw new Error('Failed to check item');
 
         await loadData();
-          // 🔔 SHOW TOAST
+        // 🔔 SHOW TOAST
         showCheckedOffListToast(item);
 
       } else {
@@ -1092,12 +1102,12 @@ if (!householdCode) {
   const removeItem = async (id: string) => {
     const item = listItems.find((li) => li.id === id);
     if (!item) return;
-  
+
     setListItems(listItems.filter((li) => li.id !== id));
     setUndoRemoveItem(item);
-  
+
     if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
-  
+
     const timeout = setTimeout(async () => {
       try {
         const { error } = await supabase
@@ -1105,7 +1115,7 @@ if (!householdCode) {
           .delete()
           .eq('id', id)
           .eq('household_code', householdCode); // Changed from user_id + SHARED_USER_ID
-        
+
         if (error) throw new Error(`Failed to remove item: ${error.message}`);
       } catch (error) {
         console.error('Error removing item:', error);
@@ -1116,7 +1126,7 @@ if (!householdCode) {
         setUndoRemoveTimeout(null);
       }
     }, 2500);
-  
+
     setUndoRemoveTimeout(timeout);
   };
 
@@ -1227,8 +1237,8 @@ if (!householdCode) {
     filterLetter === 'All'
       ? [...allItems].sort((a, b) => a.name.localeCompare(b.name))
       : [...allItems]
-          .filter((it) => it.name.toUpperCase().startsWith(filterLetter))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        .filter((it) => it.name.toUpperCase().startsWith(filterLetter))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
   const filteredItems = filteredItemRows.map((it) => it.name);
 
@@ -1238,41 +1248,41 @@ if (!householdCode) {
   // ✅ ID-based “already on list” set
   const listItemIdsSet = new Set(listItems.map((li) => li.item_id));
 
-// =========================
-// Build Mode (ID-based)
-// =========================
+  // =========================
+  // Build Mode (ID-based)
+  // =========================
 
-// 1) IDs already on the shopping list
-const listIds = new Set<number>(
-  listItems
-    .map((li) => li.item_id)
-    .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
-);
+  // 1) IDs already on the shopping list
+  const listIds = new Set<number>(
+    listItems
+      .map((li) => li.item_id)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+  );
 
-// 2) available items = all items minus what’s already on the list
-const buildModeAvailableAll = allItems.filter((it) => !listIds.has(it.id));
+  // 2) available items = all items minus what’s already on the list
+  const buildModeAvailableAll = allItems.filter((it) => !listIds.has(it.id));
 
-// 3) recent ranking (0 = most recent)
-const recentRank = new Map<number, number>();
-recentItemIds.forEach((id, idx) => recentRank.set(id, idx));
+  // 3) recent ranking (0 = most recent)
+  const recentRank = new Map<number, number>();
+  recentItemIds.forEach((id, idx) => recentRank.set(id, idx));
 
-// 4) filter pills logic
-const favoriteIdSet = new Set<number>(favoritesIds);
+  // 4) filter pills logic
+  const favoriteIdSet = new Set<number>(favoritesIds);
 
-const buildModeAllCount = buildModeAvailableAll.length;
-const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id)).length;
-const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
+  const buildModeAllCount = buildModeAvailableAll.length;
+  const buildModeFavoritesCount = buildModeAvailableAll.filter((it) => favoriteIdSet.has(it.id)).length;
+  const buildModeRecentCount = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
 
-const favoriteNameSet = new Set(favorites);
+  const favoriteNameSet = new Set(favorites);
 
-const buildModeAvailableItems =
-  selectItemsFilter === 'FAVORITES'
-    ? buildModeAvailableAll.filter((it) => favoriteNameSet.has(it.name))
-    : selectItemsFilter === 'RECENT'
-    ? buildModeAvailableAll
-        .filter((it) => recentRank.has(it.id))
-        .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity))
-    : buildModeAvailableAll;
+  const buildModeAvailableItems =
+    selectItemsFilter === 'FAVORITES'
+      ? buildModeAvailableAll.filter((it) => favoriteNameSet.has(it.name))
+      : selectItemsFilter === 'RECENT'
+        ? buildModeAvailableAll
+          .filter((it) => recentRank.has(it.id))
+          .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity))
+        : buildModeAvailableAll;
 
 
   return (
@@ -1291,17 +1301,15 @@ const buildModeAvailableItems =
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMobileMode('build')}
-              className={`py-2 rounded-lg text-sm cursor-pointer transition ${
-                mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
-              }`}
+              className={`py-2 rounded-lg text-sm cursor-pointer transition ${mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
+                }`}
             >
               Build Mode
             </button>
             <button
               onClick={() => setMobileMode('store')}
-              className={`py-2 rounded-lg text-sm cursor-pointer transition ${
-                mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
-              }`}
+              className={`py-2 rounded-lg text-sm cursor-pointer transition ${mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
+                }`}
             >
               Store Mode
             </button>
@@ -1315,9 +1323,8 @@ const buildModeAvailableItems =
           <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
             <button
               onClick={() => setFilterLetter('All')}
-              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               All
             </button>
@@ -1327,9 +1334,8 @@ const buildModeAvailableItems =
                 <button
                   key={letter}
                   onClick={() => toggleLetter(letter)}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${
-                    filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {letter}
                 </button>
@@ -1337,57 +1343,57 @@ const buildModeAvailableItems =
           </div>
         </div>
 
-{/* Add to List Widget - Desktop + Mobile(Build) */}
-{(!isMobile || mobileMode === 'build') && (
-  <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-    <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
+        {/* Add to List Widget - Desktop + Mobile(Build) */}
+        {(!isMobile || mobileMode === 'build') && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
 
-    <div className="relative autocomplete-container">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Select existing or add new"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-          value={newItem}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-          onFocus={() => {
-            const listIds = new Set(
-              listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
-            );
-            const available = allItems
-              .filter((it) => !listIds.has(it.id))
-              .map((it) => it.name);
+            <div className="relative autocomplete-container">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Select existing or add new"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  value={newItem}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
+                  onFocus={() => {
+                    const listIds = new Set(
+                      listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
+                    );
+                    const available = allItems
+                      .filter((it) => !listIds.has(it.id))
+                      .map((it) => it.name);
 
-            setAutocompleteItems(available);
-            setShowAutocomplete(available.length > 0);
-          }}
-        />
+                    setAutocompleteItems(available);
+                    setShowAutocomplete(available.length > 0);
+                  }}
+                />
 
-        <button
-          onClick={addNewItem}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-        >
-          Add
-        </button>
-      </div>
+                <button
+                  onClick={addNewItem}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+                >
+                  Add
+                </button>
+              </div>
 
-      {showAutocomplete && autocompleteItems.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-          {autocompleteItems.slice(0, 10).map((item) => (
-            <button
-              key={item}
-              onClick={() => selectItem(item)}
-              className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+              {showAutocomplete && autocompleteItems.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  {autocompleteItems.slice(0, 10).map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => selectItem(item)}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-{/*
+            {/*
 ///////////////
 HIDDEN UNTIL WE REFACTOR MODALS
 //////////////
@@ -1405,186 +1411,182 @@ HIDDEN UNTIL WE REFACTOR MODALS
 */}
 
 
-  </div>
-)}
+          </div>
+        )}
 
-{/* =======================================================
+        {/* =======================================================
 BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 =========================================================== */}
 
-{isMobile && mobileMode === 'build' && (
-  <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-    {(() => {
-      // ------------------------------------------------------------
-      // Make build mode respect the Alphabet Filter (filterLetter)
-      // across ALL 3 filters: ALL / FAVORITES / RECENT
-      // ------------------------------------------------------------
+        {isMobile && mobileMode === 'build' && (
+          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+            {(() => {
+              // ------------------------------------------------------------
+              // Make build mode respect the Alphabet Filter (filterLetter)
+              // across ALL 3 filters: ALL / FAVORITES / RECENT
+              // ------------------------------------------------------------
 
-      let list: ItemRow[] = buildModeAvailableAll;
+              let list: ItemRow[] = buildModeAvailableAll;
 
-      if (selectItemsFilter === 'FAVORITES') {
-        const favSet = new Set(favorites);
-        list = list.filter((it) => favSet.has(it.name));
-      } else if (selectItemsFilter === 'RECENT') {
-        list = list
-          .filter((it) => recentRank.has(it.id))
-          .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
-      } else {
-        list = list.slice();
-      }
+              if (selectItemsFilter === 'FAVORITES') {
+                const favSet = new Set(favorites);
+                list = list.filter((it) => favSet.has(it.name));
+              } else if (selectItemsFilter === 'RECENT') {
+                list = list
+                  .filter((it) => recentRank.has(it.id))
+                  .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
+              } else {
+                list = list.slice();
+              }
 
-      if (filterLetter !== 'All') {
-        const L = filterLetter.toUpperCase();
-        list = list.filter((it) => it.name.toUpperCase().startsWith(L));
-      }
+              if (filterLetter !== 'All') {
+                const L = filterLetter.toUpperCase();
+                list = list.filter((it) => it.name.toUpperCase().startsWith(L));
+              }
 
-      const renderList = list.slice(0, 250);
+              const renderList = list.slice(0, 250);
 
-      const toggleFavorite = async (itemName: string) => {
-        if (!householdCode) return;
+              const toggleFavorite = async (itemName: string) => {
+                if (!householdCode) return;
 
-        // Find item ID
-        const item = allItems.find(i => i.name === itemName);
-        if (!item) return;
+                // Find item ID
+                const item = allItems.find(i => i.name === itemName);
+                if (!item) return;
 
-        const isFav = favorites.includes(itemName);
+                const isFav = favorites.includes(itemName);
 
-        // Optimistically update UI
-        if (isFav) {
-          setFavorites(prev => prev.filter(n => n !== itemName));
-          setFavoritesIds(prev => prev.filter(id => id !== item.id));
-        } else {
-          setFavorites(prev => [...prev, itemName]);
-          setFavoritesIds(prev => [...prev, item.id]);
-        }
+                // Optimistically update UI
+                if (isFav) {
+                  setFavorites(prev => prev.filter(n => n !== itemName));
+                  setFavoritesIds(prev => prev.filter(id => id !== item.id));
+                } else {
+                  setFavorites(prev => [...prev, itemName]);
+                  setFavoritesIds(prev => [...prev, item.id]);
+                }
 
-        // Update database
-        if (isFav) {
-          const { error } = await supabase
-            .from('household_item_favorites')
-            .delete()
-            .eq('household_code', householdCode)
-            .eq('item_id', item.id);
+                // Update database
+                if (isFav) {
+                  const { error } = await supabase
+                    .from('household_item_favorites')
+                    .delete()
+                    .eq('household_code', householdCode)
+                    .eq('item_id', item.id);
 
-          if (error) {
-            // Rollback on error
-            setFavorites(prev => [...prev, itemName]);
-            setFavoritesIds(prev => [...prev, item.id]);
-            alert('Failed to update favorite. Check your connection and try again.');
-          }
-        } else {
-          const { error } = await supabase
-            .from('household_item_favorites')
-            .insert({
-              household_code: householdCode,
-              item_id: item.id,
-            });
+                  if (error) {
+                    // Rollback on error
+                    setFavorites(prev => [...prev, itemName]);
+                    setFavoritesIds(prev => [...prev, item.id]);
+                    alert('Failed to update favorite. Check your connection and try again.');
+                  }
+                } else {
+                  const { error } = await supabase
+                    .from('household_item_favorites')
+                    .insert({
+                      household_code: householdCode,
+                      item_id: item.id,
+                    });
 
-          if (error) {
-            // Rollback on error
-            setFavorites(prev => prev.filter(n => n !== itemName));
-            setFavoritesIds(prev => prev.filter(id => id !== item.id));
-            alert('Failed to update favorite. Check your connection and try again.');
-          }
-        }
-      };
+                  if (error) {
+                    // Rollback on error
+                    setFavorites(prev => prev.filter(n => n !== itemName));
+                    setFavoritesIds(prev => prev.filter(id => id !== item.id));
+                    alert('Failed to update favorite. Check your connection and try again.');
+                  }
+                }
+              };
 
-      return (
-        <>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-            <span className="text-xs text-gray-500">{list.length} available</span>
-          </div>
+              return (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
+                    <span className="text-xs text-gray-500">{list.length} available</span>
+                  </div>
 
-          <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
-            <button
-              onClick={() => setSelectItemsFilter('ALL')}
-              className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                selectItemsFilter === 'ALL'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-              }`}
-            >
-              All Items
-            </button>
-
-            <button
-              onClick={() => setSelectItemsFilter('FAVORITES')}
-              className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                selectItemsFilter === 'FAVORITES'
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-              }`}
-            >
-              Favorites
-            </button>
-
-            <button
-              onClick={() => setSelectItemsFilter('RECENT')}
-              className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${
-                selectItemsFilter === 'RECENT'
-                  ? 'bg-rose-600 text-white border-rose-600'
-                  : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
-              }`}
-            >
-              Recent
-            </button>
-          </div>
-
-          {list.length === 0 ? (
-            <div className="text-sm text-gray-500">All items added for this letter.</div>
-          ) : (
-            <div className="space-y-2 max-h-114 overflow-y-auto">
-              {renderList.map((it: ItemRow) => {
-                const isFavorite = favorites.includes(it.name);
-
-                // ✅ Price logic — matches Code Block 2 formatting
-                const effStore = getEffectiveStore(it.name);
-                const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
-                const price = priceData?.price ? parseFloat(priceData.price) : 0;
-
-                return (
-                  <div
-                    key={it.id}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                      isFavorite
-                        ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                        : 'bg-white border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-800 truncate">{it.name}</div>
-
-                      {priceData ? (
-                        <p className="text-xs text-green-600 mt-0.5">
-                          {formatMoney(price)}{' '}
-                          <span className="text-gray-400 ml-1">
-                            ({getDaysAgo(priceData.date)})
-                          </span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          No price data available
-                        </p>
-                      )}
-                    </div>
+                  <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
+                    <button
+                      onClick={() => setSelectItemsFilter('ALL')}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
+                        }`}
+                    >
+                      All Items
+                    </button>
 
                     <button
-                      onClick={() => toggleItemById(it.id, it.name)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                      onClick={() => setSelectItemsFilter('FAVORITES')}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
+                        }`}
                     >
-                      Add
+                      Favorites
+                    </button>
+
+                    <button
+                      onClick={() => setSelectItemsFilter('RECENT')}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'RECENT'
+                        ? 'bg-rose-600 text-white border-rose-600'
+                        : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
+                        }`}
+                    >
+                      Recent
                     </button>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      );
-    })()}
-  </div>
-)}
+
+                  {list.length === 0 ? (
+                    <div className="text-sm text-gray-500">All items added for this letter.</div>
+                  ) : (
+                    <div className="space-y-2 max-h-114 overflow-y-auto">
+                      {renderList.map((it: ItemRow) => {
+                        const isFavorite = favorites.includes(it.name);
+
+                        // ✅ Price logic — matches Code Block 2 formatting
+                        const effStore = getEffectiveStore(it.name);
+                        const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
+                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
+
+                        return (
+                          <div
+                            key={it.id}
+                            className={`flex items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
+                              ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                              : 'bg-white border-gray-300 hover:bg-gray-50'
+                              }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-800 truncate">{it.name}</div>
+
+                              {priceData ? (
+                                <p className="text-xs text-green-600 mt-0.5">
+                                  {formatMoney(price)}{' '}
+                                  <span className="text-gray-400 ml-1">
+                                    ({getDaysAgo(priceData.date)})
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  No price data available
+                                </p>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => toggleItemById(it.id, it.name)}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
 
 
 
@@ -1603,11 +1605,11 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                 onClick={
                   allFavoritesSelected
                     ? () => {
-                        favorites.forEach((fav) => {
-                          const row = allItems.find((it) => it.name === fav);
-                          if (row) toggleItemById(row.id, row.name);
-                        });
-                      }
+                      favorites.forEach((fav) => {
+                        const row = allItems.find((it) => it.name === fav);
+                        if (row) toggleItemById(row.id, row.name);
+                      });
+                    }
                     : addFavorites
                 }
                 className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-2xl font-semibold transition cursor-pointer"
@@ -1627,11 +1629,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         if (row) toggleItemById(row.id, row.name);
                         else selectItem(name);
                       }}
-                      className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${
-                        isInList
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
-                      }`}
+                      className={`px-3 py-1.5 rounded-2xl border-2 transition cursor-pointer text-sm font-semibold ${isInList
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-yellow-400 hover:border-yellow-500 bg-white text-gray-700 hover:bg-yellow-50'
+                        }`}
                     >
                       {name}
                     </button>
@@ -1662,13 +1663,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                   <button
                     key={it.id}
                     onClick={() => toggleItemById(it.id, it.name)}
-                    className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${
-                      isInList
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : isFavorite
+                    className={`p-4 md:p-3 rounded-2xl border-2 transition cursor-pointer font-semibold text-base ${isInList
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : isFavorite
                         ? 'bg-yellow-50 border-yellow-200 text-gray-700 hover:bg-yellow-100'
                         : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {it.name}
                   </button>
@@ -1694,7 +1694,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                   Shopping List ({listItems.filter((i) => !i.checked).length} items)
                 </h2>
                 <div className="flex gap-2">
-                  
+
                   {listItems.some((i) => i.checked) && (
                     <button
                       onClick={() => setShowCheckedItems(!showCheckedItems)}
@@ -1743,10 +1743,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                   return storeA.localeCompare(storeB);
                 });
-                
+
                 return (
                   <div className="space-y-6">
-                    
+
                     {/* Show First: Active trip stores */}
                     {storeEntries
                       .filter(([store]) => {
@@ -1836,13 +1836,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           return (
                                             <div
                                               key={item.id}
-                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                                item.checked
-                                                  ? 'bg-gray-100 border-gray-300'
-                                                  : isFavorite
+                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                                ? 'bg-gray-100 border-gray-300'
+                                                : isFavorite
                                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                                   : 'bg-white border-gray-300 hover:bg-gray-50'
-                                              }`}
+                                                }`}
                                             >
                                               <input
                                                 type="checkbox"
@@ -1852,9 +1851,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   if (mobileMode == 'build') return;
                                                   toggleChecked(item.id);
                                                 }}
-                                                className={`w-5 h-5 rounded transition ${
-                                                  mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                }`}
+                                                className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                  }`}
                                               />
 
                                               <div className="flex-1">
@@ -1862,13 +1860,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   <button
                                                     type="button"
                                                     onClick={() => openEditModal(item)}
-                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                    }`}
+                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                      }`}
                                                   >
                                                     {dealsItemNames.has(item.item_name) && (
-                                                    <span className="mr-1" title="On sale today!">🔥</span>
-                                                  )}
+                                                      <span className="mr-1" title="On sale today!">🔥</span>
+                                                    )}
                                                     {item.item_name}
                                                     {item.quantity > 1 && (
                                                       <span className="ml-1 font-semibold text-indigo-600">
@@ -1880,25 +1877,25 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                                                 {/* Show Item Price and Recency */}
                                                 <div className="mt-0.5 flex items-center gap-2">
-                                                      <p className="text-xs text-green-600 min-w-0">
-                                                        {formatMoney(price)}{' '}
-                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                        {priceData?.date ? (
-                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                        ) : null}                                                      
-                                                      </p>
-                                                  
-                                                {/* Add Category button */}
-                                                    {missingCategory && (
-                                                      <button
-                                                        onClick={() => openEditModal(item, 'category')}
-                                                        className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                      >
-                                                        Add Category
-                                                      </button>
-                                                    )}
-                                                    
-                                                    </div>
+                                                  <p className="text-xs text-green-600 min-w-0">
+                                                    {formatMoney(price)}{' '}
+                                                    {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                    {priceData?.date ? (
+                                                      <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                    ) : null}
+                                                  </p>
+
+                                                  {/* Add Category button */}
+                                                  {missingCategory && (
+                                                    <button
+                                                      onClick={() => openEditModal(item, 'category')}
+                                                      className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                    >
+                                                      Add Category
+                                                    </button>
+                                                  )}
+
+                                                </div>
                                               </div>
 
                                               <div className="hidden md:flex items-center gap-2">
@@ -1919,11 +1916,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                                               <button
                                                 onClick={() => openStoreModal(item.item_name)}
-                                                className={`cursor-pointer text-xl ml-1 transition ${
-                                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                    ? 'text-indigo-600 hover:text-indigo-700'
-                                                    : 'text-gray-300 hover:text-gray-500'
-                                                }`}
+                                                className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                  ? 'text-indigo-600 hover:text-indigo-700'
+                                                  : 'text-gray-300 hover:text-gray-500'
+                                                  }`}
                                                 title="Swap store"
                                                 aria-label="Swap store"
                                               >
@@ -1961,8 +1957,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       })}
 
 
-{/* Second: Items without price data - WITH CATEGORY GROUPING */}
-{itemsWithoutPrice.length > 0 && (
+                    {/* Second: Items without price data - WITH CATEGORY GROUPING */}
+                    {itemsWithoutPrice.length > 0 && (
                       <div>
                         <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-2">
@@ -2019,13 +2015,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                       return (
                                         <div
                                           key={item.id}
-                                          className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                            item.checked
-                                              ? 'bg-gray-100 border-gray-300'
-                                              : isFavorite
+                                          className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                            ? 'bg-gray-100 border-gray-300'
+                                            : isFavorite
                                               ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                               : 'bg-white border-gray-300 hover:bg-gray-50'
-                                          }`}
+                                            }`}
                                         >
                                           <input
                                             type="checkbox"
@@ -2035,9 +2030,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                               if (mobileMode == 'build') return;
                                               toggleChecked(item.id);
                                             }}
-                                            className={`w-5 h-5 rounded transition ${
-                                              mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                            }`}
+                                            className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                              }`}
                                           />
 
                                           <div className="flex-1">
@@ -2045,9 +2039,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                               <button
                                                 type="button"
                                                 onClick={() => openEditModal(item)}
-                                                className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                                  item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                }`}
+                                                className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                  }`}
                                               >
                                                 {dealsItemNames.has(item.item_name) && (
                                                   <span className="mr-1" title="On sale today!">🔥</span>
@@ -2082,11 +2075,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                                           <button
                                             onClick={() => openStoreModal(item.item_name)}
-                                            className={`cursor-pointer ml-1 transition ${
-                                              storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                ? 'text-indigo-600 hover:text-indigo-700'
-                                                : 'text-gray-300 hover:text-gray-500'
-                                            }`}
+                                            className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                              ? 'text-indigo-600 hover:text-indigo-700'
+                                              : 'text-gray-300 hover:text-gray-500'
+                                              }`}
                                             title="Swap store"
                                             aria-label="Swap store"
                                           >
@@ -2127,8 +2119,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                       return acc;
                                     }, {})
                                   ).length - 1 && (
-                                    <div className="h-px bg-gray-200/70 mt-2" />
-                                  )}
+                                      <div className="h-px bg-gray-200/70 mt-2" />
+                                    )}
                                 </div>
                               );
                             })}
@@ -2136,8 +2128,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       </div>
                     )}
 
-{/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
-{storeEntries
+                    {/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
+                    {storeEntries
                       .filter(([store]) => {
                         const storeId = storesByName[store];
                         return !(storeId && activeTrips[storeId]);
@@ -2223,13 +2215,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                           return (
                                             <div
                                               key={item.id}
-                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${
-                                                item.checked
-                                                  ? 'bg-gray-100 border-gray-300'
-                                                  : isFavorite
+                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                                ? 'bg-gray-100 border-gray-300'
+                                                : isFavorite
                                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                                   : 'bg-white border-gray-300 hover:bg-gray-50'
-                                              }`}
+                                                }`}
                                             >
                                               <input
                                                 type="checkbox"
@@ -2239,9 +2230,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   if (mobileMode == 'build') return;
                                                   toggleChecked(item.id);
                                                 }}
-                                                className={`w-5 h-5 rounded transition ${
-                                                  mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                }`}
+                                                className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                  }`}
                                               />
 
                                               <div className="flex-1">
@@ -2249,9 +2239,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                                   <button
                                                     type="button"
                                                     onClick={() => openEditModal(item)}
-                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-                                                      item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                    }`}
+                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                      }`}
                                                   >
                                                     {dealsItemNames.has(item.item_name) && (
                                                       <span className="mr-1" title="On sale today!">🔥</span>
@@ -2301,11 +2290,10 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
 
                                               <button
                                                 onClick={() => openStoreModal(item.item_name)}
-                                                className={`cursor-pointer text-xl ml-1 transition ${
-                                                  storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                    ? 'text-indigo-600 hover:text-indigo-700'
-                                                    : 'text-gray-300 hover:text-gray-500'
-                                                }`}
+                                                className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                  ? 'text-indigo-600 hover:text-indigo-700'
+                                                  : 'text-gray-300 hover:text-gray-500'
+                                                  }`}
                                                 title="Swap store"
                                                 aria-label="Swap store"
                                               >
@@ -2369,52 +2357,52 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
               </div>
             </div>
 
-        {/* STORE MODE -- "QUICK ADD" MODAL */}
-        {/* =============================== */}
-        {(!isMobile || mobileMode === 'store') && (
-          <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
-            <h2 className="text-xl font-semibold mb-3 text-gray-800">Quick Add To List</h2>
-            <div className="relative autocomplete-container">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Select existing or add new"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                  value={newItem}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                  onFocus={() => {
-                    const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
-                    const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
-                    setAutocompleteItems(available);
-                    setShowAutocomplete(available.length > 0);
-                  }}
-                />
-                <button
-                  onClick={addNewItem}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                >
-                  Add
-                </button>
-              </div>
-
-              {showAutocomplete && autocompleteItems.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                  {autocompleteItems.slice(0, 10).map((item) => (
+            {/* STORE MODE -- "QUICK ADD" MODAL */}
+            {/* =============================== */}
+            {(!isMobile || mobileMode === 'store') && (
+              <div className="bg-white rounded-2xl shadow-lg p-4 mb-4">
+                <h2 className="text-xl font-semibold mb-3 text-gray-800">Quick Add To List</h2>
+                <div className="relative autocomplete-container">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Select existing or add new"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                      value={newItem}
+                      onChange={(e) => handleInputChange(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
+                      onFocus={() => {
+                        const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
+                        const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+                        setAutocompleteItems(available);
+                        setShowAutocomplete(available.length > 0);
+                      }}
+                    />
                     <button
-                      key={item}
-                      onClick={() => selectItem(item)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                      onClick={addNewItem}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
                     >
-                      {item}
+                      Add
                     </button>
-                  ))}
+                  </div>
+
+                  {showAutocomplete && autocompleteItems.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                      {autocompleteItems.slice(0, 10).map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => selectItem(item)}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
-          </div>
-        )}
+                <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
+              </div>
+            )}
 
             {/* Best Store Recommendation - Desktop Only */}
             {sortedStores.length > 0 && (
@@ -2455,7 +2443,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                                         {item.quantity > 1 && ` × ${item.quantity}`}
                                         {priceData?.date ? (
                                           <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                        ) : null}                                        
+                                        ) : null}
                                         {classification && (
                                           <span className={`ml-1 font-semibold ${classification.color}`}>
                                             {classification.emoji} {classification.label}
@@ -2558,7 +2546,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         strokeLinejoin="round"
                         strokeWidth={2}
                         d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                        />
+                      />
                     </svg>
                     <span>Swap Store</span>
                   </h3>
@@ -2577,7 +2565,7 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
               {(() => {
                 const options = getStoreOptionsForItem(activeItemForStoreModal);
                 const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-                
+
                 // Find stores WITHOUT price data
                 const storesWithoutPrice = stores.filter(
                   (store) => !options.find((opt) => opt.store === store)
@@ -2598,9 +2586,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                           setItemStorePreference(activeItemForStoreModal, 'AUTO');
                           closeStoreModal();
                         }}
-                        className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                          pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-gray-800">Auto (cheapest)</span>
@@ -2621,9 +2608,8 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                               setItemStorePreference(activeItemForStoreModal, store);
                               closeStoreModal();
                             }}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                              isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
-                            }`}
+                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
+                              }`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-gray-800">{store}</span>
@@ -2685,12 +2671,12 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
               <div className="flex justify-between items-start mb-5">
-              <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-              Edit Item Details
-              </h3>
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit Item Details
+                </h3>
                 <button
                   onClick={closeEditModal}
                   className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
@@ -2699,17 +2685,16 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                   ✖️
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Details Section */}
-                  <div
-                    className={`rounded-2xl p-4 border transition-colors ${
-                      getCategoryColor(editModalCategory)
-                        .split(' ')
-                        .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
-                        .join(' ')
+                <div
+                  className={`rounded-2xl p-4 border transition-colors ${getCategoryColor(editModalCategory)
+                    .split(' ')
+                    .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
+                    .join(' ')
                     }`}
-                  >
+                >
 
                   <div className="space-y-3">
                     {/* Name */}
@@ -2739,73 +2724,73 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                       </select>
                     </div>
 
-                {/* Quantity */}
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="1"
-                    value={editModalQuantity}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
-                        setEditModalQuantity(val);
-                      }
-                    }}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
+                    {/* Quantity */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="1"
+                        value={editModalQuantity}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^\d*\.?\d*$/.test(val)) {
+                            setEditModalQuantity(val);
+                          }
+                        }}
+                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
                               font-semibold text-gray-800
                               focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-                  />
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
                 {/* Price Section */}
                 <div className="rounded-2xl border border-blue-300 bg-blue-100 p-4 shadow-sm">
                   <div className="space-y-3">
                     <div>
-                    <label className="text-sm font-semibold text-gray-700">Price</label>
-                    <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
-                      <span className="text-gray-600 font-semibold mr-1">$</span>
+                      <label className="text-sm font-semibold text-gray-700">Price</label>
+                      <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
+                        <span className="text-gray-600 font-semibold mr-1">$</span>
 
-                      <input
-                        autoFocus={editModalFocusField === 'price'}
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={editModalPrice || ''}
-                        onChange={(e) => {
-                          setEditModalPriceDirty(true);
-                          const digits = e.target.value.replace(/\D/g, '');
-                          let priceValue = '';
-                          if (digits !== '') {
-                            const cents = parseInt(digits, 10);
-                            priceValue = (cents / 100).toFixed(2);
-                          }
-
-                          setEditModalPrice(priceValue);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            if (!editModalStore) {
-                              e.preventDefault();
-                        
-                              // show friendly guidance
-                              setNeedsStoreHint(true);
-                        
-                              // guide user to store selection
-                              setTimeout(() => {
-                                storeSelectRef.current?.focus();
-                              }, 50);
+                        <input
+                          autoFocus={editModalFocusField === 'price'}
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          value={editModalPrice || ''}
+                          onChange={(e) => {
+                            setEditModalPriceDirty(true);
+                            const digits = e.target.value.replace(/\D/g, '');
+                            let priceValue = '';
+                            if (digits !== '') {
+                              const cents = parseInt(digits, 10);
+                              priceValue = (cents / 100).toFixed(2);
                             }
-                          }
-                        }}                        
-                        className="w-full text-right font-semibold text-gray-600 focus:outline-none"
-                        aria-label="Price"
-                      />
+
+                            setEditModalPrice(priceValue);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (!editModalStore) {
+                                e.preventDefault();
+
+                                // show friendly guidance
+                                setNeedsStoreHint(true);
+
+                                // guide user to store selection
+                                setTimeout(() => {
+                                  storeSelectRef.current?.focus();
+                                }, 50);
+                              }
+                            }
+                          }}
+                          className="w-full text-right font-semibold text-gray-600 focus:outline-none"
+                          aria-label="Price"
+                        />
+                      </div>
                     </div>
-                  </div>
 
                     {/* Store Selection */}
                     <div>
@@ -2816,15 +2801,15 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                         onChange={(e) => {
                           const newStore = e.target.value;
                           setEditModalStore(newStore);
-                        
+
                           // clear hint once resolved
                           if (newStore) setNeedsStoreHint(false);
-                        
+
                           if (editModalItem && newStore) {
                             setItemStorePreference(editModalItem.item_name, newStore);
                           }
                         }}
-                        
+
                         className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
                       >
                         <option value="">Select a store</option>
@@ -2843,83 +2828,83 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
                     </p>
                   )}
                 </div>
-              
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  onClick={closeEditModal}
-                  className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveEdit}
-                  disabled={savingEdit}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {savingEdit ? 'Saving…' : 'Save'}
-                </button>
+
+                <div className="flex justify-end gap-2 mt-6">
+                  <button
+                    onClick={closeEditModal}
+                    className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={savingEdit}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {savingEdit ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
               </div>
             </div>
+            )
+
+            {/* ========================= */}
+            {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
+            {/* ========================= */}
+            {storeRequiredOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
+                {/* Backdrop */}
+                <div
+                  className="absolute inset-0 bg-black/70"
+                  onClick={() => setStoreRequiredOpen(false)}
+                />
+
+                {/* Card */}
+                <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        You found{' '}
+                        <span className="font-semibold text-gray-900">
+                          {editModalName}
+                        </span>
+                        {' for'}
+                        <span className="font-semibold text-gray-900">
+                          {' $'}{editModalPrice}
+                        </span>
+                        ? Awesome!
+                        Let me know what store that applies to.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setStoreRequiredOpen(false)}
+                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                      aria-label="Close"
+                      type="button"
+                    >
+                      ✖️
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreRequiredOpen(false);
+                        setTimeout(() => storeSelectRef.current?.focus(), 50);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Choose Store
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )
-        
-{/* ========================= */}
-{/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
-{/* ========================= */}
-{storeRequiredOpen && (
-  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black/70"
-      onClick={() => setStoreRequiredOpen(false)}
-    />
-
-    {/* Card */}
-    <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
-      <div className="flex items-start justify-between gap-3">
-      <div>
-        <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
-        <p className="text-sm text-gray-600 mt-1">
-          You found{' '}
-          <span className="font-semibold text-gray-900">
-            {editModalName}
-          </span>
-          {' for'}
-          <span className="font-semibold text-gray-900">
-            {' $'}{editModalPrice}
-          </span>
-          ? Awesome!
-          Let me know what store that applies to.
-        </p>
-      </div>
-
-        <button
-          onClick={() => setStoreRequiredOpen(false)}
-          className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-          aria-label="Close"
-          type="button"
-        >
-          ✖️
-        </button>
-      </div>
-
-      <div className="flex justify-end gap-2 mt-6">
-        <button
-          type="button"
-          onClick={() => {
-            setStoreRequiredOpen(false);
-            setTimeout(() => storeSelectRef.current?.focus(), 50);
-          }}
-          className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
-        >
-          Choose Store
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-</div>
-)}
+        )}
 
 
         {/* =========================
@@ -2929,31 +2914,31 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         (WITH UNDO BUTTON)
         ========================= */}
         {mounted && removedFromListToastItem && (
-        <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-          <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-            <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
+          <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
 
-            <button
-              onClick={undoRemove}
-              className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-            >
-              Undo
-            </button>
+              <button
+                onClick={undoRemove}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+              >
+                Undo
+              </button>
 
-            <button
-              onClick={() => {
-                if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
-                setUndoRemoveItem(null);
-                setUndoRemoveTimeout(null);
-              }}
-              className="text-gray-400 hover:text-white text-xl"
-              aria-label="Dismiss"
-            >
-              ✖
-            </button>
+              <button
+                onClick={() => {
+                  if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
+                  setUndoRemoveItem(null);
+                  setUndoRemoveTimeout(null);
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+                aria-label="Dismiss"
+              >
+                ✖
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
         {/* =========================
         TOAST NOTIFICATION
@@ -3029,28 +3014,28 @@ BUILD MODE: SELECT ITEMS WITH FILTER PILLS (MOBILE ONLY)
         TRIP COMPLETE AT ACTIVE STORE
         ========================= */}
 
-      {mounted && tripCompleteToastStore && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-          <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-            <span className="flex-1 font-semibold text-xl">
-              <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
-            </span>
+        {mounted && tripCompleteToastStore && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+            <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+              <span className="flex-1 font-semibold text-xl">
+                <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
+              </span>
 
-            <button
-              onClick={() => {
-                if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
-                setTripCompleteToastStore(null);
-                setTripCompleteToastTimeout(null);
-                tripCompleteToastLockRef.current = null;
-              }}
-              className="text-gray-400 hover:text-white text-xl"
-              aria-label="Dismiss"
-            >
-              ✖
-            </button>
+              <button
+                onClick={() => {
+                  if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+                  setTripCompleteToastStore(null);
+                  setTripCompleteToastTimeout(null);
+                  tripCompleteToastLockRef.current = null;
+                }}
+                className="text-gray-400 hover:text-white text-xl"
+                aria-label="Dismiss"
+              >
+                ✖
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );
