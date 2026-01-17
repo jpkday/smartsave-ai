@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
@@ -27,7 +27,16 @@ interface ReceiptItem {
   priceDirty?: boolean;
 }
 
+// Wrapper component with Suspense for useSearchParams
 export default function Receipts() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-8 flex items-center justify-center"><div className="text-white text-xl">Loading...</div></div>}>
+      <ReceiptsContent />
+    </Suspense>
+  );
+}
+
+function ReceiptsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [stores, setStores] = useState<string[]>([]);
