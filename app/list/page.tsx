@@ -13,6 +13,7 @@ interface ListItem {
   item_name: string;
   quantity: number;
   checked: boolean;
+  is_priority: boolean;
 }
 interface ItemRow {
   id: number;
@@ -55,6 +56,7 @@ export default function ShoppingList() {
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
+  const [showPriorityOnly, setShowPriorityOnly] = useState(false);
 
   const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
   const CATEGORY_OPTIONS = ['Produce', 'Pantry', 'Dairy', 'Beverage', 'Meat', 'Frozen', 'Refrigerated', 'Other'];
@@ -757,7 +759,7 @@ export default function ShoppingList() {
 
     const { data: listData, error: listError } = await supabase
       .from('shopping_list')
-      .select('*')
+      .select('id, item_id, item_name, quantity, checked, added_at, is_priority')
       .eq('user_id', SHARED_USER_ID)
       .eq('household_code', householdCode);
 
@@ -1122,6 +1124,28 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('Error updating quantity:', error);
       alert('Failed to update quantity. Check your connection and try again.');
+    }
+  };
+
+  const togglePriority = async (id: string) => {
+    const item = listItems.find((li) => li.id === id);
+    if (!item) return;
+
+    const newPriority = !item.is_priority;
+
+    try {
+      const { error } = await supabase
+        .from('shopping_list')
+        .update({ is_priority: newPriority })
+        .eq('id', id)
+        .eq('user_id', SHARED_USER_ID);
+
+      if (error) throw error;
+
+      setListItems(listItems.map((li) => (li.id === id ? { ...li, is_priority: newPriority } : li)));
+    } catch (error) {
+      console.error('Error toggling priority:', error);
+      alert('Failed to update priority. Check your connection and try again.');
     }
   };
 
@@ -1699,8 +1723,26 @@ export default function ShoppingList() {
                 {/* SHOPPING LIST HEADER */}
                 <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3">
                       Shopping List ({listItems.filter((i) => !i.checked).length} items)
+                      <button
+                        onClick={() => setShowPriorityOnly(!showPriorityOnly)}
+                        className={`text-sm px-3 py-1 rounded-full font-bold transition flex items-center gap-1.5 ${showPriorityOnly
+                          ? 'bg-red-100 text-red-700 border border-red-200'
+                          : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
+                          }`}
+                        title="Show Urgent Items Only"
+                      >
+                        <svg className="w-4 h-4" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m2-4h-2m2-4h-2m2-4h-2m-2-4h18" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h16" />
+                          {/* Flag Icon */}
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                          <path d="M5 3v18" strokeWidth="2.5" strokeLinecap="round" />
+                          <path d="M5 5h12l-2 4 2 4H5" strokeWidth="2.5" strokeLinejoin="round" fill={showPriorityOnly ? "currentColor" : "none"} />
+                        </svg>
+                        {showPriorityOnly ? 'Flagged Only' : 'Flagged'}
+                      </button>
                     </h2>
                     <div className="flex gap-2">
 
@@ -1720,7 +1762,12 @@ export default function ShoppingList() {
                     const itemsByStore: { [store: string]: ListItem[] } = {};
                     const itemsWithoutPrice: ListItem[] = [];
 
-                    const displayItems = !showCheckedItems ? listItems.filter((item) => !item.checked) : listItems;
+                    let displayItems = !showCheckedItems ? listItems.filter((item) => !item.checked) : listItems;
+
+                    // ✅ Priority Filter
+                    if (showPriorityOnly) {
+                      displayItems = displayItems.filter((item) => item.is_priority);
+                    }
 
                     displayItems
                       .sort((a, b) => {
@@ -1937,6 +1984,22 @@ export default function ShoppingList() {
                                                   </div>
 
                                                   <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      togglePriority(item.id);
+                                                    }}
+                                                    className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                      ? 'text-red-600 hover:text-red-700'
+                                                      : 'text-gray-300 hover:text-red-400'
+                                                      }`}
+                                                    title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
+                                                  >
+                                                    <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                    </svg>
+                                                  </button>
+
+                                                  <button
                                                     onClick={() => openStoreModal(item.item_name)}
                                                     className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                                       ? 'text-indigo-600 hover:text-indigo-700'
@@ -2113,6 +2176,22 @@ export default function ShoppingList() {
                                                   +
                                                 </button>
                                               </div>
+
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  togglePriority(item.id);
+                                                }}
+                                                className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                  ? 'text-red-600 hover:text-red-700'
+                                                  : 'text-gray-300 hover:text-red-400'
+                                                  }`}
+                                                title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
+                                              >
+                                                <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                </svg>
+                                              </button>
 
                                               <button
                                                 onClick={() => openStoreModal(item.item_name)}
@@ -2334,6 +2413,22 @@ export default function ShoppingList() {
                                                   </div>
 
                                                   <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      togglePriority(item.id);
+                                                    }}
+                                                    className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                      ? 'text-red-600 hover:text-red-700'
+                                                      : 'text-gray-300 hover:text-red-400'
+                                                      }`}
+                                                    title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
+                                                  >
+                                                    <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-2h-2m-2 0H5a2 2 0 00-2 2v4" />
+                                                    </svg>
+                                                  </button>
+
+                                                  <button
                                                     onClick={() => openStoreModal(item.item_name)}
                                                     className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                                       ? 'text-indigo-600 hover:text-indigo-700'
@@ -2386,13 +2481,16 @@ export default function ShoppingList() {
                       <span className="text-xl font-bold text-gray-800">Total</span>
                       <span className="text-2xl font-bold text-teal-600">
                         {formatMoney(
-                          listItems.reduce((sum, item) => {
-                            const effStore = getEffectiveStore(item.item_name);
-                            if (!effStore) return sum;
-                            const pd = prices[`${effStore}-${item.item_name}`];
-                            const p = pd ? parseFloat(pd.price) : 0;
-                            return sum + p * item.quantity;
-                          }, 0)
+                          listItems
+                            .filter(item => !item.checked)
+                            .filter(item => showPriorityOnly ? item.is_priority : true)
+                            .reduce((sum, item) => {
+                              const effStore = getEffectiveStore(item.item_name);
+                              if (!effStore) return sum;
+                              const pd = prices[`${effStore}-${item.item_name}`];
+                              const p = pd ? parseFloat(pd.price) : 0;
+                              return sum + p * item.quantity;
+                            }, 0)
                         )}
                       </span>
                     </div>
