@@ -65,29 +65,32 @@ function HomeContent() {
         <div className="grid grid-cols-1 gap-3 md:hidden">
           {isLocked ? (
             <>
-              <button onClick={handleLockedClick} className="w-full bg-yellow-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">📝</span>
-                <span className="flex-1 ml-6">Shopping List</span>
+              <button onClick={handleLockedClick} className="w-full bg-yellow-500/90 backdrop-blur-sm border border-yellow-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-yellow-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <span className="flex-1 ml-6 text-yellow-50 drop-shadow-sm">Shopping List</span>
               </button>
 
-              <Link href="/deals" className="bg-red-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Local Deals</span>
+              <Link href="/deals" className="bg-red-500/90 backdrop-blur-sm border border-red-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                </svg>
+                <span className="flex-1 ml-6 text-red-50 drop-shadow-sm">Local Deals</span>
               </Link>
 
-              <button onClick={handleLockedClick} className="w-full bg-violet-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">💡</span>
-                <span className="flex-1 ml-6">Insights</span>
+              <button onClick={handleLockedClick} className="w-full bg-violet-700/90 backdrop-blur-sm border border-violet-500/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-violet-700 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-violet-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
+                <span className="flex-1 ml-6 text-violet-50 drop-shadow-sm">Insights</span>
               </button>
 
-              <button onClick={handleLockedClick} className="w-full bg-lime-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-lime-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">🛒</span>
-                <span className="flex-1 ml-6">Recent Trips</span>
+              <button onClick={handleLockedClick} className="w-full bg-lime-500/90 backdrop-blur-sm border border-lime-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-lime-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-lime-50 is-drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="flex-1 ml-6 text-lime-50 drop-shadow-sm">Recent Trips</span>
               </button>
 
               <button
                 onClick={handleLockedClick}
-                className="w-full bg-blue-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-gray-800 transition cursor-pointer text-center relative flex items-center"
+                className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/30 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 relative"
               >
                 <span className="absolute left-4 text-xl">⋯</span>
                 <span className="flex-1 ml-6">More</span>
@@ -95,29 +98,32 @@ function HomeContent() {
             </>
           ) : (
             <>
-              <Link href="/list" className="w-full bg-yellow-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-yellow-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">📝</span>
-                <span className="flex-1 ml-6">Shopping List</span>
+              <Link href="/list" className="w-full bg-yellow-500/90 backdrop-blur-sm border border-yellow-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-yellow-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <span className="flex-1 ml-6 text-yellow-50 drop-shadow-sm">Shopping List</span>
               </Link>
 
-              <Link href="/deals" className="w-full bg-red-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-red-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-2xl">🔥</span>
-                <span className="flex-1 ml-6">Local Deals</span>
+              <Link href="/deals" className="w-full bg-red-500/90 backdrop-blur-sm border border-red-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-red-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                </svg>
+                <span className="flex-1 ml-6 text-red-50 drop-shadow-sm">Local Deals</span>
               </Link>
 
-              <Link href="/insights" className="w-full bg-violet-700 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-violet-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">💡</span>
-                <span className="flex-1 ml-6">Insights</span>
+              <Link href="/insights" className="w-full bg-violet-700/90 backdrop-blur-sm border border-violet-500/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-violet-700 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-violet-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
+                <span className="flex-1 ml-6 text-violet-50 drop-shadow-sm">Insights</span>
               </Link>
 
-              <Link href="/trips" className="w-full bg-lime-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-lime-600 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-xl">🛒</span>
-                <span className="flex-1 ml-6">Recent Trips</span>
+              <Link href="/trips" className="w-full bg-lime-500/90 backdrop-blur-sm border border-lime-400/50 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-lime-500 transition cursor-pointer text-center relative flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <svg className="w-8 h-8 absolute left-4 text-lime-50 is-drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="flex-1 ml-6 text-lime-50 drop-shadow-sm">Recent Trips</span>
               </Link>
 
               <button
                 onClick={() => setShowMoreMenu(true)}
-                className="w-full bg-blue-500 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-gray-800 transition cursor-pointer text-center relative flex items-center"
+                className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/30 transition cursor-pointer flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 relative"
               >
                 <span className="absolute left-4 text-xl">⋯</span>
                 <span className="flex-1 ml-6">More</span>
