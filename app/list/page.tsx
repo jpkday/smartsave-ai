@@ -101,8 +101,9 @@ export default function ShoppingList() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  type SelectItemsFilter = 'ALL' | 'FAVORITES' | 'RECENT';
-  const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>('ALL');
+  type SelectItemsFilter = 'FAVORITES' | 'RECENT' | 'FREQUENT' | null;
+  const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>(null);
+  const [frequentItemCounts, setFrequentItemCounts] = useState<Record<string, number>>({});
 
   // =========================
   // Mobile Mode Toggle (Store vs Build)
@@ -140,6 +141,28 @@ export default function ShoppingList() {
       localStorage.setItem('view_showPriorityOnly', String(showPriorityOnly));
     }
   }, [showPriorityOnly, mounted]);
+
+  // Load frequent items
+  useEffect(() => {
+    async function loadFrequent() {
+      if (!householdCode) return;
+      const { data } = await supabase.rpc('get_frequent_items', { household: householdCode });
+      if (data) {
+        // Filter for items with > 1 purchase to be "Frequent" (staples)
+        const counts: Record<string, number> = {};
+        data
+          .filter((d: any) => d.purchase_count > 1)
+          .forEach((d: any) => {
+            counts[d.item_name] = d.purchase_count;
+          });
+        setFrequentItemCounts(counts);
+      }
+    }
+
+    if (mounted && householdCode) {
+      loadFrequent();
+    }
+  }, [householdCode, mounted]);
 
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
@@ -1705,6 +1728,7 @@ export default function ShoppingList() {
 
                   let list: ItemRow[] = buildModeAvailableAll;
 
+
                   if (selectItemsFilter === 'FAVORITES') {
                     const favSet = new Set(favorites);
                     list = list.filter((it) => favSet.has(it.name));
@@ -1712,6 +1736,10 @@ export default function ShoppingList() {
                     list = list
                       .filter((it) => recentRank.has(it.id))
                       .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
+                  } else if (selectItemsFilter === 'FREQUENT') {
+                    list = list
+                      .filter((it) => frequentItemCounts[it.name] !== undefined)
+                      .sort((a, b) => (frequentItemCounts[b.name] || 0) - (frequentItemCounts[a.name] || 0));
                   } else {
                     list = list.slice();
                   }
@@ -1772,43 +1800,64 @@ export default function ShoppingList() {
                     }
                   };
 
+                  // Filter Counts
+                  const countFav = buildModeAvailableAll.filter((it) => favorites.includes(it.name)).length;
+                  const countRecent = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
+                  const countFrequent = buildModeAvailableAll.filter((it) => frequentItemCounts[it.name] !== undefined).length;
+
+                  // Toggle Logic
+                  const toggleFilter = (filter: SelectItemsFilter) => {
+                    if (selectItemsFilter === filter) {
+                      setSelectItemsFilter(null); // Toggle off -> All
+                    } else {
+                      setSelectItemsFilter(filter);
+                    }
+                  };
+
                   return (
                     <>
-                      <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-                        <span className="text-xs text-gray-500">{list.length} available</span>
-                      </div>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
+                          <span className="text-xs text-gray-500">{list.length} available</span>
+                        </div>
 
-                      <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
-                        <button
-                          onClick={() => setSelectItemsFilter('ALL')}
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-                            }`}
-                        >
-                          All Items
-                        </button>
+                        <div className="grid grid-cols-3 gap-2 w-full mb-4">
+                          {/* 1. Favorites */}
+                          <button
+                            onClick={() => toggleFilter('FAVORITES')}
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'FAVORITES'
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
+                              : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+                              }`}
+                          >
+                            Favorites
+                          </button>
 
-                        <button
-                          onClick={() => setSelectItemsFilter('FAVORITES')}
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                            }`}
-                        >
-                          Favorites
-                        </button>
+                          {/* 2. Frequent */}
+                          <button
+                            onClick={() => toggleFilter('FREQUENT')}
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'FREQUENT'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
+                              : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
+                              }`}
+                          >
+                            Frequent
+                          </button>
 
-                        <button
-                          onClick={() => setSelectItemsFilter('RECENT')}
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'RECENT'
-                            ? 'bg-rose-600 text-white border-rose-600'
-                            : 'bg-white text-rose-600 border-rose-200 hover:bg-slate-50'
-                            }`}
-                        >
-                          Recent
-                        </button>
+                          {/* 3. Recent */}
+                          <button
+                            onClick={() => toggleFilter('RECENT')}
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'RECENT'
+                              ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
+                              : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
+                              }`}
+                          >
+                            Recent
+                          </button>
+                        </div>
+
+
                       </div>
 
                       {list.length === 0 ? (
@@ -2090,7 +2139,8 @@ export default function ShoppingList() {
                                                       <button
                                                         type="button"
                                                         onClick={() => openEditModal(item)}
-                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
+                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+                                                          }`}
                                                       >
                                                         {dealsItemNames.has(item.item_name) && (
                                                           <span className="mr-1" title="On sale today!">🔥</span>
@@ -2189,8 +2239,6 @@ export default function ShoppingList() {
                                               );
                                             })}
                                           </div>
-
-
                                         </div>
                                       );
                                     })}
@@ -2397,9 +2445,7 @@ export default function ShoppingList() {
                                               </div>
                                             </div>
                                           );
-                                        })}
-                                      </div>
-
+                                        })}                             </div>
                                     </div>
                                   );
                                 })}
@@ -2560,7 +2606,6 @@ export default function ShoppingList() {
                                                       </button>
                                                     </div>
 
-                                                    {/* Show Item Price and Recency */}
                                                     <div className="mt-0.5 flex items-center gap-2">
                                                       <p className="text-xs text-green-600 min-w-0">
                                                         {formatMoney(price)}{' '}
@@ -2570,7 +2615,6 @@ export default function ShoppingList() {
                                                         ) : null}
                                                       </p>
 
-                                                      {/* Add Category button */}
                                                       {missingCategory && (
                                                         <button
                                                           onClick={() => openEditModal(item, 'category')}
@@ -2616,8 +2660,11 @@ export default function ShoppingList() {
                                                     </button>
 
                                                     <button
-                                                      onClick={() => openStoreModal(item.item_name)}
-                                                      className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openStoreModal(item.item_name);
+                                                      }}
+                                                      className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                                         ? 'text-indigo-600 hover:text-indigo-700'
                                                         : 'text-gray-300 hover:text-gray-500'
                                                         }`}
@@ -2635,7 +2682,10 @@ export default function ShoppingList() {
                                                     </button>
 
                                                     <button
-                                                      onClick={() => removeItem(item.id)}
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeItem(item.id);
+                                                      }}
                                                       className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
                                                       title="Remove from list"
                                                       aria-label="Remove from list"
@@ -2645,47 +2695,43 @@ export default function ShoppingList() {
                                                   </div>
                                                 </div>
                                               );
-                                            })}
-                                          </div>
-
-
+                                            })}              </div>
                                         </div>
                                       );
                                     })}
+
                                 </div>
                               </div>
                             );
                           })}
+
+                        <div className="mt-1 pt-1">
+                          <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t-2 border-gray-300">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xl font-bold text-gray-800">Total</span>
+                            <span className="text-2xl font-bold text-teal-600">
+                              {formatMoney(
+                                listItems
+                                  .filter(item => !item.checked)
+                                  .filter(item => showPriorityOnly ? item.is_priority : true)
+                                  .reduce((sum, item) => {
+                                    const effStore = getEffectiveStore(item.item_name);
+                                    if (!effStore) return sum;
+                                    const pd = prices[`${effStore}-${item.item_name}`];
+                                    const p = pd ? parseFloat(pd.price) : 0;
+                                    return sum + p * item.quantity;
+                                  }, 0)
+                              )}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}
-
-                  <div className="mt-1 pt-1">
-                    <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t-2 border-gray-300">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xl font-bold text-gray-800">Total</span>
-                      <span className="text-2xl font-bold text-teal-600">
-                        {formatMoney(
-                          listItems
-                            .filter(item => !item.checked)
-                            .filter(item => showPriorityOnly ? item.is_priority : true)
-                            .reduce((sum, item) => {
-                              const effStore = getEffectiveStore(item.item_name);
-                              if (!effStore) return sum;
-                              const pd = prices[`${effStore}-${item.item_name}`];
-                              const p = pd ? parseFloat(pd.price) : 0;
-                              return sum + p * item.quantity;
-                            }, 0)
-                        )}
-                      </span>
-                    </div>
-                  </div>
                 </div>
-
-
               </>
             ) : (
               <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
@@ -3268,7 +3314,7 @@ export default function ShoppingList() {
             </div>
           )
         }
-      </div >
+      </div>
     </div >
   );
 }
