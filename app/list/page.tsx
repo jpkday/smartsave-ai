@@ -2271,6 +2271,7 @@ export default function ShoppingList() {
                                                 type="checkbox"
                                                 checked={item.checked}
                                                 disabled={mobileMode == 'build'}
+                                                onClick={(e) => e.stopPropagation()}
                                                 onChange={() => {
                                                   if (mobileMode == 'build') return;
                                                   toggleChecked(item.id);
@@ -2283,7 +2284,10 @@ export default function ShoppingList() {
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                   <button
                                                     type="button"
-                                                    onClick={() => openEditModal(item)}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openEditModal(item);
+                                                    }}
                                                     className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
                                                       }`}
                                                   >
@@ -2324,14 +2328,20 @@ export default function ShoppingList() {
 
                                               <div className="hidden md:flex items-center gap-2">
                                                 <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateQuantity(item.id, item.quantity - 1);
+                                                  }}
                                                   className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
                                                 >
                                                   −
                                                 </button>
                                                 <span className="w-8 text-center font-semibold">{item.quantity}</span>
                                                 <button
-                                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateQuantity(item.id, item.quantity + 1);
+                                                  }}
                                                   className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
                                                 >
                                                   +
@@ -2355,7 +2365,10 @@ export default function ShoppingList() {
                                               </button>
 
                                               <button
-                                                onClick={() => openStoreModal(item.item_name)}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openStoreModal(item.item_name);
+                                                }}
                                                 className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
                                                   ? 'text-indigo-600 hover:text-indigo-700'
                                                   : 'text-gray-300 hover:text-gray-500'
@@ -2374,7 +2387,10 @@ export default function ShoppingList() {
                                               </button>
 
                                               <button
-                                                onClick={() => removeItem(item.id)}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  removeItem(item.id);
+                                                }}
                                                 className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
                                                 title="Remove from list"
                                                 aria-label="Remove from list"
