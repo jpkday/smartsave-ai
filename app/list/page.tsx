@@ -1592,7 +1592,7 @@ export default function ShoppingList() {
 
       <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
         {/* Mobile-only mode toggle */}
-        <div className="md:hidden rounded-lg p-2 mb-4">
+        <div className="md:hidden rounded-lg p-2 mb-2">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMobileMode('build')}
@@ -1868,7 +1868,7 @@ export default function ShoppingList() {
           </div>
 
           {/* RIGHT COLUMN: Shopping List */}
-          <div className="w-full md:w-3/5 mt-4 md:mt-0">
+          <div className="w-full md:w-3/5 mt-2 md:mt-0">
 
             {/* SHOPPING LIST MODAL */}
 
@@ -2066,7 +2066,7 @@ export default function ShoppingList() {
                                               return (
                                                 <div
                                                   key={item.id}
-                                                  className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                                  className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
                                                     ? 'bg-gray-100 border-gray-300'
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -2090,8 +2090,7 @@ export default function ShoppingList() {
                                                       <button
                                                         type="button"
                                                         onClick={() => openEditModal(item)}
-                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                          }`}
+                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'}`}
                                                       >
                                                         {dealsItemNames.has(item.item_name) && (
                                                           <span className="mr-1" title="On sale today!">🔥</span>
@@ -2105,7 +2104,6 @@ export default function ShoppingList() {
                                                       </button>
                                                     </div>
 
-                                                    {/* Show Item Price and Recency */}
                                                     <div className="mt-0.5 flex items-center gap-2">
                                                       <p className="text-xs text-green-600 min-w-0">
                                                         {formatMoney(price)}{' '}
@@ -2115,7 +2113,6 @@ export default function ShoppingList() {
                                                         ) : null}
                                                       </p>
 
-                                                      {/* Add Category button */}
                                                       {missingCategory && (
                                                         <button
                                                           onClick={() => openEditModal(item, 'category')}
@@ -2124,69 +2121,70 @@ export default function ShoppingList() {
                                                           Add Category
                                                         </button>
                                                       )}
-
                                                     </div>
                                                   </div>
 
-                                                  <div className="hidden md:flex items-center gap-2">
+                                                  <div className="flex items-center gap-3 ml-auto">
+                                                    <div className="hidden md:flex items-center gap-2">
+                                                      <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      >
+                                                        −
+                                                      </button>
+                                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                      <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      >
+                                                        +
+                                                      </button>
+                                                    </div>
+
                                                     <button
-                                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        togglePriority(item.id);
+                                                      }}
+                                                      className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                        ? 'text-red-600 hover:text-red-700'
+                                                        : 'text-gray-300 hover:text-red-400'
+                                                        }`}
+                                                      title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                                     >
-                                                      −
+                                                      <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
+                                                      </svg>
                                                     </button>
-                                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+
                                                     <button
-                                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      onClick={() => openStoreModal(item.item_name)}
+                                                      className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                        ? 'text-indigo-600 hover:text-indigo-700'
+                                                        : 'text-gray-300 hover:text-gray-500'
+                                                        }`}
+                                                      title="Swap store"
+                                                      aria-label="Swap store"
                                                     >
-                                                      +
+                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path
+                                                          strokeLinecap="round"
+                                                          strokeLinejoin="round"
+                                                          strokeWidth={2}
+                                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                        />
+                                                      </svg>
+                                                    </button>
+
+                                                    <button
+                                                      onClick={() => removeItem(item.id)}
+                                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                      title="Remove from list"
+                                                      aria-label="Remove from list"
+                                                    >
+                                                      ✖️
                                                     </button>
                                                   </div>
-
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      togglePriority(item.id);
-                                                    }}
-                                                    className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                      ? 'text-red-600 hover:text-red-700'
-                                                      : 'text-gray-300 hover:text-red-400'
-                                                      }`}
-                                                    title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                                  >
-                                                    <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                    </svg>
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() => openStoreModal(item.item_name)}
-                                                    className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                      ? 'text-indigo-600 hover:text-indigo-700'
-                                                      : 'text-gray-300 hover:text-gray-500'
-                                                      }`}
-                                                    title="Swap store"
-                                                    aria-label="Swap store"
-                                                  >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                      <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                      />
-                                                    </svg>
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() => removeItem(item.id)}
-                                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                                    title="Remove from list"
-                                                    aria-label="Remove from list"
-                                                  >
-                                                    ✖️
-                                                  </button>
                                                 </div>
                                               );
                                             })}
@@ -2260,7 +2258,7 @@ export default function ShoppingList() {
                                           return (
                                             <div
                                               key={item.id}
-                                              className={`flex items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                              className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
                                                 ? 'bg-gray-100 border-gray-300'
                                                 : isFavorite
                                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -2304,7 +2302,6 @@ export default function ShoppingList() {
                                                 </div>
 
                                                 <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                                  {/* Add Price — only if missing */}
                                                   {missingPrice && (
                                                     <button
                                                       onClick={() => openEditModal(item, 'price')}
@@ -2314,7 +2311,6 @@ export default function ShoppingList() {
                                                     </button>
                                                   )}
 
-                                                  {/* Add Category — missing OR "Other" */}
                                                   {missingCategory && (
                                                     <button
                                                       onClick={() => openEditModal(item, 'category')}
@@ -2326,77 +2322,79 @@ export default function ShoppingList() {
                                                 </div>
                                               </div>
 
-                                              <div className="hidden md:flex items-center gap-2">
+                                              <div className="flex items-center gap-3 ml-auto">
+                                                <div className="hidden md:flex items-center gap-2">
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      updateQuantity(item.id, item.quantity - 1);
+                                                    }}
+                                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                  >
+                                                    −
+                                                  </button>
+                                                  <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      updateQuantity(item.id, item.quantity + 1);
+                                                    }}
+                                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                  >
+                                                    +
+                                                  </button>
+                                                </div>
+
                                                 <button
                                                   onClick={(e) => {
                                                     e.stopPropagation();
-                                                    updateQuantity(item.id, item.quantity - 1);
+                                                    togglePriority(item.id);
                                                   }}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                  className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                    ? 'text-red-600 hover:text-red-700'
+                                                    : 'text-gray-300 hover:text-red-400'
+                                                    }`}
+                                                  title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                                 >
-                                                  −
+                                                  <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
+                                                  </svg>
                                                 </button>
-                                                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+
                                                 <button
                                                   onClick={(e) => {
                                                     e.stopPropagation();
-                                                    updateQuantity(item.id, item.quantity + 1);
+                                                    openStoreModal(item.item_name);
                                                   }}
-                                                  className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                  className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                    ? 'text-indigo-600 hover:text-indigo-700'
+                                                    : 'text-gray-300 hover:text-gray-500'
+                                                    }`}
+                                                  title="Swap store"
+                                                  aria-label="Swap store"
                                                 >
-                                                  +
+                                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      strokeWidth={2}
+                                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                    />
+                                                  </svg>
+                                                </button>
+
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeItem(item.id);
+                                                  }}
+                                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                  title="Remove from list"
+                                                  aria-label="Remove from list"
+                                                >
+                                                  ✖️
                                                 </button>
                                               </div>
-
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  togglePriority(item.id);
-                                                }}
-                                                className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                  ? 'text-red-600 hover:text-red-700'
-                                                  : 'text-gray-300 hover:text-red-400'
-                                                  }`}
-                                                title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                              >
-                                                <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                </svg>
-                                              </button>
-
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openStoreModal(item.item_name);
-                                                }}
-                                                className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                  ? 'text-indigo-600 hover:text-indigo-700'
-                                                  : 'text-gray-300 hover:text-gray-500'
-                                                  }`}
-                                                title="Swap store"
-                                                aria-label="Swap store"
-                                              >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                  />
-                                                </svg>
-                                              </button>
-
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  removeItem(item.id);
-                                                }}
-                                                className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                                title="Remove from list"
-                                                aria-label="Remove from list"
-                                              >
-                                                ✖️
-                                              </button>
                                             </div>
                                           );
                                         })}
@@ -2407,7 +2405,8 @@ export default function ShoppingList() {
                                 })}
                             </div>
                           </div>
-                        )}
+                        )
+                        }
 
                         {/* Third: All other stores alphabetically - WITH CATEGORY GROUPING */}
                         {storeEntries
@@ -2510,7 +2509,7 @@ export default function ShoppingList() {
                                                     if (mobileMode == 'build') return;
                                                     toggleChecked(item.id);
                                                   }}
-                                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
+                                                  className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
                                                     ? 'bg-gray-100 border-gray-300'
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -2583,65 +2582,67 @@ export default function ShoppingList() {
                                                     </div>
                                                   </div>
 
-                                                  <div className="hidden md:flex items-center gap-2">
+                                                  <div className="flex items-center gap-3 ml-auto">
+                                                    <div className="hidden md:flex items-center gap-2">
+                                                      <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      >
+                                                        −
+                                                      </button>
+                                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                                                      <button
+                                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      >
+                                                        +
+                                                      </button>
+                                                    </div>
+
                                                     <button
-                                                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        togglePriority(item.id);
+                                                      }}
+                                                      className={`cursor-pointer ml-1 transition ${item.is_priority
+                                                        ? 'text-red-600 hover:text-red-700'
+                                                        : 'text-gray-300 hover:text-red-400'
+                                                        }`}
+                                                      title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
                                                     >
-                                                      −
+                                                      <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
+                                                      </svg>
                                                     </button>
-                                                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+
                                                     <button
-                                                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                      className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
+                                                      onClick={() => openStoreModal(item.item_name)}
+                                                      className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
+                                                        ? 'text-indigo-600 hover:text-indigo-700'
+                                                        : 'text-gray-300 hover:text-gray-500'
+                                                        }`}
+                                                      title="Swap store"
+                                                      aria-label="Swap store"
                                                     >
-                                                      +
+                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path
+                                                          strokeLinecap="round"
+                                                          strokeLinejoin="round"
+                                                          strokeWidth={2}
+                                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                                        />
+                                                      </svg>
+                                                    </button>
+
+                                                    <button
+                                                      onClick={() => removeItem(item.id)}
+                                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                      title="Remove from list"
+                                                      aria-label="Remove from list"
+                                                    >
+                                                      ✖️
                                                     </button>
                                                   </div>
-
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      togglePriority(item.id);
-                                                    }}
-                                                    className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                      ? 'text-red-600 hover:text-red-700'
-                                                      : 'text-gray-300 hover:text-red-400'
-                                                      }`}
-                                                    title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                                  >
-                                                    <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                    </svg>
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() => openStoreModal(item.item_name)}
-                                                    className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                      ? 'text-indigo-600 hover:text-indigo-700'
-                                                      : 'text-gray-300 hover:text-gray-500'
-                                                      }`}
-                                                    title="Swap store"
-                                                    aria-label="Swap store"
-                                                  >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                      <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                      />
-                                                    </svg>
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() => removeItem(item.id)}
-                                                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
-                                                    title="Remove from list"
-                                                    aria-label="Remove from list"
-                                                  >
-                                                    ✖️
-                                                  </button>
                                                 </div>
                                               );
                                             })}
