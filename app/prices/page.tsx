@@ -10,16 +10,16 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 function PricesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [stores, setStores] = useState<string[]>([]);
-  const [prices, setPrices] = useState<{[key: string]: string}>({});
+  const [prices, setPrices] = useState<{ [key: string]: string }>({});
   const [lastSaved, setLastSaved] = useState<string>('');
   const [items, setItems] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All');
-  const [pricesDates, setPricesDates] = useState<{[key: string]: string}>({});
+  const [pricesDates, setPricesDates] = useState<{ [key: string]: string }>({});
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -29,11 +29,11 @@ function PricesContent() {
 
   useEffect(() => {
     if (!isInitialLoad || stores.length === 0) return;
-    
+
     // Load from URL parameters
     const storeParam = searchParams.get('store');
     const itemParam = searchParams.get('item');
-    
+
     if (storeParam || itemParam) {
       // URL params take priority
       if (storeParam) {
@@ -52,7 +52,7 @@ function PricesContent() {
           setSelectedStore(stores[0]);
         }
       }
-      
+
       if (itemParam) {
         setSelectedItemFilter(itemParam);
         localStorage.setItem('prices_last_item_filter', itemParam);
@@ -72,17 +72,17 @@ function PricesContent() {
       try {
         const lastStore = localStorage.getItem('prices_last_store');
         const lastItemFilter = localStorage.getItem('prices_last_item_filter');
-        
+
         if (lastStore && stores.includes(lastStore)) {
           setSelectedStore(lastStore);
         } else if (stores.length > 0) {
           setSelectedStore(stores[0]);
         }
-        
+
         if (lastItemFilter) {
           setSelectedItemFilter(lastItemFilter);
         }
-        
+
         // Update URL with loaded preferences
         if (lastStore || lastItemFilter) {
           updateURL(lastStore || stores[0], lastItemFilter || 'All');
@@ -94,7 +94,7 @@ function PricesContent() {
         }
       }
     }
-    
+
     setIsInitialLoad(false);
   }, [searchParams, stores, isInitialLoad]);
 
@@ -104,7 +104,7 @@ function PricesContent() {
       .from('stores')
       .select('name')
       .order('name');
-    
+
     if (storesData) {
       const storeNames = storesData.map(s => s.name);
       setStores(storeNames);
@@ -115,7 +115,7 @@ function PricesContent() {
       .from('items')
       .select('name')
       .order('name');
-    
+
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
     }
@@ -126,12 +126,12 @@ function PricesContent() {
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .order('recorded_date', { ascending: false });
-    
+
     if (pricesData) {
-      const pricesObj: {[key: string]: string} = {};
-      const datesObj: {[key: string]: string} = {};
-      const latestPrices: {[key: string]: any} = {};
-      
+      const pricesObj: { [key: string]: string } = {};
+      const datesObj: { [key: string]: string } = {};
+      const latestPrices: { [key: string]: any } = {};
+
       // Get the most recent price for each item/store combination
       pricesData.forEach(p => {
         const key = `${p.store}-${p.item_name}`;
@@ -141,13 +141,13 @@ function PricesContent() {
           datesObj[key] = p.recorded_date;
         }
       });
-      
+
       setPrices(pricesObj);
       setPricesDates(datesObj);
 
       // Get most recent update time across all prices
       if (pricesData.length > 0) {
-        const latest = pricesData.reduce((a, b) => 
+        const latest = pricesData.reduce((a, b) =>
           new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
         );
         setLastSaved(new Date(latest.recorded_date).toLocaleDateString());
@@ -159,14 +159,14 @@ function PricesContent() {
     const params = new URLSearchParams();
     if (store) params.set('store', store);
     if (item && item !== 'All') params.set('item', item);
-    
+
     const newURL = params.toString() ? `/prices?${params.toString()}` : '/prices';
     router.push(newURL);
   };
 
   const shareLink = async () => {
     const url = window.location.href;
-    
+
     try {
       await navigator.clipboard.writeText(url);
       setShowCopied(true);
@@ -179,26 +179,26 @@ function PricesContent() {
   const handlePriceChange = (store: string, item: string, value: string) => {
     // Remove all non-digit characters
     const digits = value.replace(/\D/g, '');
-    
+
     let priceValue = '';
     if (digits !== '') {
       // Convert to cents, then to dollars
       const cents = parseInt(digits, 10);
       priceValue = (cents / 100).toFixed(2);
     }
-    
+
     // Update local state immediately (visual feedback)
-    setPrices({...prices, [`${store}-${item}`]: priceValue});
+    setPrices({ ...prices, [`${store}-${item}`]: priceValue });
   };
 
   const handlePriceSave = async (store: string, item: string) => {
     const priceValue = prices[`${store}-${item}`];
-    
+
     // Don't save if empty or 0.00
     if (!priceValue || parseFloat(priceValue) === 0) {
       return;
     }
-  
+
     // Get item_id
     const { data: itemData } = await supabase
       .from('items')
@@ -206,24 +206,24 @@ function PricesContent() {
       .eq('name', item)
       .eq('user_id', SHARED_USER_ID)
       .single();
-  
+
     if (!itemData) {
       console.error('Item not found:', item);
       return;
     }
-  
+
     // Get store_id
     const { data: storeData } = await supabase
       .from('stores')
       .select('id')
       .eq('name', store)
       .single();
-  
+
     if (!storeData) {
       console.error('Store not found:', store);
       return;
     }
-  
+
     // Insert new price record (never update - always insert for history)
     await supabase
       .from('price_history')
@@ -237,11 +237,11 @@ function PricesContent() {
         recorded_date: new Date().toISOString().split('T')[0], // Today's date
         created_at: new Date().toISOString()
       });
-  
+
     // Update dates
     const today = new Date().toISOString().split('T')[0];
-    setPricesDates({...pricesDates, [`${store}-${item}`]: today});
-  
+    setPricesDates({ ...pricesDates, [`${store}-${item}`]: today });
+
     // Update last saved time
     const now = new Date().toLocaleDateString();
     setLastSaved(now);
@@ -252,16 +252,16 @@ function PricesContent() {
     const numPrice = parseFloat(price || '0');
     return numPrice > 0 ? 'text-gray-800' : 'text-gray-200';
   };
-  
+
   const getDaysAgo = (store: string, item: string) => {
     const priceDate = pricesDates[`${store}-${item}`];
     if (!priceDate) return '';
-    
+
     const date = new Date(priceDate);
     const today = new Date();
     const diffTime = today.getTime() - date.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'today';
     if (diffDays === 1) return '1d ago';
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -272,23 +272,23 @@ function PricesContent() {
     const months = Math.floor(diffDays / 30);
     return `${months}mo ago`;
   };
-  
+
   const startEdit = (item: string) => {
     setEditingItem(item);
     setEditingValue(item);
   };
-  
+
   const cancelEdit = () => {
     setEditingItem(null);
     setEditingValue('');
   };
-  
+
   const saveEdit = async (oldItem: string) => {
     if (!editingValue.trim() || editingValue === oldItem) {
       cancelEdit();
       return;
     }
-  
+
     if (items.includes(editingValue.trim()) && editingValue.trim() !== oldItem) {
       alert('An item with this name already exists');
       return;
@@ -299,7 +299,7 @@ function PricesContent() {
       .from('items')
       .update({ name: editingValue.trim() })
       .eq('name', oldItem);
-    
+
     if (itemError) {
       console.error('Error updating item:', itemError);
       alert('Failed to update item');
@@ -323,8 +323,8 @@ function PricesContent() {
     // Update local state
     const updatedItems = items.map(i => i === oldItem ? editingValue.trim() : i);
     setItems(updatedItems);
-  
-    const updatedPrices: {[key: string]: string} = {};
+
+    const updatedPrices: { [key: string]: string } = {};
     Object.keys(prices).forEach(key => {
       if (key.includes(oldItem)) {
         const newKey = key.replace(oldItem, editingValue.trim());
@@ -334,10 +334,10 @@ function PricesContent() {
       }
     });
     setPrices(updatedPrices);
-  
+
     cancelEdit();
   };
-  
+
   const deleteItem = async (itemToDelete: string) => {
     if (!confirm(`Delete "${itemToDelete}"? This will remove all price data for this item.`)) {
       return;
@@ -348,7 +348,7 @@ function PricesContent() {
       .from('items')
       .delete()
       .eq('name', itemToDelete);
-    
+
     if (itemError) {
       console.error('Error deleting item:', itemError);
       alert('Failed to delete item');
@@ -370,8 +370,8 @@ function PricesContent() {
     // Update local state
     const updatedItems = items.filter(i => i !== itemToDelete);
     setItems(updatedItems);
-  
-    const updatedPrices: {[key: string]: string} = {};
+
+    const updatedPrices: { [key: string]: string } = {};
     Object.keys(prices).forEach(key => {
       if (!key.includes(itemToDelete)) {
         updatedPrices[key] = prices[key];
@@ -382,23 +382,23 @@ function PricesContent() {
 
   const getCellColor = (store: string, item: string) => {
     const currentPrice = parseFloat(prices[`${store}-${item}`] || '0');
-    
+
     if (currentPrice === 0) return 'bg-white';
-    
+
     // Get all prices for this item across all stores
     const itemPrices = stores.map(s => parseFloat(prices[`${s}-${item}`] || '0')).filter(p => p > 0);
-    
+
     if (itemPrices.length === 0) return 'bg-white';
-    
+
     // If only one price exists, make it green
     if (itemPrices.length === 1) return 'bg-green-100';
-    
+
     const minPrice = Math.min(...itemPrices);
     const maxPrice = Math.max(...itemPrices);
-    
+
     if (currentPrice === minPrice && minPrice !== maxPrice) return 'bg-green-100';
     if (currentPrice === maxPrice && minPrice !== maxPrice) return 'bg-red-100';
-    
+
     return 'bg-white';
   };
 
@@ -413,7 +413,7 @@ function PricesContent() {
 
   if (stores.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
+      <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading prices..</p>
@@ -424,7 +424,7 @@ function PricesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
       <div className="max-w-5xl mx-auto">
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
@@ -469,10 +469,10 @@ function PricesContent() {
             className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
             {stores.map(store => (
-            <option key={store} value={store}>{store}</option>
+              <option key={store} value={store}>{store}</option>
             ))}
           </select>
-          
+
           <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Item:</label>
           <select
             value={selectedItemFilter}
@@ -500,7 +500,7 @@ function PricesContent() {
             {filteredItems.map((item, idx) => {
               const currentPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0');
               const priceDate = pricesDates[`${selectedStore}-${item}`];
-              
+
               // Calculate days ago
               let daysAgo = '';
               if (priceDate) {
@@ -508,7 +508,7 @@ function PricesContent() {
                 const today = new Date();
                 const diffTime = today.getTime() - date.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 if (diffDays === 0) {
                   daysAgo = 'today';
                 } else if (diffDays === 1) {
@@ -523,18 +523,18 @@ function PricesContent() {
                   daysAgo = months === 1 ? '1 month ago' : `${months} months ago`;
                 }
               }
-              
+
               // Get all prices for this item
               const itemPrices = stores.map(store => ({
                 store,
                 price: parseFloat(prices[`${store}-${item}`] || '0')
               })).filter(p => p.price > 0);
-              
+
               const sortedPrices = itemPrices.sort((a, b) => a.price - b.price);
               const bestPrice = sortedPrices[0];
               const isBest = currentPrice > 0 && bestPrice && currentPrice === bestPrice.price;
               const savings = currentPrice > 0 && bestPrice ? currentPrice - bestPrice.price : 0;
-              
+
               return (
                 <div key={item} className="p-4">
                   <div className="flex justify-between items-center mb-2">
@@ -607,7 +607,7 @@ function PricesContent() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Price Comparison Message */}
                   {currentPrice === 0 ? null : itemPrices.length <= 1 ? (
                     <div className="mt-3 p-4 rounded-2xl border-2 bg-blue-50 border-blue-300">
@@ -679,13 +679,13 @@ function PricesContent() {
               ))}
             </select>
           </div>
-          
+
           <table className="w-full">
             <thead className="bg-blue-600 text-white">
               <tr>
                 <th className="p-4 text-left font-semibold">Item</th>
                 {stores.map(store => (
-                <th key={store} className="p-4 text-center font-semibold">{store}</th>
+                  <th key={store} className="p-4 text-center font-semibold">{store}</th>
                 ))}
                 <th className="p-4 text-center font-semibold"></th>
               </tr>
@@ -779,7 +779,7 @@ function PricesContent() {
 export default function Prices() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
+      <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>

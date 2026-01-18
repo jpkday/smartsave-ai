@@ -16,14 +16,14 @@ type Item = {
 };
 
 type SkuMapping = {
-    id: string;
-    store_id: string;
-    item_id: number;
-    store_sku: string;
-    created_at: string;
-    stores: { name: string } | null;
-    items: { name: string; category: string | null } | null;
-  };
+  id: string;
+  store_id: string;
+  item_id: number;
+  store_sku: string;
+  created_at: string;
+  stores: { name: string } | null;
+  items: { name: string; category: string | null } | null;
+};
 
 export default function SkuManagement() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -77,7 +77,7 @@ export default function SkuManagement() {
         .eq("store_id", selectedStoreId)
         .order("created_at", { ascending: false });
 
-        if (data) setExistingMappings(data as any as SkuMapping[]);
+      if (data) setExistingMappings(data as any as SkuMapping[]);
     };
 
     loadMappings();
@@ -108,10 +108,10 @@ export default function SkuManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStoreId || !selectedItem || !skuValue.trim()) return;
-  
+
     setIsSubmitting(true);
     setMessage(null);
-  
+
     try {
       const { error } = await supabase.from("store_item_sku").upsert(
         {
@@ -123,9 +123,9 @@ export default function SkuManagement() {
           onConflict: "store_id,item_id",
         }
       );
-  
+
       if (error) throw error;
-  
+
       setMessage({
         type: "success",
         text: `SKU saved for ${selectedItem.name}`,
@@ -134,7 +134,7 @@ export default function SkuManagement() {
       setSelectedItem(null);
       setSearchQuery("");
       setExistingSku(null);
-  
+
       // Refresh mappings
       const { data } = await supabase
         .from("store_item_sku")
@@ -151,9 +151,9 @@ export default function SkuManagement() {
         )
         .eq("store_id", selectedStoreId)
         .order("created_at", { ascending: false });
-  
+
       if (data) setExistingMappings(data as any as SkuMapping[]);
-  
+
       // Refocus the search input for next entry
       setTimeout(() => searchInputRef.current?.focus(), 100);
     } catch (error: unknown) {
@@ -167,55 +167,55 @@ export default function SkuManagement() {
     }
   };
 
-// Search items
-useEffect(() => {
-  if (searchQuery.length < 2) {
-    setSearchResults([]);
-    return;
-  }
+  // Search items
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-  const searchItems = async () => {
-    const { data } = await supabase
-      .from("items")
-      .select("id, name, category")
-      .ilike("name", `%${searchQuery}%`)
-      .order("name")
-      .limit(10);
+    const searchItems = async () => {
+      const { data } = await supabase
+        .from("items")
+        .select("id, name, category")
+        .ilike("name", `%${searchQuery}%`)
+        .order("name")
+        .limit(10);
 
-    if (data) setSearchResults(data);
-  };
+      if (data) setSearchResults(data);
+    };
 
-  const debounce = setTimeout(searchItems, 300);
-  return () => clearTimeout(debounce);
-}, [searchQuery]);
+    const debounce = setTimeout(searchItems, 300);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
 
-// Check for existing SKU when item is selected
-useEffect(() => {
-  if (!selectedItem || !selectedStoreId) {
-    setExistingSku(null);
-    setSkuValue("");
-    return;
-  }
-
-  const checkExistingSku = async () => {
-    const { data } = await supabase
-      .from("store_item_sku")
-      .select("store_sku")
-      .eq("store_id", selectedStoreId)
-      .eq("item_id", selectedItem.id)
-      .single();
-
-    if (data) {
-      setExistingSku(data.store_sku);
-      setSkuValue(data.store_sku); // Pre-populate the field
-    } else {
+  // Check for existing SKU when item is selected
+  useEffect(() => {
+    if (!selectedItem || !selectedStoreId) {
       setExistingSku(null);
       setSkuValue("");
+      return;
     }
-  };
 
-  checkExistingSku();
-}, [selectedItem, selectedStoreId]);
+    const checkExistingSku = async () => {
+      const { data } = await supabase
+        .from("store_item_sku")
+        .select("store_sku")
+        .eq("store_id", selectedStoreId)
+        .eq("item_id", selectedItem.id)
+        .single();
+
+      if (data) {
+        setExistingSku(data.store_sku);
+        setSkuValue(data.store_sku); // Pre-populate the field
+      } else {
+        setExistingSku(null);
+        setSkuValue("");
+      }
+    };
+
+    checkExistingSku();
+  }, [selectedItem, selectedStoreId]);
 
   const handleDeleteMapping = async (id: string) => {
     if (!confirm("Delete this SKU mapping?")) return;
@@ -235,7 +235,7 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-blue-50 bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6">
@@ -369,11 +369,10 @@ useEffect(() => {
             {/* Message */}
             {message && (
               <div
-                className={`mt-4 p-3 rounded-lg ${
-                  message.type === "success"
+                className={`mt-4 p-3 rounded-lg ${message.type === "success"
                     ? "bg-green-50 text-green-700 border border-green-200"
                     : "bg-red-50 text-red-700 border border-red-200"
-                }`}
+                  }`}
               >
                 {message.text}
               </div>
@@ -395,12 +394,12 @@ useEffect(() => {
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex-1">
-                  <div className="font-medium text-gray-900">
-                    {mapping.items?.name || 'Unknown Item'}
-                        </div>
-                            <div className="text-sm text-gray-600">
-                            SKU: {mapping.store_sku}
-                    {mapping.items?.category && (
+                    <div className="font-medium text-gray-900">
+                      {mapping.items?.name || 'Unknown Item'}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      SKU: {mapping.store_sku}
+                      {mapping.items?.category && (
                         <span className="ml-2 text-gray-400">
                           • {mapping.items.category}
                         </span>

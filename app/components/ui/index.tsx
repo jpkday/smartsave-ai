@@ -29,11 +29,11 @@ interface PageContainerProps {
   maxWidth?: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 }
 
-export const PageContainer: React.FC<PageContainerProps> = ({ 
-  children, 
-  maxWidth = '4xl' 
+export const PageContainer: React.FC<PageContainerProps> = ({
+  children,
+  maxWidth = '4xl'
 }) => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+  <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
     <div className={`max-w-${maxWidth} mx-auto`}>
       {children}
     </div>
@@ -51,11 +51,11 @@ interface BadgeProps {
   className?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ 
-  children, 
+export const Badge: React.FC<BadgeProps> = ({
+  children,
   variant = 'green',
   size = 'md',
-  className = '' 
+  className = ''
 }) => {
   const colors = {
     green: 'bg-green-500',
@@ -66,12 +66,12 @@ export const Badge: React.FC<BadgeProps> = ({
     orange: 'bg-orange-600',
     gray: 'bg-gray-400',
   };
-  
+
   const sizes = {
     sm: 'text-xs px-2 py-0.5',
     md: 'text-sm px-3 py-1',
   };
-  
+
   return (
     <span className={`${colors[variant]} text-white ${sizes[size]} rounded-full font-semibold whitespace-nowrap ${className}`}>
       {children}
@@ -105,8 +105,8 @@ interface ButtonProps {
   type?: 'button' | 'submit';
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  children, 
+export const Button: React.FC<ButtonProps> = ({
+  children,
   onClick,
   variant = 'primary',
   size = 'md',
@@ -121,15 +121,15 @@ export const Button: React.FC<ButtonProps> = ({
     danger: 'bg-red-600 hover:bg-red-800',
     secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
   };
-  
+
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-3 text-base',
     lg: 'px-6 py-4 text-lg',
   };
-  
+
   const baseClasses = variant === 'secondary' ? '' : 'text-white';
-  
+
   return (
     <button
       type={type}
@@ -152,10 +152,10 @@ interface PriceClassificationProps {
   className?: string;
 }
 
-export const PriceClassification: React.FC<PriceClassificationProps> = ({ 
-  type, 
+export const PriceClassification: React.FC<PriceClassificationProps> = ({
+  type,
   mobile = false,
-  className = '' 
+  className = ''
 }) => {
   const classifications = {
     best: {
@@ -177,9 +177,9 @@ export const PriceClassification: React.FC<PriceClassificationProps> = ({
       color: 'text-red-600'
     }
   };
-  
+
   const { label, mobileLabel, emoji, color } = classifications[type];
-  
+
   if (mobile) {
     return (
       <span className={`font-semibold ${color} ${className}`}>
@@ -187,7 +187,7 @@ export const PriceClassification: React.FC<PriceClassificationProps> = ({
       </span>
     );
   }
-  
+
   return (
     <span className={`font-semibold ${color} ${className}`}>
       {emoji} {label}
@@ -205,18 +205,17 @@ interface CoverageIndicatorProps {
   className?: string;
 }
 
-export const CoverageIndicator: React.FC<CoverageIndicatorProps> = ({ 
-  coverage, 
+export const CoverageIndicator: React.FC<CoverageIndicatorProps> = ({
+  coverage,
   total,
-  className = '' 
+  className = ''
 }) => {
   const isComplete = coverage === total;
   const percentage = ((coverage / total) * 100).toFixed(0);
-  
+
   return (
-    <p className={`text-xs md:text-sm flex items-center gap-1 ${
-      isComplete ? 'text-green-600' : 'text-orange-600'
-    } ${className}`}>
+    <p className={`text-xs md:text-sm flex items-center gap-1 ${isComplete ? 'text-green-600' : 'text-orange-600'
+      } ${className}`}>
       <span>
         {coverage}/{total} items ({percentage}% coverage)
         {!isComplete && ' ⚠️'}
@@ -236,13 +235,13 @@ interface FavoriteStarProps {
   className?: string;
 }
 
-export const FavoriteStar: React.FC<FavoriteStarProps> = ({ 
+export const FavoriteStar: React.FC<FavoriteStarProps> = ({
   isFavorite,
   size = 'xl',
-  className = '' 
+  className = ''
 }) => {
   if (!isFavorite) return null;
-  
+
   return (
     <span className={`text-yellow-500 text-${size} ${className}`}>
       ⭐
@@ -272,17 +271,17 @@ export const PriceInput: React.FC<PriceInputProps> = ({
   const handleChange = (inputValue: string) => {
     // Remove all non-digit characters
     const digits = inputValue.replace(/\D/g, '');
-    
+
     let priceValue = '';
     if (digits !== '') {
       // Convert to cents, then to dollars
       const cents = parseInt(digits, 10);
       priceValue = (cents / 100).toFixed(2);
     }
-    
+
     onChange(priceValue);
   };
-  
+
   return (
     <div className={`flex items-center border border-gray-300 rounded-lg px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 ${className}`}>
       <span className="text-gray-800 font-semibold mr-1">$</span>
@@ -374,11 +373,10 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     {action && (
       <button
         onClick={action.onClick}
-        className={`${
-          action.variant === 'danger' 
-            ? 'text-red-600 hover:text-red-800' 
+        className={`${action.variant === 'danger'
+            ? 'text-red-600 hover:text-red-800'
             : 'text-blue-600 hover:text-blue-800'
-        } font-semibold cursor-pointer text-sm`}
+          } font-semibold cursor-pointer text-sm`}
       >
         {action.label}
       </button>
@@ -435,7 +433,7 @@ export const DateAge: React.FC<DateAgeProps> = ({ date, className = '' }) => {
     const today = new Date();
     const diffTime = Math.abs(today.getTime() - dateObj.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'today';
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -450,7 +448,7 @@ export const DateAge: React.FC<DateAgeProps> = ({ date, className = '' }) => {
     const years = Math.floor(diffDays / 365);
     return years === 1 ? '1 year ago' : `${years} years ago`;
   };
-  
+
   return (
     <span className={`text-gray-400 ${className}`}>
       ({getDaysAgo(date)})

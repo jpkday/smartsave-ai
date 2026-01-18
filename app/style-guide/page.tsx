@@ -85,7 +85,7 @@ export default function StyleGuide() {
               <p className="text-xs text-gray-500">bg-gray-400</p>
             </div>
             <div>
-              <div className="bg-gradient-to-br from-blue-500 to-green-400 h-20 rounded-lg mb-2"></div>
+              <div className="bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 h-20 rounded-lg mb-2"></div>
               <p className="text-sm font-semibold text-gray-700">Gradient BG</p>
               <p className="text-xs text-gray-500">from-blue to-green</p>
             </div>
@@ -247,9 +247,9 @@ export default function StyleGuide() {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Section Headers</h2>
           <div className="space-y-4">
             <SectionHeader title="Your Shopping List" count={8} />
-            <SectionHeader 
-              title="Best Stores" 
-              action={{ label: 'Clear All', onClick: () => {}, variant: 'danger' }} 
+            <SectionHeader
+              title="Best Stores"
+              action={{ label: 'Clear All', onClick: () => { }, variant: 'danger' }}
             />
           </div>
         </Card>
