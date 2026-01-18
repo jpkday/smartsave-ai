@@ -163,6 +163,29 @@ export async function POST(request: NextRequest) {
       // Don't fail the request - item is already checked
     }
 
+    // 7b. IMPLICIT PRICE CONFIRMATION
+    // Logic: If we checked it off at this store, and we already know the price,
+    // we confirm that price is still valid for today by inserting a fresh history record.
+    if (currentPrice !== null) {
+      const { error: historyError } = await supabase.from('price_history').insert({
+        item_id: listItem.item_id,
+        item_name: listItem.item_name,
+        store_id: store_id,
+        store: storeName,
+        price: currentPrice,
+        user_id: SHARED_USER_ID,
+        household_code: listItem.household_code,
+        recorded_date: today, // YYYY-MM-DD
+        created_at: new Date().toISOString(), // Full timestamp
+      });
+
+      if (historyError) {
+        console.error('Failed to update price history on check:', historyError);
+      } else {
+        console.log(`[PRICE CONFIRM] Confirmed price ${currentPrice} for ${listItem.item_name} at ${storeName}`);
+      }
+    }
+
     // 8. Check if ALL items for this store are now checked
     // NOTE: We no longer auto-close trips. Trips must be explicitly ended by the user.
     // This allows for "forgotten item" scenarios without fragmenting trips.
