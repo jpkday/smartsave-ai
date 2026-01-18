@@ -164,9 +164,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Check if ALL items for this store are now checked
-    // CRITICAL: Only count items CURRENTLY on the shopping list (not removed with X)
+    // NOTE: We no longer auto-close trips. Trips must be explicitly ended by the user.
+    // This allows for "forgotten item" scenarios without fragmenting trips.
 
     let tripEnded = false;
+
+    // The logic below is preserved but disabled/modified to just log status without closing
 
     // Get ALL unchecked items still on the shopping list for this household
     const { data: allUncheckedItems, error: uncheckedError } = await supabase
@@ -196,27 +199,16 @@ export async function POST(request: NextRequest) {
 
         console.log(`[TRIP CHECK] Store: ${storeName}, Unchecked items for this store: ${uncheckedForThisStore.length}`);
 
-        // If no unchecked items remain for this store, close the trip
-        if (uncheckedForThisStore.length === 0) {
-          const { error: updateError } = await supabase
-            .from('trips')
-            .update({ ended_at: new Date().toISOString() })
-            .eq('id', trip.id);
-
-          if (updateError) {
-            console.error('Failed to close trip:', updateError);
-          } else {
-            tripEnded = true;
-            console.log(`[TRIP CLOSED] Trip ${trip.id} for ${storeName} - all items checked or removed`);
-          }
-        }
+        // AUTO-CLOSE DISABLED
+        // if (uncheckedForThisStore.length === 0) { ... }
       }
     }
 
     return NextResponse.json({
       success: true,
       trip_id: trip.id,
-      trip_ended: tripEnded,
+      trip_ended: false, // Always false now
+      trip_created: trip.id !== (await request.json()).last_trip_id // approximate check, frontend will handle actual "new trip" logic better or we can refine here
     });
 
   } catch (error) {

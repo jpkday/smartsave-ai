@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -114,8 +114,32 @@ export default function ShoppingList() {
     if (typeof window !== 'undefined') {
       const code = localStorage.getItem('household_code');
       setHouseholdCode(code);
+
+      // Load view settings
+      const storedShowChecked = localStorage.getItem('view_showCheckedItems');
+      if (storedShowChecked !== null) {
+        setShowCheckedItems(storedShowChecked === 'true');
+      }
+
+      const storedShowPriority = localStorage.getItem('view_showPriorityOnly');
+      if (storedShowPriority !== null) {
+        setShowPriorityOnly(storedShowPriority === 'true');
+      }
     }
   }, []);
+
+  // Persist view settings on change
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('view_showCheckedItems', String(showCheckedItems));
+    }
+  }, [showCheckedItems, mounted]);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('view_showPriorityOnly', String(showPriorityOnly));
+    }
+  }, [showPriorityOnly, mounted]);
 
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
@@ -227,6 +251,106 @@ export default function ShoppingList() {
     }, 5000);
 
     setTripCompleteToastTimeout(t);
+  };
+
+  // TRIP STARTED TOAST
+  const [tripStartedToastStore, setTripStartedToastStore] = useState<string | null>(null);
+  const [tripStartedToastTripId, setTripStartedToastTripId] = useState<string | null>(null); // For undo
+  const [tripStartedToastTimeout, setTripStartedToastTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [lastImplicitStartItemId, setLastImplicitStartItemId] = useState<string | null>(null); // To undo check if needed
+
+  const showTripStartedToast = (storeName: string, tripId: string, item_id: string | null = null) => {
+    if (tripStartedToastTimeout) clearTimeout(tripStartedToastTimeout);
+
+    setTripStartedToastStore(storeName);
+    setTripStartedToastTripId(tripId);
+    setLastImplicitStartItemId(item_id);
+
+    const t = setTimeout(() => {
+      setTripStartedToastStore(null);
+      setTripStartedToastTripId(null);
+      setLastImplicitStartItemId(null);
+      setTripStartedToastTimeout(null);
+    }, 5000);
+
+    setTripStartedToastTimeout(t);
+  };
+
+  const undoTripStart = async () => {
+    if (!tripStartedToastTripId) return;
+
+    if (tripStartedToastTimeout) {
+      clearTimeout(tripStartedToastTimeout);
+      setTripStartedToastTimeout(null);
+    }
+
+    try {
+      // 1. Delete the trip (cascade should handle events if DB configured, but let's be safe)
+      // Actually, if we just delete the trip, we might leave events without a trip_id or delete them?
+      // For now, let's just delete the trip record.
+      const { error } = await supabase.from('trips').delete().eq('id', tripStartedToastTripId);
+      if (error) throw error;
+
+      // 2. If this was implicit (via item check), uncheck that item
+      if (lastImplicitStartItemId) {
+        await supabase.from('shopping_list').update({ checked: false }).eq('id', lastImplicitStartItemId);
+      }
+
+      // 3. Unpin store
+      localStorage.removeItem('my_active_store_id');
+      setMyActiveStoreId(null);
+
+      await loadData();
+    } catch (e) {
+      console.error('Error undoing trip start:', e);
+      alert('Failed to undo. Check your connection and try again.');
+    } finally {
+      setTripStartedToastStore(null);
+      setTripStartedToastTripId(null);
+      setLastImplicitStartItemId(null);
+    }
+  };
+
+  const startTrip = async (storeId: string, storeName: string) => {
+    try {
+      const response = await fetch('/api/trips/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: storeId, household_code: householdCode }),
+      });
+      const data = await response.json();
+
+      if (data.success && data.trip) {
+        pinStore(storeId);
+        await loadData();
+        showTripStartedToast(storeName, data.trip.id, null); // Explicit start, no implicit item
+      }
+    } catch (error) {
+      console.error('Error starting trip:', error);
+      alert('Failed to start trip. Please try again.');
+    }
+  };
+
+  const endTrip = async (tripId: string, storeId: string) => {
+    if (!confirm('End trip and clear purchased items?')) return;
+
+    try {
+      const response = await fetch('/api/trips/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId, store_id: storeId, household_code: householdCode }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.removeItem('my_active_store_id');
+        setMyActiveStoreId(null);
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Error ending trip:', error);
+      alert('Failed to end trip. Please try again.');
+    }
   };
 
 
@@ -677,7 +801,7 @@ export default function ShoppingList() {
 
   // LOAD DATA CONSTANT
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
     if (storesError) console.error('Error loading stores:', storesError);
 
@@ -700,7 +824,7 @@ export default function ShoppingList() {
       setActiveTrips({});
     } else {
       const tripsByStore: { [store_id: string]: string } = {};
-      const STALE_TRIP_MS = 24 * 60 * 60 * 1000; // 24 hours
+      const STALE_TRIP_MS = 12 * 60 * 60 * 1000; // 12 hours (User requirement)
       const now = new Date();
 
       (tripsData ?? []).forEach((trip) => {
@@ -869,7 +993,7 @@ export default function ShoppingList() {
     }
 
     setLoading(false);
-  };
+  }, [householdCode]);
 
   // =========================
   // ✅ ID-based list toggling (so selection doesn’t break on rename)
@@ -925,6 +1049,32 @@ export default function ShoppingList() {
       setShowAutocomplete(false);
     }
   };
+
+  // Realtime Subscription
+  useEffect(() => {
+    if (!householdCode) return;
+
+    const channel = supabase
+      .channel('shopping_list_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shopping_list',
+          filter: `household_code=eq.${householdCode}`,
+        },
+        () => {
+          console.log('Realtime update received');
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [householdCode, loadData]);
 
   const selectItem = async (itemName: string) => {
     setShowAutocomplete(false);
@@ -1211,14 +1361,23 @@ export default function ShoppingList() {
           body: JSON.stringify({
             shopping_list_id: id,
             store_id: effectiveStoreId,
+            last_trip_id: activeTrips[effectiveStoreId || ''] // pass current trip ID if exists to detect new one
           }),
         });
+
+        const data = await response.json();
 
         if (!response.ok) throw new Error('Failed to check item');
 
         await loadData();
-        // 🔔 SHOW TOAST
-        showCheckedOffListToast(item);
+
+        // Check if we created a NEW trip implicitly (only if we didn't have one before)
+        if (data.trip_created && data.trip_id && effectiveStoreName) {
+          showTripStartedToast(effectiveStoreName, data.trip_id, id);
+        } else {
+          // 🔔 SHOW TOAST (Standard check off)
+          showCheckedOffListToast(item);
+        }
 
       } else {
         const { error } = await supabase.from('shopping_list').update({ checked: false }).eq('id', id);
@@ -1829,6 +1988,13 @@ export default function ShoppingList() {
                                       {store}
                                       <span className="font-bold ml-1">(Active)</span>
                                     </span>
+
+                                    <button
+                                      onClick={() => endTrip(activeTrips[storeId], storeId)}
+                                      className="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                                    >
+                                      End Trip
+                                    </button>
                                     <span className="text-sm text-gray-500 font-medium">
                                       {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
                                     </span>
@@ -2255,6 +2421,16 @@ export default function ShoppingList() {
                                 <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-gray-50 p-3.5 border-b border-gray-200">
                                   <div className="flex items-center gap-3">
                                     <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
+
+                                    <button
+                                      onClick={() => {
+                                        const id = storesByName[store];
+                                        if (id) startTrip(id, store);
+                                      }}
+                                      className="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                                    >
+                                      Start Trip
+                                    </button>
                                     <span className="text-sm text-gray-500 font-medium">
                                       {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
                                     </span>
