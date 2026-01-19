@@ -3,14 +3,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
-import { getCategoryColor } from '../lib/categoryColors';
+import { useCategories } from '../hooks/useCategories';
+
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Deal {
   item_name: string;
   item_id: string;
-  category: string;
+  category_id: number;
   store: string;
   price: number;
   recorded_date: string;
@@ -30,6 +31,8 @@ export default function Deals() {
   const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string>('all');
   const [stores, setStores] = useState<string[]>([]);
+  /* Refactored to use dynamic categories */
+  const { getCategoryName, getCategoryColorById } = useCategories();
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function Deals() {
     // Get item categories
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
-      .select('id, name, category')
+      .select('id, name, category_id')
       .eq('user_id', SHARED_USER_ID);
 
     if (itemsError) {
@@ -84,140 +87,114 @@ export default function Deals() {
     }
 
     // Build item lookup for category
-    const itemLookup: Record<string, { id: string; category: string }> = {};
+    const itemLookup: Record<string, { id: string; category_id: number }> = {};
     (itemsData || []).forEach((item: any) => {
       itemLookup[item.name] = {
         id: item.id,
-        category: item.category || 'Other',
+        category_id: item.category_id !== null ? item.category_id : -1,
       };
     });
 
     // Build historical data per item
     const itemHistory: Record<string, number[]> = {};
     (allPrices || []).forEach((p: any) => {
-      if (!itemHistory[p.item_name]) itemHistory[p.item_name] = [];
-      itemHistory[p.item_name].push(p.price);
+      const price = parseFloat(p.price);
+      if (!isNaN(price)) { // Ensure price is a valid number
+        if (!itemHistory[p.item_name]) {
+          itemHistory[p.item_name] = [];
+        }
+        itemHistory[p.item_name].push(price);
+      }
     });
 
-    // Calculate deal quality and discount % for each recent price
-    const dealsMap = new Map<string, Deal>();
+    // Store map
     const storeSet = new Set<string>();
 
+    const dealList: Deal[] = [];
+
     (recentPrices || []).forEach((p: any) => {
+      const currentPrice = parseFloat(p.price);
+      if (isNaN(currentPrice)) return; // Skip if current price is not a valid number
+
+      // Check if we have history
       const history = itemHistory[p.item_name] || [];
-      if (history.length < 2) return; // Need at least 2 prices to compare
+      if (history.length < 3) return; // Need some history to judge deal?? 
+      // Or maybe just show it if it's cheap? 
+      // Let's stick to requirement: "Deals" implies better than usual.
 
-      const itemInfo = itemLookup[p.item_name];
-      if (!itemInfo) return; // Skip if item not found
+      // Calculate stats
+      const sortedHistory = [...history].sort((a, b) => a - b);
+      const min = sortedHistory[0];
+      const max = sortedHistory[sortedHistory.length - 1];
+      const avg = sortedHistory.reduce((a, b) => a + b, 0) / sortedHistory.length;
 
-      const currentPrice = p.price;
+      // 75th percentile (typical high)
+      const p75Index = Math.floor(sortedHistory.length * 0.75);
+      const typicalHigh = sortedHistory[p75Index];
 
-      // Sort prices to calculate percentiles
-      const sorted = [...history].sort((a, b) => a - b);
-      const low = sorted[0];
-      const high = sorted[sorted.length - 1];
+      // Criteria for a "Deal":
+      // 1. Price is lower than typical high (savings)
+      // 2. Savings > 5% explicitly? 
+      // 3. And it's a recent price (handled by query)
 
-      // Calculate 75th percentile (typical high price)
-      const p75Index = Math.floor(sorted.length * 0.75);
-      const typicalHighPrice = sorted[p75Index];
+      if (currentPrice >= typicalHigh) return; // Not a deal
 
-      // Calculate discount % from typical high price
-      const discountPercent = ((typicalHighPrice - currentPrice) / typicalHighPrice) * 100;
+      const savings = typicalHigh - currentPrice;
+      const discountPercent = (savings / typicalHigh) * 100;
 
-      console.log(`${p.item_name}: $${currentPrice} vs typical $${typicalHighPrice.toFixed(2)} = ${discountPercent.toFixed(1)}% off`);
+      if (discountPercent < 5) return; // Ignore small noise
 
-      // Skip if discount is less than 5%
-      if (discountPercent < 5) return;
-
-      // Calculate average price
-      const sum = history.reduce((acc, val) => acc + val, 0);
-      const avg = sum / history.length;
-
-      // Calculate percentile (where does this price rank?)
-      const belowCount = sorted.filter(x => x < currentPrice).length;
-      const percentile = (belowCount / sorted.length) * 100;
-
-      let dealQuality: 'good' | 'great' | 'best';
-      if (currentPrice === low) {
-        dealQuality = 'best';
-      } else if (percentile <= 10) {
-        dealQuality = 'great';
-      } else if (percentile <= 25) {
-        dealQuality = 'good';
-      } else {
-        return; // Not a deal, skip it
-      }
+      let quality: 'good' | 'great' | 'best' = 'good';
+      if (currentPrice <= min) quality = 'best';
+      else if (currentPrice <= avg * 0.9) quality = 'great'; // 10% below average
+      else if (discountPercent > 25) quality = 'great';
 
       storeSet.add(p.store);
 
-      const deal: Deal = {
+      const lookup = itemLookup[p.item_name];
+      if (!lookup) return; // Skip if item not found in lookup
+
+      dealList.push({
         item_name: p.item_name,
-        item_id: itemInfo.id,
-        category: itemInfo.category,
+        item_id: lookup.id,
+        category_id: lookup.category_id,
         store: p.store,
         price: currentPrice,
         recorded_date: p.recorded_date,
-        dealQuality,
-        historicalLow: low,
-        historicalHigh: high,
+        dealQuality: quality,
+        historicalLow: min,
+        historicalHigh: max,
         historicalAvg: avg,
-        typicalHighPrice: typicalHighPrice,
-        discountPercent,
-        isOnList: false, // Will be updated later
-        valid_from: p.valid_from || null,
-        valid_until: p.valid_until || null,
-      };
-
-      // Only keep the most recent entry per item (item_name is unique identifier)
-      const existingDeal = dealsMap.get(p.item_name);
-      if (!existingDeal || new Date(p.recorded_date) > new Date(existingDeal.recorded_date)) {
-        dealsMap.set(p.item_name, deal);
-      }
+        typicalHighPrice: typicalHigh,
+        discountPercent: discountPercent,
+        isOnList: false, // will check list next
+        valid_from: p.valid_from,
+        valid_until: p.valid_until,
+      });
     });
 
-    // Convert map to array
-    const dealsData = Array.from(dealsMap.values());
+    // Check shopping list status
+    const { data: listData } = await supabase
+      .from('shopping_list')
+      .select('item_name')
+      .eq('household_code', currentHouseholdCode); // Use household code for list check? YES.
 
-    console.log('Checking shopping list for household:', currentHouseholdCode);
-    console.log('Number of deals:', dealsData.length);
+    // Actually typically list is by household_code. 
+    // The fetch above uses householdCode for Deals which is correct? 
+    // Wait, the Price History is user_id based (flyer entry). 
+    // But list is household based.
 
-    // Check which items are already on the shopping list
-    if (currentHouseholdCode) {
-      const itemIds = dealsData.map(d => d.item_id);
-      console.log('Item IDs to check:', itemIds);
+    const listSet = new Set(listData?.map((l: any) => l.item_name) || []);
 
-      const { data: listItems, error: listError } = await supabase
-        .from('shopping_list')
-        .select('item_id, item_name')
-        .eq('household_code', currentHouseholdCode)
-        .in('item_id', itemIds);
-
-      console.log('Items on list:', listItems);
-      if (listError) console.error('Error checking list:', listError);
-
-      const onListSet = new Set((listItems || []).map((item: any) => item.item_id));
-      console.log('Items on list (Set):', Array.from(onListSet));
-
-      // Mark which deals are already on the list
-      dealsData.forEach(deal => {
-        deal.isOnList = onListSet.has(deal.item_id);
-        if (deal.isOnList) {
-          console.log(`${deal.item_name} is on the list`);
-        }
-      });
-    } else {
-      console.log('No household code, marking all as not on list');
-      // No household code, mark all as not on list
-      dealsData.forEach(deal => {
-        deal.isOnList = false;
-      });
-    }
+    dealList.forEach(d => {
+      d.isOnList = listSet.has(d.item_name);
+    });
 
     // Sort by discount % descending (biggest savings first)
-    dealsData.sort((a, b) => b.discountPercent - a.discountPercent);
+    dealList.sort((a, b) => b.discountPercent - a.discountPercent);
 
-    setDeals(dealsData);
-    setStores(Array.from(storeSet).sort());
+    setDeals(dealList);
+    setStores([...storeSet].sort());
     setLoading(false);
   };
 
@@ -277,14 +254,11 @@ export default function Deals() {
     ? deals
     : deals.filter(d => d.store === selectedStore);
 
-  const getDealBadge = (quality: 'good' | 'great' | 'best') => {
+  const getDealBadge = (quality: string) => {
     switch (quality) {
-      case 'best':
-        return { bg: 'bg-red-100', text: 'text-red-800', label: '🔥 BEST PRICE', border: 'border-red-300' };
-      case 'great':
-        return { bg: 'bg-orange-100', text: 'text-orange-800', label: '⭐ GREAT DEAL', border: 'border-orange-300' };
-      case 'good':
-        return { bg: 'bg-green-100', text: 'text-green-800', label: '✓ GOOD PRICE', border: 'border-green-300' };
+      case 'best': return { label: '🔥 BEST PRICE', bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' };
+      case 'great': return { label: '⭐ GREAT DEAL', bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' };
+      default: return { label: '✓ GOOD PRICE', bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' };
     }
   };
 
@@ -349,7 +323,9 @@ export default function Deals() {
             <div className="space-y-3">
               {filteredDeals.map((deal, idx) => {
                 const badge = getDealBadge(deal.dealQuality);
-                const categoryStyle = getCategoryColor(deal.category);
+                const categoryStyle = getCategoryColorById(deal.category_id);
+                const categoryName = getCategoryName(deal.category_id);
+
                 return (
                   <Link
                     key={idx}
@@ -364,7 +340,7 @@ export default function Deals() {
                         <div className="flex-1 pr-4">
                           <div className="flex items-center gap-2 mb-2">
                             <span className={`text-xs px-2 py-1 rounded-full font-semibold ${categoryStyle}`}>
-                              {deal.category}
+                              {categoryName}
                             </span>
                           </div>
                           <h3 className="text-xl font-bold text-gray-800 mb-1">

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { useCategories } from '../hooks/useCategories';
 
 interface Trip {
   id: string;
@@ -19,7 +20,7 @@ interface TripEvent {
   item_name: string;
   quantity: number;
   checked_at: string;
-  category?: string;
+  category_id: number;
   price?: number;
 }
 
@@ -51,6 +52,9 @@ export default function TripsPage() {
     }
     setIsInitialLoad(false);
   }, []);
+
+  /* Refactored to use dynamic categories */
+  const { getCategoryName, getCategoryColorById } = useCategories();
 
   // Save filter change
   useEffect(() => {
@@ -154,15 +158,15 @@ export default function TripsPage() {
 
     const { data: itemsData } = await supabase
       .from('items')
-      .select('id, name, category')
+      .select('id, name, category_id')
       .in('id', itemIds);
 
-    const itemMap: { [id: number]: { name: string; category: string } } = {};
+    const itemMap: { [id: number]: { name: string; category_id: number } } = {};
     if (itemsData) {
       itemsData.forEach(item => {
         itemMap[item.id] = {
           name: item.name,
-          category: item.category || 'Other',
+          category_id: item.category_id !== null ? item.category_id : -1, // Default to -1 (Other)
         };
       });
     }
@@ -178,7 +182,7 @@ export default function TripsPage() {
           item_name: itemInfo?.name || 'Unknown Item',
           quantity: event.quantity,
           checked_at: event.checked_at,
-          category: itemInfo?.category || 'Other',
+          category_id: itemInfo?.category_id ?? -1,
           price: event.price || undefined,
         };
       });
@@ -245,33 +249,18 @@ export default function TripsPage() {
   };
 
   const groupByCategory = (events: TripEvent[]) => {
-    const grouped: { [category: string]: TripEvent[] } = {};
+    const grouped: { [categoryId: number]: TripEvent[] } = {};
     events.forEach(event => {
-      const cat = event.category || 'Other';
-      if (!grouped[cat]) {
-        grouped[cat] = [];
+      const catId = event.category_id;
+      if (!grouped[catId]) {
+        grouped[catId] = [];
       }
-      grouped[cat].push(event);
+      grouped[catId].push(event);
     });
     return grouped;
   };
 
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      'Produce': 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      'Pantry': 'bg-yellow-50 border-yellow-200 text-yellow-700',
-      'Dairy': 'bg-purple-50 border-purple-200 text-purple-700',
-      'Beverage': 'bg-sky-50 border-sky-200 text-sky-700',
-      'Meat': 'bg-red-50 border-red-200 text-red-700',
-      'Frozen': 'bg-cyan-50 border-cyan-200 text-cyan-700',
-      'Refrigerated': 'bg-blue-50 border-blue-200 text-blue-700',
-      'Bakery': 'bg-orange-50 border-orange-200 text-orange-700',
-      'Household': 'bg-amber-50 border-amber-200 text-amber-700',
-      'Health': 'bg-pink-50 border-pink-200 text-pink-700',
-      'Other': 'bg-slate-50 border-slate-200 text-slate-700',
-    };
-    return colors[category] || 'bg-slate-50 border-slate-200 text-slate-700';
-  };
+
 
   return (
     <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
@@ -352,16 +341,16 @@ export default function TripsPage() {
               <div className="p-4 md:p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {(() => {
-                    const categoryTotals: { [category: string]: number } = {};
+                    const categoryTotals: { [categoryId: number]: number } = {};
 
                     trips.forEach(trip => {
                       trip.events.forEach(event => {
-                        const cat = event.category || 'Other';
+                        const catId = event.category_id !== null ? event.category_id : -1;
                         if (event.price) {
-                          if (!categoryTotals[cat]) {
-                            categoryTotals[cat] = 0;
+                          if (!categoryTotals[catId]) {
+                            categoryTotals[catId] = 0;
                           }
-                          categoryTotals[cat] += event.price * event.quantity;
+                          categoryTotals[catId] += event.price * event.quantity;
                         }
                       });
                     });
@@ -369,16 +358,22 @@ export default function TripsPage() {
                     const sortedCategories = Object.entries(categoryTotals)
                       .sort(([, a], [, b]) => b - a);
 
-                    return sortedCategories.map(([category, total]) => (
-                      <button
-                        key={category}
-                        onClick={() => openCategoryModal(category)}
-                        className={`rounded-xl p-3 border transition-all duration-200 transform hover:scale-105 hover:shadow-md text-right cursor-pointer ${getCategoryColor(category)}`}
-                      >
-                        <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
-                        <div className="text-2xl font-bold">{formatMoney(total)}</div>
-                      </button>
-                    ));
+                    return sortedCategories.map(([catIdStr, total]) => {
+                      const catId = parseInt(catIdStr);
+                      const name = getCategoryName(catId);
+                      const color = getCategoryColorById(catId);
+
+                      return (
+                        <button
+                          key={catId}
+                          onClick={() => openCategoryModal(catId)}
+                          className={`rounded-xl p-3 border transition-all duration-200 transform hover:scale-105 hover:shadow-md text-right cursor-pointer ${color}`}
+                        >
+                          <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{name}</div>
+                          <div className="text-2xl font-bold">{formatMoney(total)}</div>
+                        </button>
+                      );
+                    });
                   })()}
                 </div>
               </div>
@@ -433,7 +428,14 @@ export default function TripsPage() {
                 .map(trip => {
                   const isExpanded = expandedTrips.has(trip.id);
                   const eventsByCategory = groupByCategory(trip.events);
-                  const categories = Object.keys(eventsByCategory).sort();
+                  const categoryIds = Object.keys(eventsByCategory).map(k => parseInt(k));
+
+                  // Sort by category name
+                  categoryIds.sort((a, b) => {
+                    const nameA = getCategoryName(a);
+                    const nameB = getCategoryName(b);
+                    return nameA.localeCompare(nameB);
+                  });
 
                   return (
                     <div key={trip.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -470,8 +472,13 @@ export default function TripsPage() {
                         <div className="border-t border-gray-200">
                           {/* Scrollable items section */}
                           <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
-                            {categories.map(category => {
-                              const categorySubtotal = eventsByCategory[category].reduce((sum, event) => {
+                            {categoryIds.map(categoryId => {
+                              const events = eventsByCategory[categoryId];
+                              const categoryName = getCategoryName(categoryId);
+                              const categoryColor = getCategoryColorById(categoryId); // Use helper if needed for styling headers? 
+                              // Headers currently grey. logic was hardcoded bg-gray-100.
+
+                              const categorySubtotal = events.reduce((sum, event) => {
                                 if (event.price) {
                                   return sum + (event.price * event.quantity);
                                 }
@@ -479,17 +486,17 @@ export default function TripsPage() {
                               }, 0);
 
                               return (
-                                <div key={category} className="mb-4 last:mb-0">
-                                  <div className="flex items-center justify-between bg-gray-100 py-2 rounded-md mb-2 -mx-4 md:-mx-5 px-4 md:px-5">
-                                    <h4 className="text-sm font-bold text-gray-700 uppercase">
-                                      {category}
+                                <div key={categoryId} className="mb-4 last:mb-0">
+                                  <div className={`flex items-center justify-between py-2 mb-2 -mx-4 md:-mx-5 px-4 md:px-5 ${categoryColor} bg-opacity-25`}>
+                                    <h4 className="text-sm font-bold text-gray-800 uppercase">
+                                      {categoryName}
                                     </h4>
-                                    <span className="text-sm font-bold text-gray-700">
+                                    <span className="text-sm font-bold text-gray-800">
                                       {formatMoney(categorySubtotal)}
                                     </span>
                                   </div>
                                   <div className="space-y-2">
-                                    {eventsByCategory[category].map((event, idx) => (
+                                    {events.map((event, idx) => (
                                       <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
                                         <div className="flex-1">
                                           <span className="text-gray-800 font-medium">{event.item_name}</span>
@@ -539,14 +546,14 @@ export default function TripsPage() {
           </>
         )}
         {/* Category Detail Modal */}
-        {categoryModalOpen && selectedCategory && (
+        {categoryModalOpen && selectedCategory !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col min-h-0">
               {/* Header - Fixed */}
               <div className="flex justify-between items-start p-6 pb-4 border-b border-gray-200">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">
-                    {selectedCategory} Items
+                    {getCategoryName(selectedCategory)} Items
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     Last {daysToShow} days
@@ -567,7 +574,7 @@ export default function TripsPage() {
 
                 trips.forEach(trip => {
                   trip.events
-                    .filter(event => (event.category || 'Other') === selectedCategory)
+                    .filter(event => event.category_id === selectedCategory)
                     .forEach(event => {
                       categoryItems.push({
                         ...event,
@@ -604,7 +611,7 @@ export default function TripsPage() {
                         {categoryItems.map((item, idx) => (
                           <div
                             key={idx}
-                            className={`p-3 rounded-xl border ${getCategoryColor(selectedCategory)}`}
+                            className={`p-3 rounded-xl border ${getCategoryColorById(selectedCategory)}`}
                           >
                             <div className="flex justify-between items-start mb-1">
                               <span className="font-semibold">
@@ -639,7 +646,7 @@ export default function TripsPage() {
                       </div>
                     </div>
                     {/* Total - Fixed at Bottom */}
-                    <div className={`shrink-0 p-4 border-t-2 bg-white ${getCategoryColor(selectedCategory)}`}>
+                    <div className={`shrink-0 p-4 border-t-2 bg-white ${getCategoryColorById(selectedCategory)}`}>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold">Category Total</span>
                         <span className="text-2xl font-bold">{formatMoney(total)}</span>

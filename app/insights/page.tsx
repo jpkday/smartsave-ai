@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import Header from '../components/Header';
-import { getCategoryColor } from '../lib/categoryColors';
+import { useCategories } from '../hooks/useCategories';
 
 type FrequentItem = {
   item_name: string;
   item_id: number;
-  category: string;
+  category_id: number;
   purchase_count: number;
   last_purchased: string;
   avg_price_paid: string;
@@ -17,7 +17,7 @@ type FrequentItem = {
 
 type PriceTrend = {
   item_name: string;
-  category: string;
+  category_id: number;
   store_name: string;
   price_30_days_ago: string;
   first_date: string;
@@ -30,23 +30,12 @@ type PriceTrend = {
 export default function InsightsPage() {
   const [frequentItems, setFrequentItems] = useState<FrequentItem[]>([]);
   const [priceTrends, setPriceTrends] = useState<PriceTrend[]>([]);
+  /* Refactored to use dynamic categories */
+  const { getCategoryName, getCategoryColorById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
 
-  // Load household code from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const code = localStorage.getItem('household_code');
-      setHouseholdCode(code);
-    }
-  }, []);
-
-  // Load insights when household code is available
-  useEffect(() => {
-    if (householdCode) {
-      loadInsights();
-    }
-  }, [householdCode]);
+  // ... (useEffects)
 
   async function loadInsights() {
     if (!householdCode) return;
@@ -57,8 +46,39 @@ export default function InsightsPage() {
 
     const { data: trends } = await supabase.rpc('get_price_trends');
 
-    if (frequent) setFrequentItems(frequent.slice(0, 10));
-    if (trends) setPriceTrends(trends);
+    // Fetch items to get dynamic category IDs
+    const { data: itemsData } = await supabase
+      .from('items')
+      .select('id, name, category_id')
+      .eq('user_id', SHARED_USER_ID); // Assuming shared user ID for items catalog
+
+    const itemMap = new Map<string, number>(); // name -> category_id
+    const itemIdMap = new Map<number, number>(); // id -> category_id
+
+    if (itemsData) {
+      itemsData.forEach((i: any) => {
+        const catId = i.category_id !== null ? i.category_id : -1;
+        itemMap.set(i.name, catId);
+        itemIdMap.set(i.id, catId);
+      });
+    }
+
+    if (frequent) {
+      const mappedFrequent: FrequentItem[] = frequent.slice(0, 10).map((i: any) => ({
+        ...i,
+        category_id: itemIdMap.get(i.item_id) ?? -1
+      }));
+      setFrequentItems(mappedFrequent);
+    }
+
+    if (trends) {
+      const mappedTrends: PriceTrend[] = trends.map((t: any) => ({
+        ...t,
+        category_id: itemMap.get(t.item_name) ?? -1
+      }));
+      setPriceTrends(mappedTrends);
+    }
+
     setLoading(false);
   }
 
@@ -111,7 +131,7 @@ export default function InsightsPage() {
                     .filter(item => item.purchase_count > 1)
                     .sort((a, b) => b.purchase_count - a.purchase_count)
                     .map((item) => {
-                      const categoryStyle = getCategoryColor(item.category);
+                      const categoryStyle = getCategoryColorById(item.category_id);
                       return (
                         <div
                           key={item.item_id}
@@ -151,7 +171,7 @@ export default function InsightsPage() {
                 </h2>
                 <div className="max-h-96 overflow-y-auto space-y-3">
                   {priceDecreases.map((item, idx) => {
-                    const categoryStyle = getCategoryColor(item.category);
+                    const categoryStyle = getCategoryColorById(item.category_id);
                     return (
                       <div
                         key={idx}
@@ -188,7 +208,7 @@ export default function InsightsPage() {
                 </h2>
                 <div className="max-h-96 overflow-y-auto space-y-3">
                   {priceIncreases.map((item, idx) => {
-                    const categoryStyle = getCategoryColor(item.category);
+                    const categoryStyle = getCategoryColorById(item.category_id);
                     return (
                       <div
                         key={idx}

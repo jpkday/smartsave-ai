@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { useCategories } from '../hooks/useCategories';
 import Link from 'next/link';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -14,6 +15,7 @@ interface ListItem {
   quantity: number;
   checked: boolean;
   is_priority: boolean;
+  category_id?: number | null; // Add category_id
 }
 interface ItemRow {
   id: number;
@@ -31,6 +33,8 @@ export default function ShoppingList() {
   useEffect(() => {
     requestWakeLock();
   }, [requestWakeLock]);
+
+  const { categories, getCategoryColorById, getCategoryName } = useCategories();
 
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
@@ -58,45 +62,11 @@ export default function ShoppingList() {
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [showPriorityOnly, setShowPriorityOnly] = useState(false);
 
-  const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({});
-  const CATEGORY_OPTIONS = ['Produce', 'Pantry', 'Dairy', 'Beverage', 'Meat', 'Frozen', 'Refrigerated', 'Other'];
+  // const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({}); // Removed as we use IDs
+  // const CATEGORY_OPTIONS = ['Produce', 'Pantry', 'Dairy', 'Beverage', 'Meat', 'Frozen', 'Refrigerated', 'Other']; // Removed
   //const itemsWithoutCategory = listItems.filter(item => {const cat = itemCategoryByName[item.item_name];return !cat || cat === 'Other' || cat.trim() === '';});
 
-  const CATEGORY_ORDER = [
-    'Produce',
-    'Meat',
-    'Dairy',
-    'Bakery',
-    'Frozen',
-    'Refrigerated',
-    'Pantry',
-    'Snacks',
-    'Beverage',
-    'Health',
-    'Other',
-  ];
 
-  const categoryRank = (cat: string) => {
-    const idx = CATEGORY_ORDER.indexOf(cat);
-    return idx === -1 ? 999 : idx;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      'Produce': 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      'Pantry': 'bg-yellow-50 border-yellow-200 text-yellow-700',
-      'Dairy': 'bg-purple-50 border-purple-200 text-purple-700',
-      'Beverage': 'bg-orange-50 border-orange-200 text-orange-700',
-      'Meat': 'bg-red-50 border-red-200 text-red-700',
-      'Frozen': 'bg-cyan-50 border-cyan-200 text-cyan-700',
-      'Refrigerated': 'bg-blue-50 border-blue-200 text-blue-700',
-      'Bakery': 'bg-orange-50 border-orange-200 text-orange-700',
-      'Snacks': 'bg-yellow-50 border-yellow-200 text-yellow-700',
-      'Health': 'bg-pink-50 border-pink-200 text-pink-700',
-      'Other': 'bg-slate-50 border-slate-200 text-slate-700',
-    };
-    return colors[category] || 'bg-slate-50 border-slate-200 text-slate-700';
-  };
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -163,6 +133,21 @@ export default function ShoppingList() {
       loadFrequent();
     }
   }, [householdCode, mounted]);
+
+
+
+
+  // Helper for name-based color lookup (for grouped headers)
+  const getCategoryColor = (name: string) => categories.find(c => c.name === name)?.color || 'bg-slate-50 border-slate-200 text-slate-700';
+
+  // CATEGORY SORT ORDER (used for "By Store" grouping when multiple items exist)
+  const categoryOrder = useMemo(() => {
+    const order: Record<string, number> = {};
+    categories.forEach((c) => {
+      order[c.name] = c.sort_order;
+    });
+    return order;
+  }, [categories]);
 
   // Remember last store used for price entry
   const [lastUsedStore, setLastUsedStore] = useState<string>('');
@@ -517,7 +502,7 @@ export default function ShoppingList() {
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
-    setEditModalCategory(itemCategoryByName[item.item_name] || 'Other');
+    setEditModalCategory(getCategoryName(item.category_id ?? -1));
     setEditModalQuantity(String(item.quantity ?? 1));
     setEditModalFocusField(focusField);
     setEditModalPriceDirty(false);
@@ -852,22 +837,49 @@ export default function ShoppingList() {
 
       (tripsData ?? []).forEach((trip) => {
         if (trip.store_id) {
-          const startDate = new Date(trip.started_at);
-          const isStale = (now.getTime() - startDate.getTime()) > STALE_TRIP_MS;
-
-          if (isStale) {
-            // Auto-close stale trip silently
-            supabase.from('trips').update({ ended_at: now.toISOString() }).eq('id', trip.id).then(({ error }) => {
-              if (error) console.error('Failed to auto-close stale trip:', trip.id, error);
-            });
-          } else if (!tripsByStore[trip.store_id]) {
-            tripsByStore[trip.store_id] = trip.id;
-          }
+          supabase.from('trips').update({ ended_at: now.toISOString() }).eq('id', trip.id).then(({ error }) => {
+            if (error) console.error('Failed to auto-close stale trip:', trip.id, error);
+          });
+        } else if (!tripsByStore[trip.store_id]) {
+          tripsByStore[trip.store_id] = trip.id;
         }
       });
 
       setActiveTrips(tripsByStore);
     }
+
+    // Define fetchShoppingList here as it's used within loadData
+    const fetchShoppingList = async (currentHouseholdCode: string) => {
+      try {
+        // Join shopping_list with items to get category_id
+        const { data, error } = await supabase
+          .from('shopping_list')
+          .select(`
+            *,
+            items!inner (
+               category_id
+            )
+          `)
+          .eq('household_code', currentHouseholdCode);
+
+        if (error) throw error;
+
+        if (data) {
+          const transformed: ListItem[] = data.map((row: any) => ({
+            id: row.id,
+            item_id: row.item_id,
+            item_name: row.item_name,
+            quantity: row.quantity,
+            checked: row.checked,
+            is_priority: row.is_priority,
+            category_id: row.items?.category_id // Flatten category_id
+          }));
+          setListItems(transformed);
+        }
+      } catch (err) {
+        console.error('Error fetching list:', err);
+      }
+    };
 
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
@@ -876,11 +888,7 @@ export default function ShoppingList() {
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
-    if (itemsData) {
-      const map: Record<string, string> = {};
-      itemsData.forEach(i => { map[i.name] = i.category || 'Other'; });
-      setItemCategoryByName(map);
-    }
+
 
     if (itemsError) console.error('Error loading items:', itemsError);
 
@@ -1015,6 +1023,9 @@ export default function ShoppingList() {
       }
     }
 
+    if (householdCode) {
+      await fetchShoppingList(householdCode);
+    }
     setLoading(false);
   }, [householdCode]);
 
@@ -2064,16 +2075,16 @@ export default function ShoppingList() {
                                 <div className="p-3 space-y-4">
                                   {Object.entries(
                                     storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
-                                      const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                      const cat = getCategoryName(item.category_id ?? -1);
                                       (acc[cat] ||= []).push(item);
                                       return acc;
                                     }, {})
                                   )
-                                    // Sort categories by your preferred rank (e.g. Produce first)
+                                    // Sort categories by rank
                                     .sort(([catA], [catB]) => {
-                                      const ra = categoryRank(catA);
-                                      const rb = categoryRank(catB);
-                                      if (ra !== rb) return ra - rb;
+                                      const orderA = categoryOrder[catA || 'Other'] || 999;
+                                      const orderB = categoryOrder[catB || 'Other'] || 999;
+                                      if (orderA !== orderB) return orderA - orderB;
                                       return catA.localeCompare(catB);
                                     })
                                     .map(([category, categoryItems]) => {
@@ -2109,7 +2120,7 @@ export default function ShoppingList() {
                                               const effStore = getEffectiveStore(item.item_name) || store;
                                               const priceData = prices[`${effStore}-${item.item_name}`];
                                               const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                              const cat = itemCategoryByName[item.item_name];
+                                              const cat = getCategoryName(item.category_id ?? -1);
                                               const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
                                               return (
@@ -2264,15 +2275,17 @@ export default function ShoppingList() {
                             <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
                               {Object.entries(
                                 itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
-                                  const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                                  const cat = getCategoryName(item.category_id ?? -1);
                                   (acc[cat] ||= []).push(item);
                                   return acc;
                                 }, {})
                               )
                                 .sort(([catA], [catB]) => {
-                                  const ra = categoryRank(catA);
-                                  const rb = categoryRank(catB);
-                                  if (ra !== rb) return ra - rb;
+                                  // Otherwise sort by category
+                                  const orderA = categoryOrder[catA || 'Other'] || 999;
+                                  const orderB = categoryOrder[catB || 'Other'] || 999;
+                                  if (orderA !== orderB) return orderA - orderB;
+
                                   return catA.localeCompare(catB);
                                 })
                                 .map(([category, categoryItems]) => {
@@ -2297,7 +2310,7 @@ export default function ShoppingList() {
                                       <div className="space-y-2">
                                         {categoryItems.map((item) => {
                                           const isFavorite = favorites.includes(item.item_name);
-                                          const cat = itemCategoryByName[item.item_name];
+                                          const cat = getCategoryName(item.category_id ?? -1);
                                           const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
                                           const effStore = getEffectiveStore(item.item_name);
                                           const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
@@ -2472,7 +2485,7 @@ export default function ShoppingList() {
 
                             // Group items by category
                             const itemsByCategory = storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
-                              const cat = (itemCategoryByName[item.item_name] || 'Other').trim() || 'Other';
+                              const cat = getCategoryName(item.category_id ?? -1);
                               (acc[cat] ||= []).push(item);
                               return acc;
                             }, {});
@@ -2503,15 +2516,28 @@ export default function ShoppingList() {
 
                                 {/* ONE cohesive store panel with categories inside */}
                                 <div className="p-3 space-y-4">
-                                  {Object.entries(itemsByCategory)
-                                    // Sort categories by rank
-                                    .sort(([catA], [catB]) => {
-                                      const ra = categoryRank(catA);
-                                      const rb = categoryRank(catB);
-                                      if (ra !== rb) return ra - rb;
-                                      return catA.localeCompare(catB);
+                                  {/* Group items by category ID */}
+                                  {Object.entries(
+                                    storeItems.reduce((acc, item) => {
+                                      // Use category_id for grouping, fallback to -1 (Other)
+                                      const catId = item.category_id !== null && item.category_id !== undefined ? item.category_id : -1;
+                                      if (!acc[catId]) acc[catId] = [];
+                                      acc[catId].push(item);
+                                      return acc;
+                                    }, {} as { [key: number]: ListItem[] })
+                                  )
+                                    .sort(([catIdA], [catIdB]) => {
+                                      // Sort by sort_order
+                                      const idA = parseInt(catIdA);
+                                      const idB = parseInt(catIdB);
+                                      const orderA = categories.find(c => c.id === idA)?.sort_order || 999;
+                                      const orderB = categories.find(c => c.id === idB)?.sort_order || 999;
+                                      return orderA - orderB;
                                     })
-                                    .map(([category, categoryItems]) => {
+                                    .map(([catIdStr, categoryItems]) => {
+                                      const catId = parseInt(catIdStr);
+                                      const categoryName = getCategoryName(catId);
+
                                       // Sort items: unchecked first, then alphabetical
                                       categoryItems.sort((a, b) => {
                                         if (a.checked !== b.checked) return a.checked ? 1 : -1;
@@ -2527,14 +2553,14 @@ export default function ShoppingList() {
                                       }, 0);
 
                                       return (
-                                        <div key={category} className="space-y-2">
+                                        <div key={catId} className="space-y-2">
                                           {/* Category header */}
                                           <div
-                                            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColor(
-                                              category
+                                            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColorById(
+                                              catId
                                             )}`}
                                           >
-                                            <div className="font-bold text-gray-800 text-base">{category}</div>
+                                            <div className="font-bold text-gray-800 text-base">{categoryName}</div>
                                             <div className="text-sm font-bold text-teal-700 opacity-90">${categoryTotal.toFixed(2)}</div>
                                           </div>
 
@@ -2545,7 +2571,7 @@ export default function ShoppingList() {
                                               const effStore = getEffectiveStore(item.item_name) || store;
                                               const priceData = prices[`${effStore}-${item.item_name}`];
                                               const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                              const cat = itemCategoryByName[item.item_name];
+                                              const cat = getCategoryName(item.category_id ?? -1);
                                               const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
 
                                               return (
@@ -2987,8 +3013,8 @@ export default function ShoppingList() {
                           onChange={(e) => setEditModalCategory(e.target.value)}
                           className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
                         >
-                          {CATEGORY_OPTIONS.map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
                           ))}
                         </select>
                       </div>
