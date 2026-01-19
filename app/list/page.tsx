@@ -8,6 +8,15 @@ import { useCategories } from '../hooks/useCategories';
 import Link from 'next/link';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+
+interface ItemNote {
+  id: string;
+  item_id: number;
+  note: string;
+  store_id?: string;
+  created_at: string;
+}
+
 interface ListItem {
   id: string; // shopping_list row id
   item_id: number; // items table id (FK)
@@ -16,10 +25,15 @@ interface ListItem {
   checked: boolean;
   is_priority: boolean;
   category_id?: number | null; // Add category_id
+  category?: string | null; // Add category string for fallback
+  active_note?: ItemNote; // Active note for this item
 }
 interface ItemRow {
   id: number;
   name: string;
+  category?: string; // String fallback
+  category_id?: number; // FK ID
+  active_note?: ItemNote | null;
 }
 interface PriceData {
   price: string;
@@ -34,7 +48,7 @@ export default function ShoppingList() {
     requestWakeLock();
   }, [requestWakeLock]);
 
-  const { categories, getCategoryColorById, getCategoryName } = useCategories();
+  const { categoryOptions, categories, loading: categoriesLoading, getCategoryName, getCategoryColor, getCategoryColorById } = useCategories();
 
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
@@ -138,7 +152,7 @@ export default function ShoppingList() {
 
 
   // Helper for name-based color lookup (for grouped headers)
-  const getCategoryColor = (name: string) => categories.find(c => c.name === name)?.color || 'bg-slate-50 border-slate-200 text-slate-700';
+
 
   // CATEGORY SORT ORDER (used for "By Store" grouping when multiple items exist)
   const categoryOrder = useMemo(() => {
@@ -492,25 +506,65 @@ export default function ShoppingList() {
   const [editModalOriginalPrice, setEditModalOriginalPrice] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name) : [];
-  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category'>('name');
+  const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category' | 'note'>('name');
   const storeSelectRef = useRef<HTMLSelectElement | null>(null);
   const [needsStoreHint, setNeedsStoreHint] = useState(false);
   const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
   const [editModalPriceDirty, setEditModalPriceDirty] = useState(false);
+  const [editModalNote, setEditModalNote] = useState('');
+  const [editModalNoteStore, setEditModalNoteStore] = useState<string>('Any');
+
+  // New Effect: Fetch note for virtual items (not on list) when modal opens
+  useEffect(() => {
+    if (editModalOpen && editModalItem && !editModalItem.id) {
+      // This is a master item, note not pre-loaded. Fetch it.
+      supabase.from('item_notes')
+        .select('*')
+        .eq('item_id', editModalItem.item_id)
+        .eq('household_code', householdCode)
+        .eq('is_active', true)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setEditModalNote(data.note);
+            if (data.store_id) {
+              const storeName = Object.keys(storesByName).find(key => storesByName[key] === data.store_id);
+              setEditModalNoteStore(storeName || 'Any');
+            }
+          }
+        });
+    }
+  }, [editModalOpen, editModalItem, householdCode, storesByName]);
 
 
-  const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' = 'name') => {
+  const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' | 'note' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
-    setEditModalCategory(getCategoryName(item.category_id ?? -1));
+    let initialCategory = 'Other';
+    const catNameFromId = getCategoryName(item.category_id ?? -1);
+
+    // 1. Try ID-based name
+    if (catNameFromId && catNameFromId !== 'Other') {
+      initialCategory = catNameFromId;
+    }
+    // 2. Fallback to string name if ID gave 'Other' (or nothing) and we have a specific string
+    else if (item.category && item.category !== 'Other') {
+      initialCategory = item.category;
+    }
+
+    console.log('catName resolved:', initialCategory);
+    setEditModalCategory(initialCategory);
     setEditModalQuantity(String(item.quantity ?? 1));
     setEditModalFocusField(focusField);
     setEditModalPriceDirty(false);
     setNeedsStoreHint(false);
 
     const effStore = getEffectiveStore(item.item_name);
+    let resolvedStore = '';
+
     if (effStore) {
-      setEditModalStore(effStore || lastUsedStore || '');
+      resolvedStore = effStore || lastUsedStore || '';
+      setEditModalStore(resolvedStore);
       const priceData = prices[`${effStore}-${item.item_name}`];
       if (priceData) {
         setEditModalPrice(priceData.price);
@@ -523,6 +577,17 @@ export default function ShoppingList() {
       setEditModalStore('');
       setEditModalPrice('');
       setEditModalOriginalPrice('');
+    }
+
+    // Note State
+    setEditModalNote(item.active_note?.note || '');
+    if (item.active_note?.store_id) {
+      // Reverse lookup store ID to Name
+      const storeName = Object.keys(storesByName).find(key => storesByName[key] === item.active_note?.store_id);
+      setEditModalNoteStore(storeName || 'Any');
+    } else {
+      // Default to the store selected in the price section if available, otherwise 'Any'
+      setEditModalNoteStore(resolvedStore || 'Any');
     }
 
     setEditModalOpen(true);
@@ -606,10 +671,9 @@ export default function ShoppingList() {
 
       // 2) Quantity update
       const qtyNum = parseFloat(editModalQuantity || '0');
-      const a = Math.round((qtyNum || 0) * 1000) / 1000;
-      const b = Math.round((editModalItem.quantity || 0) * 1000) / 1000;
 
-      if (!isNaN(qtyNum) && qtyNum !== editModalItem.quantity) {
+      // Only update shopping_list if the item is incorrectly on the list (has an ID)
+      if (editModalItem.id && !isNaN(qtyNum) && qtyNum !== editModalItem.quantity) {
         const { error: qtyError } = await supabase
           .from('shopping_list')
           .update({ quantity: qtyNum })
@@ -657,6 +721,40 @@ export default function ShoppingList() {
         }
       }
 
+      // 3. Save Note if changed
+      const originalNote = editModalItem.active_note?.note || '';
+
+      // Resolve original store name from ID for comparison
+      let originalNoteStoreName = 'Any';
+      if (editModalItem.active_note?.store_id) {
+        const foundName = Object.keys(storesByName).find(key => storesByName[key] === editModalItem.active_note!.store_id);
+        if (foundName) originalNoteStoreName = foundName;
+      }
+
+      const noteTextChanged = editModalNote.trim() !== originalNote.trim();
+      const noteStoreChanged = editModalNoteStore !== originalNoteStoreName;
+
+      if (noteTextChanged || noteStoreChanged) {
+        const noteStoreId = editModalNoteStore === 'Any' ? null : storesByName[editModalNoteStore]; // Lookup ID
+
+        // Deactivate old note if exists
+        if (editModalItem.active_note?.id) {
+          await supabase.from('item_notes').update({ is_active: false }).eq('id', editModalItem.active_note.id);
+        }
+
+        // Insert new note if not empty
+        if (editModalNote.trim()) {
+          const { error: noteError } = await supabase.from('item_notes').insert({
+            item_id: editModalItem.item_id,
+            household_code: householdCode,
+            store_id: noteStoreId,
+            note: editModalNote.trim(),
+            is_active: true
+          });
+          if (noteError) throw noteError;
+        }
+      }
+
       // ✅ Optimistic Update (Fix "Name not sticking")
       // Update local state immediately so UI reflects changes while we re-fetch in background
       setListItems((prev) =>
@@ -670,8 +768,13 @@ export default function ShoppingList() {
       );
 
       if (newName !== oldName) {
+        // Find category ID
+        const newCatName = editModalCategory || 'Other';
+        const newCat = categories.find(c => c.name === newCatName);
+        const newCatId = newCat ? newCat.id : -1;
+
         setAllItems((prev) =>
-          prev.map((i) => (i.id === editModalItem.item_id ? { ...i, name: newName, category: editModalCategory || 'Other' } : i))
+          prev.map((i) => (i.id === editModalItem.item_id ? { ...i, name: newName, category: editModalCategory, category_id: newCatId } : i))
         );
         // items is just string array of names
         setItems((prev) => prev.map((n) => (n === oldName ? newName : n)));
@@ -685,6 +788,56 @@ export default function ShoppingList() {
       setSavingEdit(false);
     }
   };
+
+  const toggleFavorite = async (itemName: string) => {
+    if (!householdCode) return;
+
+    // Find item ID
+    const item = allItems.find(i => i.name === itemName);
+    if (!item) return;
+
+    const isFav = favorites.includes(itemName);
+
+    // Optimistically update UI
+    if (isFav) {
+      setFavorites(prev => prev.filter(n => n !== itemName));
+      setFavoritesIds(prev => prev.filter(id => id !== item.id));
+    } else {
+      setFavorites(prev => [...prev, itemName]);
+      setFavoritesIds(prev => [...prev, item.id]);
+    }
+
+    // Update database
+    if (isFav) {
+      const { error } = await supabase
+        .from('household_item_favorites')
+        .delete()
+        .eq('household_code', householdCode)
+        .eq('item_id', item.id);
+
+      if (error) {
+        // Rollback on error
+        setFavorites(prev => [...prev, itemName]);
+        setFavoritesIds(prev => [...prev, item.id]);
+        alert('Failed to update favorite. Check your connection and try again.');
+      }
+    } else {
+      const { error } = await supabase
+        .from('household_item_favorites')
+        .insert({
+          household_code: householdCode,
+          item_id: item.id,
+        });
+
+      if (error) {
+        // Rollback
+        setFavorites(prev => prev.filter(n => n !== itemName));
+        setFavoritesIds(prev => prev.filter(id => id !== item.id));
+        alert('Failed to update favorite. Check your connection and try again.');
+      }
+    }
+  };
+
 
 
   // =========================
@@ -849,42 +1002,27 @@ export default function ShoppingList() {
     }
 
     // Define fetchShoppingList here as it's used within loadData
-    const fetchShoppingList = async (currentHouseholdCode: string) => {
-      try {
-        // Join shopping_list with items to get category_id
-        const { data, error } = await supabase
-          .from('shopping_list')
-          .select(`
-            *,
-            items!inner (
-               category_id
-            )
-          `)
-          .eq('household_code', currentHouseholdCode);
+    // Fetch active notes FIRST so we can use them for both lists
+    const { data: notesData } = await supabase
+      .from('item_notes')
+      .select('*')
+      .eq('household_code', householdCode)
+      .eq('is_active', true);
 
-        if (error) throw error;
+    // Create lookup for notes
+    const notesLookup: Record<number, ItemNote> = {};
+    if (notesData) {
+      notesData.forEach((n) => {
+        notesLookup[n.item_id] = n;
+      });
+    }
 
-        if (data) {
-          const transformed: ListItem[] = data.map((row: any) => ({
-            id: row.id,
-            item_id: row.item_id,
-            item_name: row.item_name,
-            quantity: row.quantity,
-            checked: row.checked,
-            is_priority: row.is_priority,
-            category_id: row.items?.category_id // Flatten category_id
-          }));
-          setListItems(transformed);
-        }
-      } catch (err) {
-        console.error('Error fetching list:', err);
-      }
-    };
+
 
     // ✅ Load all items with IDs
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
-      .select('id, name, category')
+      .select('id, name, category, category_id')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
@@ -893,7 +1031,11 @@ export default function ShoppingList() {
     if (itemsError) console.error('Error loading items:', itemsError);
 
     if (itemsData) {
-      setAllItems(itemsData as ItemRow[]);
+      const itemsWithNotes = (itemsData as ItemRow[]).map(item => ({
+        ...item,
+        active_note: notesLookup[item.id] || null
+      }));
+      setAllItems(itemsWithNotes);
       setItems(itemsData.map((i) => i.name));
     }
 
@@ -912,14 +1054,43 @@ export default function ShoppingList() {
       setFavorites(favNames);
     }
 
+
+    // Load Shopping List with Category ID (Join)
     const { data: listData, error: listError } = await supabase
       .from('shopping_list')
-      .select('id, item_id, item_name, quantity, checked, added_at, is_priority')
+      .select(`
+        *,
+        items!inner (
+           category_id,
+           category
+        )
+
+      `)
       .eq('user_id', SHARED_USER_ID)
       .eq('household_code', householdCode);
 
     if (listError) console.error('Error loading shopping list:', listError);
-    if (listData) setListItems(listData as ListItem[]);
+
+    if (listData) {
+      if (listData.length > 0) console.log('Raw listData[0]:', listData[0]);
+      const transformed: ListItem[] = listData.map((row: any) => {
+        // DEBUG LOG first item items join
+        if (row.id === listData[0].id) console.log('First row items:', row.items);
+        const itemData = Array.isArray(row.items) ? row.items[0] : row.items;
+        return {
+          id: row.id,
+          item_id: row.item_id,
+          item_name: row.item_name,
+          quantity: row.quantity,
+          checked: row.checked,
+          is_priority: row.is_priority,
+          category_id: itemData?.category_id,
+          category: itemData?.category,
+          active_note: notesLookup[row.item_id] || null
+        };
+      });
+      setListItems(transformed);
+    }
 
     const { data: pricesData, error: pricesError } = await supabase
       .from('price_history')
@@ -1023,9 +1194,7 @@ export default function ShoppingList() {
       }
     }
 
-    if (householdCode) {
-      await fetchShoppingList(householdCode);
-    }
+
     setLoading(false);
   }, [householdCode]);
 
@@ -1892,19 +2061,50 @@ export default function ShoppingList() {
                                   }`}
                               >
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-gray-800 truncate">{it.name}</div>
+                                  <button
+                                    onClick={() => {
+                                      openEditModal({
+                                        id: '', // Virtual ID
+                                        item_id: it.id,
+                                        item_name: it.name,
+                                        quantity: 1, // Default
+                                        checked: false,
+                                        is_priority: false,
+                                        category_id: it.category_id,
+                                        category: it.category
+                                      });
+                                    }}
+                                    className="font-medium text-gray-800 truncate hover:text-teal-600 cursor-pointer text-left"
+                                  >
+                                    {it.name}
+                                  </button>
 
                                   {priceData ? (
                                     <p className="text-xs text-green-600 mt-0.5">
                                       {formatMoney(price)}{' '}
                                       <span className="text-gray-400 ml-1">
-                                        ({getDaysAgo(priceData.date)})
+                                        ({getDaysAgo(priceData.date)}, at {effStore})
                                       </span>
                                     </p>
                                   ) : (
                                     <p className="text-xs text-gray-400 mt-0.5">
                                       No price data available
                                     </p>
+                                  )}
+
+                                  {/* Active Note Preview */}
+                                  {it.active_note && (
+                                    <div className="mt-1 flex items-start gap-1 p-1 bg-orange-50 border border-orange-100 rounded text-xs text-orange-800 max-w-fit">
+                                      <span className="select-none text-xs">⚠️</span>
+                                      <div className="flex-1">
+                                        <span className="font-semibold line-clamp-1">{it.active_note.note}</span>
+                                        {it.active_note.store_id && (
+                                          <div className="text-[10px] text-orange-600">
+                                            at {Object.keys(storesByName).find(name => storesByName[name] === it.active_note?.store_id) || 'Unknown Store'}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
 
@@ -2183,24 +2383,38 @@ export default function ShoppingList() {
                                                         </button>
                                                       )}
                                                     </div>
+
+                                                    {/* Active Note Display */}
+                                                    {item.active_note && (!item.active_note.store_id || item.active_note.store_id === storeId) && (
+                                                      <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+                                                        <span className="text-base select-none">⚠️</span>
+                                                        <div className="flex-1">
+                                                          <span className="font-semibold">{item.active_note.note}</span>
+                                                          <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
+                                                            {item.active_note.store_id && (
+                                                              <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
+                                                            )}
+                                                            <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                            <button
+                                                              onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (!item.active_note) return;
+                                                                // Optimistic clear
+                                                                setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
+                                                                await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
+                                                              }}
+                                                              className="text-orange-700 hover:text-orange-900 underline ml-auto"
+                                                            >
+                                                              Clear
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    )}
                                                   </div>
 
                                                   <div className="flex items-center gap-3 ml-auto">
-                                                    <div className="hidden md:flex items-center gap-2">
-                                                      <button
-                                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                      >
-                                                        −
-                                                      </button>
-                                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                                      <button
-                                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                      >
-                                                        +
-                                                      </button>
-                                                    </div>
+
 
                                                     <button
                                                       onClick={(e) => {
@@ -2381,30 +2595,38 @@ export default function ShoppingList() {
                                                     </button>
                                                   )}
                                                 </div>
+
+                                                {/* Active Note Display */}
+                                                {item.active_note && (!item.active_note.store_id) && (!item.active_note.store_id) && (
+                                                  <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+                                                    <span className="text-base select-none">⚠️</span>
+                                                    <div className="flex-1">
+                                                      <span className="font-semibold">{item.active_note.note}</span>
+                                                      <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
+                                                        {item.active_note.store_id && (
+                                                          <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
+                                                        )}
+                                                        <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                        <button
+                                                          onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (!item.active_note) return;
+                                                            // Optimistic clear
+                                                            setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
+                                                            await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
+                                                          }}
+                                                          className="text-orange-700 hover:text-orange-900 underline ml-auto"
+                                                        >
+                                                          Clear
+                                                        </button>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                )}
                                               </div>
 
                                               <div className="flex items-center gap-3 ml-auto">
-                                                <div className="hidden md:flex items-center gap-2">
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      updateQuantity(item.id, item.quantity - 1);
-                                                    }}
-                                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                  >
-                                                    −
-                                                  </button>
-                                                  <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      updateQuantity(item.id, item.quantity + 1);
-                                                    }}
-                                                    className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                  >
-                                                    +
-                                                  </button>
-                                                </div>
+
 
                                                 <button
                                                   onClick={(e) => {
@@ -2650,24 +2872,39 @@ export default function ShoppingList() {
                                                         </button>
                                                       )}
                                                     </div>
+
+                                                    {/* Active Note Display */}
+                                                    {item.active_note && (!item.active_note.store_id || item.active_note.store_id === storesByName[store]) && (
+                                                      <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+                                                        <span className="text-base select-none">⚠️</span>
+                                                        <div className="flex-1">
+                                                          <span className="font-semibold">{item.active_note.note}</span>
+                                                          <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
+                                                            {item.active_note.store_id && (
+                                                              <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
+                                                            )}
+                                                            <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                            <button
+                                                              onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (!item.active_note) return;
+                                                                // Optimistic clear
+                                                                setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
+                                                                await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
+                                                              }}
+                                                              className="text-orange-700 hover:text-orange-900 underline ml-auto"
+                                                            >
+                                                              Clear
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    )}
                                                   </div>
 
                                                   <div className="flex items-center gap-3 ml-auto">
-                                                    <div className="hidden md:flex items-center gap-2">
-                                                      <button
-                                                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                      >
-                                                        −
-                                                      </button>
-                                                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                                                      <button
-                                                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                        className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center font-bold cursor-pointer"
-                                                      >
-                                                        +
-                                                      </button>
-                                                    </div>
+
+
 
                                                     <button
                                                       onClick={(e) => {
@@ -2992,16 +3229,34 @@ export default function ShoppingList() {
                   >
 
                     <div className="space-y-3">
-                      {/* Name */}
+                      {/* Name + Favorite Star */}
                       <div>
-                        <label className="text-sm font-semibold text-gray-700">Name</label>
-                        <input
-                          autoFocus={editModalFocusField === 'name'}
-                          type="text"
-                          value={editModalName}
-                          onChange={(e) => setEditModalName(e.target.value)}
-                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                        />
+                        <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleFavorite(editModalItem?.item_name || editModalName)}
+                            className={
+                              favorites.includes(editModalItem?.item_name || editModalName)
+                                ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
+                                : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+                            }
+                            aria-label={favorites.includes(editModalItem?.item_name || editModalName) ? 'Unfavorite item' : 'Favorite item'}
+                            title={favorites.includes(editModalItem?.item_name || editModalName) ? "Remove from Favorites" : "Add to Favorites"}
+                          >
+                            {favorites.includes(editModalItem?.item_name || editModalName) ? '⭐' : '☆'}
+                          </button>
+
+                          <input
+                            autoFocus={editModalFocusField === 'name'}
+                            type="text"
+                            value={editModalName}
+                            onChange={(e) => setEditModalName(e.target.value)}
+                            className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base bg-white"
+                            placeholder="e.g., Grapefruit (ct)"
+
+                          />
+                        </div>
                       </div>
 
                       {/* Category */}
@@ -3013,8 +3268,8 @@ export default function ShoppingList() {
                           onChange={(e) => setEditModalCategory(e.target.value)}
                           className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
                         >
-                          {categories.map(c => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
+                          {Array.from(new Set([...categoryOptions, editModalCategory])).filter(Boolean).map(c => (
+                            <option key={c} value={c}>{c}</option>
                           ))}
                         </select>
                       </div>
@@ -3038,6 +3293,31 @@ export default function ShoppingList() {
                               focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                         />
                       </div>
+
+                      {/* Note */}
+                      <div>
+                        <label className="text-sm font-semibold text-gray-700">Note (Optional)</label>
+                        <div className="flex gap-2">
+                          <textarea
+                            rows={2}
+                            value={editModalNote}
+                            onChange={(e) => setEditModalNote(e.target.value)}
+                            placeholder="e.g. Out of Stock, Poor Quality, etc."
+                            className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                          />
+                        </div>
+                        <div className="mt-1 flex justify-end">
+                          <select
+                            value={editModalNoteStore}
+                            onChange={(e) => setEditModalNoteStore(e.target.value)}
+                            className="text-xs bg-gray-100 border-none rounded-lg px-2 py-1 text-gray-600"
+                          >
+                            <option value="Any">Any Store</option>
+                            {stores.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
@@ -3141,7 +3421,7 @@ export default function ShoppingList() {
                   </div>
                 </div>
               </div>
-              )
+
 
               {/* ========================= */}
               {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}

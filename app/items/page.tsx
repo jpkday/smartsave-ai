@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import { useSearchParams } from 'next/navigation';
 import { useCategories } from '../hooks/useCategories';
-
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
   'Milk (gallon)',
@@ -70,9 +69,11 @@ function ItemsContent() {
   const [selectItemsFilter, setSelectItemsFilter] =
     useState<'ALL' | 'FAVORITES'>('ALL');
 
-  /* Refactored to use dynamic categories */
-  const { categories, loading: categoriesLoading, getCategoryColor, getCategoryName, getCategoryColorById } = useCategories();
-  const CATEGORY_OPTIONS = categories.map(c => c.name);
+  useState<'ALL' | 'FAVORITES'>('ALL');
+
+  const { categories, getCategoryName } = useCategories();
+  // Sort categories alphabetically or however desired
+  const categoryOptions = categories.map(c => c.name).sort();
 
   useEffect(() => {
     loadItems();
@@ -147,7 +148,7 @@ function ItemsContent() {
 
     const { data, error } = await supabase
       .from('items')
-      .select('id, name, category, category_id, household_code') // Added category_id
+      .select('id, name, category, category_id, household_code')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
 
@@ -162,27 +163,24 @@ function ItemsContent() {
         data.map((x: any) => ({
           id: x.id,
           name: x.name,
-          category: x.category ?? 'Other', // Keep for backward compatibility if needed
-          category_id: x.category_id, // Map category_id
+          category: x.category ?? 'Other',
+          category_id: x.category_id,
           household_code: x.household_code,
         }))
       );
     } else {
       // Seed defaults once if empty
-      const defaultCategoryId = categories.find(c => c.name === 'Other')?.id || -1; // Get 'Other' category ID
       for (const name of DEFAULT_ITEMS) {
         await supabase.from('items').insert({
           name,
           user_id: SHARED_USER_ID,
           household_code: householdCode || 'ASDF',
-          category_id: defaultCategoryId, // Assign default category ID
         });
       }
       const defaultItems = DEFAULT_ITEMS.map((name, idx) => ({
         id: idx + 1, // temporary IDs
         name,
         category: 'Other',
-        category_id: defaultCategoryId, // Assign default category ID
         household_code: householdCode || 'ASDF',
       }));
       setItems(defaultItems);
@@ -275,7 +273,7 @@ function ItemsContent() {
   const openSheet = (item: Item) => {
     setSelected(item);
     setEditValue(item.name);
-    setEditCategory(item.category_id ? getCategoryName(item.category_id) : 'Other'); // Use category_id
+    setEditCategory(item.category ?? 'Other');
     setEditFavorite(favoritedIds.has(item.id));
     setSheetOpen(true);
     setSaving(false);
@@ -308,17 +306,14 @@ function ItemsContent() {
       return;
     }
 
-    const defaultCategoryId = categories.find(c => c.name === 'Other')?.id || -1; // Get 'Other' category ID
-
     const { data: newItem, error } = await supabase
       .from('items')
       .insert({
         name,
         user_id: SHARED_USER_ID,
         household_code: householdCode || 'ASDF',
-        category_id: defaultCategoryId, // Assign default category ID
       })
-      .select('id, name, category, category_id, household_code') // Select category_id
+      .select('id, name, category, household_code')
       .single();
 
     if (error) {
@@ -483,26 +478,22 @@ function ItemsContent() {
     setItems((prev) => prev.map((i) => (i.name === oldName ? { ...i, name: nextName } : i)));
   };
 
-
-  const saveChanges = async () => {
+  const saveRename = async () => {
     if (!selected || !householdCode) return;
 
     const itemId = selected.id;
-    const nextCategoryName = (editCategory || 'Other').trim() || 'Other';
+    const nextCategory = (editCategory || 'Other').trim() || 'Other';
     const nextFavorite = !!editFavorite;
 
-    // Find ID from name
-    const nextCategoryId = categories.find(c => c.name === nextCategoryName)?.id || -1;
-
-    const prevItems = [...items];
-    const prevFavorites = new Set(favoritedIds);
+    const prevItems = items;
+    const prevFavorites = favoritedIds;
 
     setSaving(true);
 
     // Optimistic UI update
     setItems((prev) =>
       prev.map((i) =>
-        i.id === itemId ? { ...i, category: nextCategoryName, category_id: nextCategoryId } : i
+        i.id === itemId ? { ...i, category: nextCategory } : i
       )
     );
 
@@ -517,10 +508,13 @@ function ItemsContent() {
     }
 
     try {
-      // Update category_id
+      // Update category
+      // Look up ID for the chosen name
+      const targetCatId = categories.find(c => c.name === nextCategory)?.id || null;
+
       const { error: catError } = await supabase
         .from('items')
-        .update({ category_id: nextCategoryId })
+        .update({ category: nextCategory, category_id: targetCatId })
         .eq('id', itemId)
         .eq('user_id', SHARED_USER_ID);
 
@@ -596,7 +590,6 @@ function ItemsContent() {
   );
 
   const renderMobileRow = (item: Item, isFavorite: boolean) => {
-    const categoryStyle = getCategoryColorById(item.category_id);
     return (
       <div
         key={item.id}
@@ -612,20 +605,26 @@ function ItemsContent() {
             e.stopPropagation();
             toggleFavorite(item.id);
           }}
-          className="text-2xl focus:outline-none"
+          className={
+            isFavorite
+              ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
+              : 'text-2xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+          }
+          aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
         >
-          {isFavorite ? '⭐️' : '☆'}
+          {isFavorite ? '⭐' : '☆'}
         </button>
 
-        <div onClick={() => openSheet(item)} className="flex-1 cursor-pointer">
-          <div className="flex justify-between items-center mb-1">
-            <span className="font-medium text-gray-900">{item.name}</span>
-            <span className={`text-xs px-2 py-1 rounded-full border ${categoryStyle}`}>
-              {/* Use helper to get name from ID */}
-              {getCategoryName(item.category_id)}
-            </span>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => openSheet(item)}
+          className="flex-1 text-left min-w-0"
+        >
+          <div className="font-medium text-gray-800 truncate">{item.name}</div>
+          <div className="text-xs text-gray-500">Tap to edit</div>
+        </button>
+
+        <span className="text-gray-400 flex-shrink-0">›</span>
       </div>
     );
   };
@@ -971,7 +970,7 @@ function ItemsContent() {
                       id="item-rename-input"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
+                      onKeyDown={(e) => e.key === 'Enter' && saveRename()}
                       className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
                       placeholder="e.g., Grapefruit (ct)"
                       disabled={saving}
@@ -987,7 +986,7 @@ function ItemsContent() {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
                   >
-                    {CATEGORY_OPTIONS.map((c) => (
+                    {categoryOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -996,12 +995,12 @@ function ItemsContent() {
                 </div>
 
                 {/* Save Button */}
-                <div className="mt-6 flex gap-3">
+                <div className="flex justify-end mt-4">
                   <button
                     type="button"
-                    onClick={saveChanges}
+                    onClick={saveRename}
+                    className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
                     disabled={saving}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? 'Saving…' : 'Save'}
                   </button>

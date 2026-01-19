@@ -4,13 +4,16 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Client initialization moved inside handler to avoid build-time errors
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET() {
     try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+
         // 1. Create Table if not exists
         const createTableQuery = `
       CREATE TABLE IF NOT EXISTS categories (

@@ -5,7 +5,7 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function POST(request: NextRequest) {
   try {
-    const { shopping_list_id, store_id } = await request.json();
+    const { shopping_list_id, store_id, last_trip_id } = await request.json();
 
     if (!shopping_list_id) {
       return NextResponse.json(
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       success: true,
       trip_id: trip.id,
       trip_ended: false, // Always false now
-      trip_created: trip.id !== (await request.json()).last_trip_id // approximate check, frontend will handle actual "new trip" logic better or we can refine here
+      trip_created: trip.id !== last_trip_id
     });
 
   } catch (error) {

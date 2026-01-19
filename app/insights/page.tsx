@@ -34,6 +34,7 @@ export default function InsightsPage() {
   const { getCategoryName, getCategoryColorById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
+  const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
   // ... (useEffects)
 

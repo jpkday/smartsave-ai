@@ -50,5 +50,7 @@ export const useCategories = () => {
         return cat ? cat.color : 'bg-slate-50 border-slate-200 text-slate-700';
     };
 
-    return { categories, loading, getCategoryColor, getCategoryName, getCategoryColorById };
+    const categoryOptions = Array.from(new Set([...categories.map(c => c.name), 'Other']));
+
+    return { categories, categoryOptions, loading, getCategoryColor, getCategoryName, getCategoryColorById };
 };
