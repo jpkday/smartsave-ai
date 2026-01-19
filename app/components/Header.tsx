@@ -91,11 +91,34 @@ export default function Header({ currentPage }: HeaderProps) {
             }}
             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
           >
-            {pages.map((page) => (
-              <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                {page.icon} {page.name}
-              </option>
-            ))}
+            <optgroup label="Shop">
+              {pages.filter(p => ['Home', 'Shopping List', 'Local Deals'].includes(p.name)).map(page => (
+                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
+                  {page.icon} {page.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Analyze">
+              {pages.filter(p => ['Insights', 'Recent Trips', 'Compare Items', 'Price History'].includes(p.name)).map(page => (
+                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
+                  {page.icon} {page.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Contribute">
+              {pages.filter(p => ['Add Receipt', 'Add Flyer', 'Enter Prices'].includes(p.name)).map(page => (
+                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
+                  {page.icon} {page.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Manage">
+              {pages.filter(p => ['Manage Items', 'Manage Stores'].includes(p.name)).map(page => (
+                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
+                  {page.icon} {page.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>
