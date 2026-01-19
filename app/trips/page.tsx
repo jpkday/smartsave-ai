@@ -65,7 +65,7 @@ export default function TripsPage() {
 
   // Category detail modal
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
 
@@ -99,7 +99,7 @@ export default function TripsPage() {
     });
   };
 
-  const openCategoryModal = (category: string) => {
+  const openCategoryModal = (category: number) => {
     setSelectedCategory(category);
     setCategoryModalOpen(true);
   };
