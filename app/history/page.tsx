@@ -414,11 +414,13 @@ function HistoryContent() {
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
-              <span className="text-2xl">ᯓ</span>
-              <span className="hidden sm:inline">SmartSaveAI</span>
-            </Link>
-            <div className="w-auto">
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+                <span className="text-2xl">ᯓ</span>
+                <span className="hidden sm:inline">SmartSaveAI</span>
+              </Link>
+            </div>
+            <div className="w-full">
               <Header currentPage="Price History" />
             </div>
           </div>

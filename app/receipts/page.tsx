@@ -469,7 +469,7 @@ function ReceiptsContent() {
     }
 
     if (mode === 'receipt' && createPastTrip && endedAtIso) {
-      const startedAtIso = new Date(new Date(endedAtIso).getTime() - 5 * 60 * 1000).toISOString();
+      const startedAtIso = new Date(new Date(endedAtIso).getTime() - 20 * 60 * 1000).toISOString();
 
       const { data: tripRow, error: tripErr } = await supabase
         .from('trips')
@@ -572,11 +572,13 @@ function ReceiptsContent() {
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
-              <span className="text-2xl">ᯓ</span>
-              <span className="hidden sm:inline">SmartSaveAI</span>
-            </Link>
-            <div className="w-auto">
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+                <span className="text-2xl">ᯓ</span>
+                <span className="hidden sm:inline">SmartSaveAI</span>
+              </Link>
+            </div>
+            <div className="w-full">
               {/* Dynamic Header title passed via prop or handled inside Header?
                   Actually Header just takes `currentPage`.
                   The title "Enter Receipt" or "Add Flyer" was previously shown.

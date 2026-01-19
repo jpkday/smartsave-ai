@@ -37,6 +37,27 @@ export default function TripsPage() {
   const [loading, setLoading] = useState(true);
   const [daysToShow, setDaysToShow] = useState(7);
   const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
+  const [selectedStoreFilter, setSelectedStoreFilter] = useState('All');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Load persisted filter on mount
+  useEffect(() => {
+    const savedDays = localStorage.getItem('trips_days_filter');
+    if (savedDays) {
+      const parsed = parseInt(savedDays, 10);
+      if (!isNaN(parsed) && [7, 14, 30, 60].includes(parsed)) {
+        setDaysToShow(parsed);
+      }
+    }
+    setIsInitialLoad(false);
+  }, []);
+
+  // Save filter change
+  useEffect(() => {
+    if (!isInitialLoad) {
+      localStorage.setItem('trips_days_filter', daysToShow.toString());
+    }
+  }, [daysToShow, isInitialLoad]);
 
   // Category detail modal
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -220,7 +241,7 @@ export default function TripsPage() {
   };
 
   const formatMoney = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
+    return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   };
 
   const groupByCategory = (events: TripEvent[]) => {
@@ -258,11 +279,13 @@ export default function TripsPage() {
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
-              <span className="text-2xl">ᯓ</span>
-              <span className="hidden sm:inline">SmartSaveAI</span>
-            </Link>
-            <div className="w-auto">
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+                <span className="text-2xl">ᯓ</span>
+                <span className="hidden sm:inline">SmartSaveAI</span>
+              </Link>
+            </div>
+            <div className="w-full">
               <Header currentPage="Recent Trips" />
             </div>
           </div>
@@ -271,14 +294,16 @@ export default function TripsPage() {
 
       <div className="max-w-5xl mx-auto px-2 md:px-8 pt-6">
         {/* Time Range Selector */}
-        <div className="flex gap-2 mb-6">
-          {[7, 14, 30].map(days => (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[7, 14, 30, 60].map(days => (
             <button
               key={days}
               onClick={() => setDaysToShow(days)}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${daysToShow === days
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              // Added min-w-[5.5rem] to make 7/14 days same visual width
+              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-md transform hover:scale-105 text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
+                } ${daysToShow === days
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                  : 'bg-white text-slate-600 hover:bg-indigo-50 border-slate-200'
                 }`}
             >
               {days} days
@@ -348,7 +373,7 @@ export default function TripsPage() {
                       <button
                         key={category}
                         onClick={() => openCategoryModal(category)}
-                        className={`rounded-xl p-3 border transition-all duration-200 hover:scale-105 text-right cursor-pointer ${getCategoryColor(category)}`}
+                        className={`rounded-xl p-3 border transition-all duration-200 transform hover:scale-105 hover:shadow-md text-right cursor-pointer ${getCategoryColor(category)}`}
                       >
                         <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{category}</div>
                         <div className="text-2xl font-bold">{formatMoney(total)}</div>
@@ -359,113 +384,157 @@ export default function TripsPage() {
               </div>
             </div>
 
-            {/* Trips list */}
-            <div className="space-y-4">
-              {trips.map(trip => {
-                const isExpanded = expandedTrips.has(trip.id);
-                const eventsByCategory = groupByCategory(trip.events);
-                const categories = Object.keys(eventsByCategory).sort();
+            {/* Store Filters */}
+            <div className="flex gap-2 mb-4">
+              {(() => {
+                // Calculate top 3 stores
+                const storeCounts: { [store: string]: number } = {};
+                trips.forEach(trip => {
+                  storeCounts[trip.store] = (storeCounts[trip.store] || 0) + 1;
+                });
+
+                const topStores = Object.entries(storeCounts)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 3)
+                  .map(([store]) => store);
 
                 return (
-                  <div key={trip.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    {/* Trip header - clickable */}
+                  <>
                     <button
-                      onClick={() => toggleTrip(trip.id)}
-                      className="w-full bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-5 hover:from-teal-600 hover:to-teal-700 transition"
+                      onClick={() => setSelectedStoreFilter('All')}
+                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 text-center ${selectedStoreFilter === 'All'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                        }`}
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="text-left">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-white text-xl">{isExpanded ? '▼' : '▶'}</span>
-                            <h3 className="text-xl md:text-2xl font-bold text-white">{trip.store}</h3>
-                            {!trip.ended_at && (
-                              <span className="text-xs bg-white text-teal-600 px-2 py-1 rounded-full font-semibold">
-                                In Progress
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-teal-100 ml-8">{formatDate(trip.started_at)}</p>
-                          <p className="text-s text-indigo-600 mt-1 ml-8 text-left"><b>{trip.duration}</b></p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl md:text-3xl font-bold text-white">
-                            {trip.totalCost > 0 ? formatMoney(trip.totalCost) : '—'}
-                          </p>
-                          <p className="text-sm text-teal-100">{trip.itemCount} items</p>
-                        </div>
-                      </div>
+                      All Stores
                     </button>
-
-                    {/* Trip items - collapsible */}
-                    {isExpanded && trip.events.length > 0 && (
-                      <div className="border-t border-gray-200">
-                        {/* Scrollable items section */}
-                        <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
-                          {categories.map(category => {
-                            const categorySubtotal = eventsByCategory[category].reduce((sum, event) => {
-                              if (event.price) {
-                                return sum + (event.price * event.quantity);
-                              }
-                              return sum;
-                            }, 0);
-
-                            return (
-                              <div key={category} className="mb-4 last:mb-0">
-                                <div className="flex items-center justify-between bg-gray-100 py-2 rounded-md mb-2 -mx-4 md:-mx-5 px-4 md:px-5">
-                                  <h4 className="text-sm font-bold text-gray-700 uppercase">
-                                    {category}
-                                  </h4>
-                                  <span className="text-sm font-bold text-gray-700">
-                                    {formatMoney(categorySubtotal)}
-                                  </span>
-                                </div>
-                                <div className="space-y-2">
-                                  {eventsByCategory[category].map((event, idx) => (
-                                    <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                                      <div className="flex-1">
-                                        <span className="text-gray-800 font-medium">{event.item_name}</span>
-                                        {event.quantity > 1 && (
-                                          <span className="text-gray-500 text-sm ml-2">× {event.quantity}</span>
-                                        )}
-                                      </div>
-                                      <div className="text-right">
-                                        {event.price ? (
-                                          <>
-                                            <p className="font-semibold text-gray-800">
-                                              {formatMoney(event.price * event.quantity)}
-                                            </p>
-                                            {event.quantity > 1 && (
-                                              <p className="text-xs text-gray-500">
-                                                {formatMoney(event.price)} each
-                                              </p>
-                                            )}
-                                          </>
-                                        ) : (
-                                          <p className="text-gray-400 text-sm">No price</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Trip total - fixed at bottom, outside scroll container */}
-                        {trip.totalCost > 0 && (
-                          <div className="bg-white border-t-2 border-gray-300 px-4 md:px-5 py-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-lg font-bold text-gray-800">Total</span>
-                              <span className="text-2xl font-bold text-teal-600">{formatMoney(trip.totalCost)}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    {topStores.map(store => (
+                      <button
+                        key={store}
+                        onClick={() => setSelectedStoreFilter(store)}
+                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                          }`}
+                      >
+                        {store}
+                      </button>
+                    ))}
+                  </>
                 );
-              })}
+              })()}
+            </div>
+
+            {/* Trips list */}
+            <div className="space-y-4">
+              {trips
+                .filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter)
+                .map(trip => {
+                  const isExpanded = expandedTrips.has(trip.id);
+                  const eventsByCategory = groupByCategory(trip.events);
+                  const categories = Object.keys(eventsByCategory).sort();
+
+                  return (
+                    <div key={trip.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                      {/* Trip header - clickable */}
+                      <button
+                        onClick={() => toggleTrip(trip.id)}
+                        className="w-full bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-5 hover:from-teal-600 hover:to-teal-700 transition"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="text-left">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-white text-xl">{isExpanded ? '▼' : '▶'}</span>
+                              <h3 className="text-xl md:text-2xl font-bold text-white">{trip.store}</h3>
+                              {!trip.ended_at && (
+                                <span className="text-xs bg-white text-teal-600 px-2 py-1 rounded-full font-semibold">
+                                  In Progress
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-teal-100 ml-8">{formatDate(trip.started_at)}</p>
+                            <p className="text-s text-indigo-600 mt-1 ml-8 text-left"><b>{trip.duration}</b></p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl md:text-3xl font-bold text-white">
+                              {trip.totalCost > 0 ? formatMoney(trip.totalCost) : '—'}
+                            </p>
+                            <p className="text-sm text-teal-100">{trip.itemCount} items</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Trip items - collapsible */}
+                      {isExpanded && trip.events.length > 0 && (
+                        <div className="border-t border-gray-200">
+                          {/* Scrollable items section */}
+                          <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
+                            {categories.map(category => {
+                              const categorySubtotal = eventsByCategory[category].reduce((sum, event) => {
+                                if (event.price) {
+                                  return sum + (event.price * event.quantity);
+                                }
+                                return sum;
+                              }, 0);
+
+                              return (
+                                <div key={category} className="mb-4 last:mb-0">
+                                  <div className="flex items-center justify-between bg-gray-100 py-2 rounded-md mb-2 -mx-4 md:-mx-5 px-4 md:px-5">
+                                    <h4 className="text-sm font-bold text-gray-700 uppercase">
+                                      {category}
+                                    </h4>
+                                    <span className="text-sm font-bold text-gray-700">
+                                      {formatMoney(categorySubtotal)}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {eventsByCategory[category].map((event, idx) => (
+                                      <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                        <div className="flex-1">
+                                          <span className="text-gray-800 font-medium">{event.item_name}</span>
+                                          {event.quantity > 1 && (
+                                            <span className="text-gray-500 text-sm ml-2">× {event.quantity}</span>
+                                          )}
+                                        </div>
+                                        <div className="text-right">
+                                          {event.price ? (
+                                            <>
+                                              <p className="font-semibold text-gray-800">
+                                                {formatMoney(event.price * event.quantity)}
+                                              </p>
+                                              {event.quantity > 1 && (
+                                                <p className="text-xs text-gray-500">
+                                                  {formatMoney(event.price)} each
+                                                </p>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <p className="text-gray-400 text-sm">No price</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Trip total - fixed at bottom, outside scroll container */}
+                          {trip.totalCost > 0 && (
+                            <div className="bg-white border-t-2 border-gray-300 px-4 md:px-5 py-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-lg font-bold text-gray-800">Total</span>
+                                <span className="text-2xl font-bold text-teal-600">{formatMoney(trip.totalCost)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </>
         )}

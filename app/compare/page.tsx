@@ -519,11 +519,15 @@ function CompareContent() {
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
             {/* Title - Desktop Only (replaces the old headers) */}
-            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
-              <span className="text-2xl">ᯓ</span>
-              <span className="hidden sm:inline">SmartSaveAI</span>
-            </Link>
-            <Header currentPage="Compare Items" />
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+                <span className="text-2xl">ᯓ</span>
+                <span className="hidden sm:inline">SmartSaveAI</span>
+              </Link>
+            </div>
+            <div className="w-full">
+              <Header currentPage="Compare Items" />
+            </div>
           </div>
         </div>
       </div>
