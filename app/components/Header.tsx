@@ -16,11 +16,12 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Recent Trips', path: '/trips', icon: '🛒' },
     // { name: 'Compare Items', path: '/compare', icon: '⚖️' }, // Hidden for Beta
     // { name: 'Price History', path: '/history', icon: '📊' }, // Hidden for Beta
-    // { name: 'Manage Items', path: '/items', icon: '📋' }, // Hidden for Beta
+    // { name: 'Manage Items', path: '/items', icon: '📋' }, // Remaining as commented reference if needed
+    { name: 'Items', path: '/items', icon: '📋' },
     // { name: 'Enter Prices', path: '/prices', icon: '💰' }, // Hidden for Beta
     { name: 'Add Receipt', path: '/receipts?mode=receipt', icon: '🧾' },
     { name: 'Add Flyer', path: '/receipts?mode=flyer', icon: '✄' },
-    { name: 'Manage Stores', path: '/stores', icon: '🛍️' },
+    { name: 'Stores', path: '/stores', icon: '🛍️' },
   ];
 
   const mobileColorByPage: Record<string, string> = {
@@ -31,7 +32,8 @@ export default function Header({ currentPage }: HeaderProps) {
     'Recent Trips': 'bg-lime-500 hover:bg-lime-600',
     'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
     'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',
-    'Manage Stores': 'bg-pink-500 hover:bg-pink-600',
+    'Stores': 'bg-pink-500 hover:bg-pink-600',
+    'Items': 'bg-teal-500 hover:bg-teal-600',
   };
 
   const mobileCurrentClass =
@@ -74,9 +76,14 @@ export default function Header({ currentPage }: HeaderProps) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
       </svg>
     ),
-    'Manage Stores': (
+    'Stores': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    ),
+    'Items': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
       </svg>
     ),
   };
@@ -141,7 +148,7 @@ export default function Header({ currentPage }: HeaderProps) {
               >
                 <div className="py-2">
                   <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50">Shop</div>
-                  {['Home', 'Shopping List', 'Local Deals'].map(pageName => (
+                  {['Home', 'Shopping List'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
@@ -155,8 +162,8 @@ export default function Header({ currentPage }: HeaderProps) {
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Analyze</div>
-                  {['Insights', 'Recent Trips'].map(pageName => (
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Save</div>
+                  {['Local Deals', 'Insights', 'Recent Trips'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
@@ -170,7 +177,7 @@ export default function Header({ currentPage }: HeaderProps) {
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Contribute</div>
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Scan</div>
                   {['Add Receipt', 'Add Flyer'].map(pageName => (
                     <Link
                       key={pageName}
@@ -185,8 +192,8 @@ export default function Header({ currentPage }: HeaderProps) {
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Manage</div>
-                  {['Manage Stores'].map(pageName => (
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorites</div>
+                  {['Stores', 'Items'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}

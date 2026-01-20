@@ -368,21 +368,65 @@ function ReceiptsContent() {
         const base64 = event.target?.result as string;
         setScanPreview(base64);
 
-        // TODO: Send to backend for analysis
-        // For now, just simulate a delay
-        setTimeout(() => {
-          setScanning(false);
-          // Mock data for testing based on user's story
-          if (confirm("Simulating scan complete. Populate with mock Aldi data?")) {
-            setReceiptItems([
-              { item: 'Heavy Cream', quantity: '1', price: '2.29', sku: '40991000222', priceDirty: true },
-              { item: 'Cara Cara Oranges', quantity: '1', price: '4.99', sku: '40991000333', priceDirty: true },
-              { item: 'Green Grapes', quantity: '1', price: '3.49', sku: '40991000444', priceDirty: true }
-            ]);
-            setSelectedStoreId('mock-aldi'); // Won't match real ID probably, but shows intent
-            setDate(new Date().toISOString().split('T')[0]);
+        try {
+          const response = await fetch('/api/receipts/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to analyze receipt');
           }
-        }, 1500);
+
+          if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
+            // Map API items to frontend ReceiptItem format
+            const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
+              item: apiItem.name,
+              quantity: String(apiItem.quantity || 1),
+              price: String(apiItem.price || ''),
+              sku: apiItem.sku || '',
+              priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
+            }));
+
+            // If we got items, update state
+            if (mappedItems.length > 0) {
+              setReceiptItems(mappedItems);
+            }
+
+            // Attempt to match store
+            if (data.store) {
+              // Simple fuzzy match or partial inclusion
+              const match = stores.find(s =>
+                s.name.toLowerCase().includes(data.store.toLowerCase()) ||
+                data.store.toLowerCase().includes(s.name.toLowerCase())
+              );
+              if (match) {
+                setSelectedStoreId(match.id);
+              } else {
+                // If no ID match, user will have to select manually, but we captured the name
+                console.log("Could not auto-match store:", data.store);
+              }
+            }
+
+            // Set date
+            if (data.date) {
+              setDate(data.date);
+              // reset time to noon to avoid timezone shifts if possible, or just keep date part
+              // tripEndLocal is datetime-local 'YYYY-MM-DDTHH:mm'
+              setTripEndLocal(`${data.date}T12:00`);
+            }
+          }
+
+        } catch (error: any) {
+          console.error("Scan error:", error);
+          alert(`Scan failed: ${error.message}`);
+        } finally {
+          setScanning(false);
+          if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
+        }
       };
 
       reader.readAsDataURL(file);
