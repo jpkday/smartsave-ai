@@ -113,7 +113,9 @@ export default function InsightsPage() {
   }
 
   const priceDecreases = priceTrends.filter(item => parseFloat(item.pct_change) < 0);
-  const priceIncreases = priceTrends.filter(item => parseFloat(item.pct_change) > 0).reverse();
+  const priceIncreases = priceTrends
+    .filter(item => parseFloat(item.pct_change) > 0)
+    .sort((a, b) => parseFloat(b.pct_change) - parseFloat(a.pct_change));
 
   return (
     <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
@@ -251,7 +253,7 @@ export default function InsightsPage() {
                             <p className="font-medium text-gray-800">{item.item_name}</p>
                           </Link>
                           <p className="text-sm text-gray-600">
-                            {item.store_name}: ${item.price_30_days_ago} → ${item.current_price}
+                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
                           </p>
                         </div>
                         <div className="text-right">
@@ -288,7 +290,7 @@ export default function InsightsPage() {
                             <p className="font-medium text-gray-800">{item.item_name}</p>
                           </Link>
                           <p className="text-sm text-gray-600">
-                            {item.store_name}: ${item.price_30_days_ago} → ${item.current_price}
+                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
                           </p>
                         </div>
                         <div className="text-right">

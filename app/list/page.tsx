@@ -977,13 +977,27 @@ export default function ShoppingList() {
   // LOAD DATA CONSTANT
 
   const loadData = useCallback(async () => {
+    // Load favorited stores for this household
+    const { data: householdFavorites } = await supabase
+      .from('household_store_favorites')
+      .select('store_id')
+      .eq('household_code', householdCode);
+
+    const favoriteStoreIds = new Set(householdFavorites?.map((f: any) => f.store_id) || []);
+    const hasFavorites = favoriteStoreIds.size > 0;
+
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
     if (storesError) console.error('Error loading stores:', storesError);
 
     if (storesData) {
-      setStores(storesData.map((s) => s.name));
+      // Filter stores if user has favorites, otherwise show all (legacy/fallback)
+      const filteredStores = hasFavorites
+        ? storesData.filter(s => favoriteStoreIds.has(s.id))
+        : storesData;
+
+      setStores(filteredStores.map((s) => s.name));
       const lookup: { [name: string]: string } = {};
-      storesData.forEach((s) => (lookup[s.name] = s.id));
+      filteredStores.forEach((s) => (lookup[s.name] = s.id));
       setStoresByName(lookup);
     }
 
@@ -1122,12 +1136,20 @@ export default function ShoppingList() {
       setListItems(transformed);
     }
 
-    const { data: pricesData, error: pricesError } = await supabase
+    // Filter prices query by favorite stores if needed
+    let pricesQuery = supabase
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
       .order('recorded_date', { ascending: false })
       .order('created_at', { ascending: false });
+
+    if (hasFavorites) {
+      // Use Array.from because Supabase .in() expects an array, not a Set
+      pricesQuery = pricesQuery.in('store_id', Array.from(favoriteStoreIds));
+    }
+
+    const { data: pricesData, error: pricesError } = await pricesQuery;
 
     if (pricesError) console.error('Error loading prices:', pricesError);
 
@@ -1153,11 +1175,17 @@ export default function ShoppingList() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data: flyerPrices } = await supabase
+    let flyerQuery = supabase
       .from('price_history')
       .select('*')
       .gte('valid_until', today.toISOString())
       .order('recorded_date', { ascending: false });
+
+    if (hasFavorites) {
+      flyerQuery = flyerQuery.in('store_id', Array.from(favoriteStoreIds));
+    }
+
+    const { data: flyerPrices } = await flyerQuery;
 
     if (flyerPrices && flyerPrices.length > 0) {
       const dealItems = new Set<string>();

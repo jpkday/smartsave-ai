@@ -353,6 +353,47 @@ function ReceiptsContent() {
     return dt.toISOString();
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanPreview, setScanPreview] = useState<string | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      setScanning(true);
+
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        setScanPreview(base64);
+
+        // TODO: Send to backend for analysis
+        // For now, just simulate a delay
+        setTimeout(() => {
+          setScanning(false);
+          // Mock data for testing based on user's story
+          if (confirm("Simulating scan complete. Populate with mock Aldi data?")) {
+            setReceiptItems([
+              { item: 'Heavy Cream', quantity: '1', price: '2.29', sku: '40991000222', priceDirty: true },
+              { item: 'Cara Cara Oranges', quantity: '1', price: '4.99', sku: '40991000333', priceDirty: true },
+              { item: 'Green Grapes', quantity: '1', price: '3.49', sku: '40991000444', priceDirty: true }
+            ]);
+            setSelectedStoreId('mock-aldi'); // Won't match real ID probably, but shows intent
+            setDate(new Date().toISOString().split('T')[0]);
+          }
+        }, 1500);
+      };
+
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearScan = () => {
+    setScanPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const saveReceipt = async () => {
     if (!selectedStoreId) {
       alert('Please select a store');
@@ -663,6 +704,57 @@ function ReceiptsContent() {
               </p>
             </div>
           </div>
+
+          {/* Scan Receipt Button - Only in Receipt Mode */}
+          {mode === 'receipt' && (
+            <div className="w-full bg-white p-3 mb-2">
+              <div className="border border-slate-200 rounded-2xl shadow-sm p-4 bg-blue-50">
+                <div className="flex flex-col items-center justify-center gap-4">
+
+                  {scanPreview ? (
+                    <div className="relative w-full max-w-md">
+                      <img src={scanPreview} alt="Receipt Preview" className="w-full rounded-lg shadow-lg" />
+                      <button
+                        onClick={clearScan}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md"
+                      >
+                        ✕
+                      </button>
+                      {scanning && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                          <div className="text-white font-bold animate-pulse text-xl">Analyzing... 🤖</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center w-full">
+                      <h3 className="font-bold text-blue-900 mb-2">🚀 Speed up entry</h3>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={scanning}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] transition flex items-center justify-center gap-2"
+                      >
+                        <span className="text-2xl">📸</span>
+                        Scan Receipt
+                      </button>
+                      <p className="text-xs text-blue-700 mt-2">
+                        We'll extract items, prices, and date automatically.
+                      </p>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="w-full bg-white p-3">
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
