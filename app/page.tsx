@@ -59,7 +59,7 @@ function HomeContent() {
     <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
       <div className="text-center text-white max-w-xs md:max-w-5xl w-full">
         <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-8">ᯓ SmartSaveAI</h1>
-        <p className="text-base md:text-xl mb-12 md:mb-20 px-2">Stop overpaying for groceries and household essentials. Shop smart and save.</p>
+        <p className="text-base md:text-xl mb-12 md:mb-20 px-2">Stop overpaying for groceries and essentials. Shop smart and save.</p>
 
         {/* Mobile: Focused Beta Layout */}
         <div className="grid grid-cols-1 gap-4 md:hidden">
