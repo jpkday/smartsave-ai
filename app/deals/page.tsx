@@ -34,6 +34,7 @@ export default function Deals() {
   /* Refactored to use dynamic categories */
   const { getCategoryName, getCategoryColorById } = useCategories();
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
+  const [hasFavorites, setHasFavorites] = useState(true);
 
   useEffect(() => {
     loadDeals();
@@ -43,6 +44,33 @@ export default function Deals() {
     setLoading(true);
 
     const currentHouseholdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
+
+    if (!currentHouseholdCode) {
+      setLoading(false);
+      setHasFavorites(false);
+      return;
+    }
+
+    // 1. Fetch User's Favorited Stores
+    const { data: favoritesData } = await supabase
+      .from('household_store_favorites')
+      .select('store_id')
+      .eq('household_code', currentHouseholdCode);
+
+    const favStoreIds = favoritesData?.map((f: any) => f.store_id) || [];
+
+    if (favStoreIds.length === 0) {
+      setHasFavorites(false);
+      setDeals([]);
+      setStores([]);
+      setLoading(false);
+      return;
+    }
+
+    setHasFavorites(true);
+
+    // 2. Use Store IDs for Filtering
+    const favStoreIdSet = new Set(favStoreIds);
 
     // Get all price history from the last 7 days (recent flyer entries)
     const sevenDaysAgo = new Date();
@@ -64,7 +92,20 @@ export default function Deals() {
       return;
     }
 
-    // Get ALL historical prices to calculate averages
+    // FILTER PRICES BY FAVORITE STORE IDs (Exact Match)
+    const relevantPrices = (recentPrices || []).filter((p: any) => favStoreIdSet.has(p.store_id));
+
+    if (relevantPrices.length === 0) {
+      setDeals([]);
+      setStores([]);
+      setLoading(false);
+      return;
+    }
+
+    // Get ALL historical prices to calculate averages (Global context, not just favorites because we want accurate stats)
+    // Actually, maybe we only care about stats for items present in relevantPrices? 
+    // Optimization: filtering logic is fine.
+
     const { data: allPrices, error: allError } = await supabase
       .from('price_history')
       .select('item_name, price')
@@ -112,15 +153,14 @@ export default function Deals() {
 
     const dealList: Deal[] = [];
 
-    (recentPrices || []).forEach((p: any) => {
+    // Process RELEVANT prices only
+    relevantPrices.forEach((p: any) => {
       const currentPrice = parseFloat(p.price);
       if (isNaN(currentPrice)) return; // Skip if current price is not a valid number
 
       // Check if we have history
       const history = itemHistory[p.item_name] || [];
       if (history.length < 3) return; // Need some history to judge deal?? 
-      // Or maybe just show it if it's cheap? 
-      // Let's stick to requirement: "Deals" implies better than usual.
 
       // Calculate stats
       const sortedHistory = [...history].sort((a, b) => a - b);
@@ -133,10 +173,6 @@ export default function Deals() {
       const typicalHigh = sortedHistory[p75Index];
 
       // Criteria for a "Deal":
-      // 1. Price is lower than typical high (savings)
-      // 2. Savings > 5% explicitly? 
-      // 3. And it's a recent price (handled by query)
-
       if (currentPrice >= typicalHigh) return; // Not a deal
 
       const savings = typicalHigh - currentPrice;
@@ -177,12 +213,7 @@ export default function Deals() {
     const { data: listData } = await supabase
       .from('shopping_list')
       .select('item_name')
-      .eq('household_code', currentHouseholdCode); // Use household code for list check? YES.
-
-    // Actually typically list is by household_code. 
-    // The fetch above uses householdCode for Deals which is correct? 
-    // Wait, the Price History is user_id based (flyer entry). 
-    // But list is household based.
+      .eq('household_code', currentHouseholdCode);
 
     const listSet = new Set(listData?.map((l: any) => l.item_name) || []);
 
@@ -312,11 +343,22 @@ export default function Deals() {
             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
               <p className="text-gray-600">Loading deals...</p>
             </div>
+          ) : !hasFavorites ? (
+            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+              <span className="text-4xl block mb-2">⭐</span>
+              <p className="text-gray-800 font-bold mb-2">No favorite stores yet</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Favorite your local stores to see their best deals here!
+              </p>
+              <Link href="/stores" className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold inline-block hover:scale-105 transition">
+                Manage Stores
+              </Link>
+            </div>
           ) : filteredDeals.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-              <p className="text-gray-600 mb-2">No deals found</p>
+              <p className="text-gray-600 mb-2">No deals found for your stores</p>
               <p className="text-sm text-gray-500">
-                Enter flyer prices on the Receipts page to see deals here!
+                We haven't found any exceptional deals at your favorited stores recently.
               </p>
             </div>
           ) : (

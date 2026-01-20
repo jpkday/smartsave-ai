@@ -2071,7 +2071,32 @@ export default function ShoppingList() {
                       </div>
 
                       {list.length === 0 ? (
-                        <div className="text-sm text-gray-500">All items added for this letter.</div>
+                        <div className="text-gray-500 text-center py-8">
+                          {selectItemsFilter === 'FAVORITES' ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-4xl">⭐</span>
+                              <p className="font-semibold text-gray-700">No favorites yet</p>
+                              <p className="text-sm">Star items to easily find them here.</p>
+                              <p className="text-sm">Click the Favorites tab again to clear the filter.</p>
+                            </div>
+                          ) : selectItemsFilter === 'FREQUENT' ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-4xl">📈</span>
+                              <p className="font-semibold text-gray-700">No frequently bought items</p>
+                              <p className="text-sm">Items you buy often will appear here.</p>
+                              <p className="text-sm">Click the Frequent tab again to clear the filter.</p>
+                            </div>
+                          ) : selectItemsFilter === 'RECENT' ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-4xl">🕒</span>
+                              <p className="font-semibold text-gray-700">No recent items</p>
+                              <p className="text-sm">Items you've bought recently will appear here.</p>
+                              <p className="text-sm">Click the Recent tab again to clear the filter.</p>
+                            </div>
+                          ) : (
+                            <div className="text-sm">All items for this letter are already in your list.</div>
+                          )}
+                        </div>
                       ) : (
                         <div className="grid grid-cols-1 gap-3 max-h-96 md:max-h-[70vh] overflow-y-auto">
                           {renderList.map((it: ItemRow) => {

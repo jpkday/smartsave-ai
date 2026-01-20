@@ -15,6 +15,13 @@ interface PriceRecord {
   price: string;
   recorded_date: string;
   created_at: string;
+  store_id?: string; // Add store_id to type if we need it, though PriceRecord usually comes from DB
+}
+
+interface Store {
+  id: string;
+  name: string;
+  location: string | null;
 }
 
 // Helper function to get local date in YYYY-MM-DD format
@@ -36,10 +43,10 @@ function HistoryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [stores, setStores] = useState<string[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
 
   const [selectedItem, setSelectedItem] = useState<string>('');
-  const [selectedStore, setSelectedStore] = useState<string>('All');
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('All');
   const [priceHistory, setPriceHistory] = useState<PriceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPrice, setNewPrice] = useState('');
@@ -99,10 +106,10 @@ function HistoryContent() {
       if (storeParam) {
         try {
           const decodedStore = JSON.parse(storeParam);
-          setSelectedStore(decodedStore);
+          setSelectedStoreId(decodedStore); // URL now holds ID
           localStorage.setItem('history_last_store', decodedStore);
         } catch {
-          setSelectedStore(storeParam);
+          setSelectedStoreId(storeParam);
           localStorage.setItem('history_last_store', storeParam);
         }
       }
@@ -115,7 +122,7 @@ function HistoryContent() {
         if (lastItem) {
           setSelectedItem(lastItem);
           if (lastStore) {
-            setSelectedStore(lastStore);
+            setSelectedStoreId(lastStore);
           }
           updateURL(lastItem, lastStore || 'All');
         }
@@ -131,18 +138,39 @@ function HistoryContent() {
     if (selectedItem) {
       loadPriceHistory();
     }
-  }, [selectedItem, selectedStore]);
+  }, [selectedItem, selectedStoreId]);
 
   const loadStoresAndItems = async () => {
-    // Load stores only
+    // 1. Load all stores
     const { data: storesData } = await supabase
       .from('stores')
-      .select('name')
+      .select('id, name, location')
       .order('name');
 
-    if (storesData) {
-      setStores(storesData.map(s => s.name));
+    if (!storesData) return;
+
+    // 2. Filter by favorites if household code exists
+    let filteredStores = storesData;
+    const householdCode = localStorage.getItem('household_code');
+
+    if (householdCode) {
+      const { data: favoritesData } = await supabase
+        .from('household_store_favorites')
+        .select('store_id')
+        .eq('household_code', householdCode);
+
+      if (favoritesData && favoritesData.length > 0) {
+        const favoriteIds = new Set(favoritesData.map(f => f.store_id));
+        filteredStores = storesData.filter(s => favoriteIds.has(s.id));
+      }
     }
+
+    // 3. Sort by Name then Location
+    const sorted = filteredStores.sort((a, b) => {
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return (a.location || '').localeCompare(b.location || '');
+    });
+    setStores(sorted);
   };
 
   const handleSearchChange = async (value: string) => {
@@ -168,7 +196,7 @@ function HistoryContent() {
 
   const selectItemFromSearch = (itemName: string) => {
     setSelectedItem(itemName);
-    updateURL(itemName, selectedStore);
+    updateURL(itemName, selectedStoreId);
     try {
       localStorage.setItem('history_last_item', itemName);
     } catch (err) {
@@ -212,8 +240,8 @@ function HistoryContent() {
       .order('recorded_date', { ascending: false })
       .order('created_at', { ascending: false });
 
-    if (selectedStore !== 'All') {
-      query = query.eq('store', selectedStore);
+    if (selectedStoreId !== 'All') {
+      query = query.eq('store_id', selectedStoreId);
     }
 
     const { data } = await query;
@@ -263,14 +291,9 @@ function HistoryContent() {
       return;
     }
 
-    // Get store_id
-    const { data: storeData } = await supabase
-      .from('stores')
-      .select('id')
-      .eq('name', selectedStore)
-      .single();
-
-    if (!storeData) {
+    // Get store name for display/redundancy (and because DB might still want it)
+    const storeObj = stores.find(s => s.id === selectedStoreId);
+    if (!storeObj) {
       alert('Store not found');
       return;
     }
@@ -281,8 +304,8 @@ function HistoryContent() {
       .insert({
         item_id: itemData.id,
         item_name: selectedItem,
-        store_id: storeData.id,
-        store: selectedStore,
+        store_id: selectedStoreId,
+        store: storeObj.name, // Keep saving name for query compatibility/redundancy
         price: newPrice,
         user_id: SHARED_USER_ID,
         recorded_date: newDate,
@@ -326,7 +349,25 @@ function HistoryContent() {
   const confirmPrice = async (priceToConfirm: string, storeOverride?: string) => {
     try {
       // Use override store if provided (for "All Stores" view), otherwise use selectedStore
-      const storeToUse = storeOverride || selectedStore;
+      // Note: confirmPrice is mostly used in "All Stores" view or single view.
+      // If storeOverride is passed, it might be an ID or name depending on where it comes from.
+      // Actually, in the list, we are iterating records. The record has store_id?
+      // Wait, let's check how confirmPrice is called.
+      // It's called as confirmPrice(record.price). No override passed in main view.
+      // So it uses selectedStore.
+      // If selectedStore is 'All', this fails.
+      // But button is only shown if isLatest.
+      // Actually, looking at the code:
+      // {isLatest && ( <button onClick={() => confirmPrice(record.price)} ... }
+      // The logic below uses `storeToUse = storeOverride || selectedStore`.
+      // If we are in 'All' mode, selectedStore is 'All'. We must pass the store from the record!
+      // But the current code doesn't pass storeOverride in the JSX!
+      // Meaning the current "Confirm Price" button probably fails in "All Stores" mode if it relied on selectedStore.
+      // OR it relies on the fact that if you are in All Stores, you see a list grouped by store.
+      // Let's fix this properly. We should pass the store_id from the record if available, or just the storeID from context.
+      // Since we need to look up ID, and the record might not have store_id depending on how old it is...
+      // Let's assume we use the selectedStoreId.
+      const storeToUse = storeOverride || selectedStoreId;
 
       // Get item_id
       const { data: itemData } = await supabase
@@ -343,8 +384,8 @@ function HistoryContent() {
       // Get store_id
       const { data: storeData } = await supabase
         .from('stores')
-        .select('id')
-        .eq('name', storeToUse)
+        .select('id, name')
+        .eq('id', storeToUse) // storeToUse will be ID now
         .single();
 
       if (!storeData) {
@@ -358,7 +399,7 @@ function HistoryContent() {
           item_id: itemData.id,
           item_name: selectedItem,
           store_id: storeData.id,
-          store: storeToUse,
+          store: storeData.name,
           price: priceToConfirm,
           user_id: SHARED_USER_ID,
           recorded_date: getLocalDateString(),
@@ -393,7 +434,7 @@ function HistoryContent() {
 
   // Group by store if showing all stores
   const groupedHistory: { [store: string]: PriceRecord[] } = {};
-  if (selectedStore === 'All') {
+  if (selectedStoreId === 'All') {
     priceHistory.forEach(record => {
       if (!groupedHistory[record.store]) {
         groupedHistory[record.store] = [];
@@ -476,7 +517,7 @@ function HistoryContent() {
                     <button
                       onClick={() => {
                         setSelectedItem('');
-                        updateURL('', selectedStore);
+                        updateURL('', selectedStoreId);
                         try {
                           localStorage.removeItem('history_last_item');
                         } catch (err) {
@@ -494,9 +535,9 @@ function HistoryContent() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
               <select
-                value={selectedStore}
+                value={selectedStoreId}
                 onChange={(e) => {
-                  setSelectedStore(e.target.value);
+                  setSelectedStoreId(e.target.value);
                   updateURL(selectedItem, e.target.value);
                   try {
                     localStorage.setItem('history_last_store', e.target.value);
@@ -507,8 +548,10 @@ function HistoryContent() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
-                {stores.map(store => (
-                  <option key={store} value={store}>{store}</option>
+                {stores.map((store, idx) => (
+                  <option key={`${store.id}-${idx}`} value={store.id}>
+                    {store.name} {store.location ? `(${store.location})` : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -521,9 +564,9 @@ function HistoryContent() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
               <select
-                value={selectedStore}
+                value={selectedStoreId}
                 onChange={(e) => {
-                  setSelectedStore(e.target.value);
+                  setSelectedStoreId(e.target.value);
                   updateURL(selectedItem, e.target.value);
                   try {
                     localStorage.setItem('history_last_store', e.target.value);
@@ -534,8 +577,10 @@ function HistoryContent() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
               >
                 <option value="All">All Stores</option>
-                {stores.map(store => (
-                  <option key={store} value={store}>{store}</option>
+                {stores.map((store, idx) => (
+                  <option key={`${store.id}-${idx}`} value={store.id}>
+                    {store.name} {store.location ? `(${store.location})` : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -583,7 +628,7 @@ function HistoryContent() {
                     <button
                       onClick={() => {
                         setSelectedItem('');
-                        updateURL('', selectedStore);
+                        updateURL('', selectedStoreId);
                         try {
                           localStorage.removeItem('history_last_item');
                         } catch (err) {
@@ -610,7 +655,7 @@ function HistoryContent() {
           <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Loading...</p>
           </div>
-        ) : selectedStore === 'All' ? (
+        ) : selectedStoreId === 'All' ? (
           // Show grouped by store (All Stores view)
           priceHistory.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
@@ -659,7 +704,7 @@ function HistoryContent() {
                           {isLatest && (
                             <div className="mt-2 flex justify-end">
                               <button
-                                onClick={() => confirmPrice(record.price)}
+                                onClick={() => confirmPrice(record.price, record.store_id || record.store)}
                                 className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm transition cursor-pointer flex items-center gap-1"
                                 title="Confirm this price for today"
                               >
@@ -721,7 +766,7 @@ function HistoryContent() {
             {priceHistory.length > 0 ? (
               <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
-                  {selectedItem} at {selectedStore}
+                  {selectedItem} at {stores.find(s => s.id === selectedStoreId)?.name || 'Unknown Store'}
                 </h2>
                 <div className="space-y-3">
                   {priceHistory.map((record, idx) => {
@@ -775,7 +820,7 @@ function HistoryContent() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItem} at {selectedStore}</p>
+                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItem} at {stores.find(s => s.id === selectedStoreId)?.name}</p>
                 <p className="text-gray-400 text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
               </div>
             )}
@@ -784,7 +829,7 @@ function HistoryContent() {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-2">Add Latest Price</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{selectedStore}</span>
+                Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{stores.find(s => s.id === selectedStoreId)?.name}</span>
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

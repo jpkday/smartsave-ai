@@ -56,6 +56,8 @@ export default function TripsPage() {
   /* Refactored to use dynamic categories */
   const { getCategoryName, getCategoryColorById } = useCategories();
 
+  const [hasAnyTrips, setHasAnyTrips] = useState(true);
+
   // Save filter change
   useEffect(() => {
     if (!isInitialLoad) {
@@ -137,9 +139,24 @@ export default function TripsPage() {
 
     if (!tripsData || tripsData.length === 0) {
       setTrips([]);
+
+      // CHECK IF USER HAS ANY HISTORY AT ALL
+      const { count } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .eq('household_code', householdCode);
+
+      if (count === 0) {
+        setHasAnyTrips(false);
+      } else {
+        setHasAnyTrips(true);
+      }
+
       setLoading(false);
       return;
     }
+
+    setHasAnyTrips(true);
 
     setExpandedTrips(new Set(tripsData.map(t => t.id)));
 
@@ -283,33 +300,71 @@ export default function TripsPage() {
 
       <div className="max-w-5xl mx-auto px-2 md:px-8 pt-6">
         {/* Time Range Selector */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[7, 14, 30, 60].map(days => (
-            <button
-              key={days}
-              onClick={() => setDaysToShow(days)}
-              // Added min-w-[5.5rem] to make 7/14 days same visual width
-              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-md transform hover:scale-105 text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
-                } ${daysToShow === days
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                  : 'bg-white text-slate-600 hover:bg-indigo-50 border-slate-200'
-                }`}
-            >
-              {days} days
-            </button>
-          ))}
-        </div>
+        {hasAnyTrips && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {[7, 14, 30, 60].map(days => (
+              <button
+                key={days}
+                onClick={() => setDaysToShow(days)}
+                // Added min-w-[5.5rem] to make 7/14 days same visual width
+                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-md transform hover:scale-105 text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
+                  } ${daysToShow === days
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-indigo-50 border-slate-200'
+                  }`}
+              >
+                {days} days
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
             <p className="text-slate-500 mt-4">Loading trips..</p>
           </div>
+        ) : !hasAnyTrips ? (
+          <div className="px-4 py-12 md:py-20 text-center">
+            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 max-w-2xl mx-auto shadow-xl border border-slate-100">
+              <div className="text-6xl mb-6">🧾</div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Shopping History</h2>
+              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+                Track every trip across multiple stores, compare prices, and watch your savings grow.
+                When you finish shopping in the app, your receipts will be saved here automatically.
+              </p>
+
+              <div className="grid md:grid-cols-3 gap-6 mb-8 text-left">
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                  <span className="text-2xl mb-2 block">📝</span>
+                  <h3 className="font-bold text-indigo-900 mb-1">Digital Receipts</h3>
+                  <p className="text-sm text-indigo-800">Never lose a receipt again.</p>
+                </div>
+                <div className="bg-teal-50 p-4 rounded-xl border border-teal-100">
+                  <span className="text-2xl mb-2 block">💵</span>
+                  <h3 className="font-bold text-teal-900 mb-1">Price Tracking</h3>
+                  <p className="text-sm text-teal-800">Know exactly what you paid.</p>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                  <span className="text-2xl mb-2 block">🕵️‍♀️</span>
+                  <h3 className="font-bold text-amber-900 mb-1">Smart Analysis</h3>
+                  <p className="text-sm text-amber-800">See spending by category.</p>
+                </div>
+              </div>
+
+              <Link
+                href="/list"
+                className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white text-lg font-bold px-8 py-4 rounded-2xl hover:bg-indigo-700 hover:scale-105 transition shadow-lg w-full md:w-auto"
+              >
+                Start a New Trip
+              </Link>
+            </div>
+          </div>
         ) : trips.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-            <div className="text-6xl mb-4">🛒</div>
-            <p className="text-slate-600 text-lg font-medium">No trips found</p>
-            <p className="text-slate-400 text-sm mt-2">Start shopping and checking off items to track your trips!</p>
+            <div className="text-6xl mb-4">📅</div>
+            <p className="text-slate-600 text-lg font-medium">No trips found in the last {daysToShow} days</p>
+            <p className="text-slate-400 text-sm mt-2">Try selecting a longer time range above.</p>
           </div>
         ) : (
           <>

@@ -34,6 +34,12 @@ interface ReceiptItem {
   priceDirty?: boolean;
 }
 
+interface Store {
+  id: string;
+  name: string;
+  location: string | null;
+}
+
 // Wrapper component with Suspense for useSearchParams
 export default function Receipts() {
   return (
@@ -46,9 +52,9 @@ export default function Receipts() {
 function ReceiptsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [stores, setStores] = useState<string[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [items, setItems] = useState<string[]>([]);
-  const [store, setStore] = useState('');
+  const [selectedStoreId, setSelectedStoreId] = useState('');
   const [date, setDate] = useState('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
     { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
@@ -66,28 +72,19 @@ function ReceiptsContent() {
 
   // Fetch SKUs when store changes
   useEffect(() => {
-    if (!store) {
+    if (!selectedStoreId) {
       setSkuMappings({});
       return;
     }
 
     const fetchSkus = async () => {
-      // get store id first
-      const { data: storeData } = await supabase
-        .from('stores')
-        .select('id')
-        .eq('name', store)
-        .single();
-
-      if (!storeData) return;
-
       const { data } = await supabase
         .from('store_item_sku')
         .select(`
           store_sku,
           items!inner(name)
         `)
-        .eq('store_id', storeData.id);
+        .eq('store_id', selectedStoreId);
 
       if (data) {
         const map: Record<string, string> = {};
@@ -101,7 +98,7 @@ function ReceiptsContent() {
     };
 
     fetchSkus();
-  }, [store]);
+  }, [selectedStoreId]);
 
   useEffect(() => {
     loadData();
@@ -145,7 +142,14 @@ function ReceiptsContent() {
     try {
       const draft: ReceiptDraft = JSON.parse(raw);
 
-      if (draft.store) setStore(draft.store);
+      if (draft.store) {
+        // Legacy draft might have store name string. Try to map to ID if possible, or just ignore.
+        // For now, let's assume if it's a valid ID it works, if it's a name, we might lose it unless we lookup.
+        // Let's just try to set it. If it doesn't match an ID in the list, it won't show selected.
+        // Actually, we load stores async. We might need to wait.
+        // Better: store the ID in draft from now on.
+        setSelectedStoreId(draft.store);
+      }
       if (draft.date) setDate(draft.date);
       if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
       if (draft.receiptItems) {
@@ -166,7 +170,7 @@ function ReceiptsContent() {
 
   useEffect(() => {
     const draft: ReceiptDraft = {
-      store,
+      store: selectedStoreId,
       date,
       tripEndLocal,
       receiptItems,
@@ -175,7 +179,7 @@ function ReceiptsContent() {
     };
 
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
-  }, [store, date, tripEndLocal, receiptItems, validFrom, validUntil]);
+  }, [selectedStoreId, date, tripEndLocal, receiptItems, validFrom, validUntil]);
 
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
@@ -183,16 +187,18 @@ function ReceiptsContent() {
 
   useEffect(() => {
     const loadLatestPricesForStore = async () => {
-      if (!store) {
+      if (!selectedStoreId) {
         setStorePriceLookup({});
         return;
       }
 
+      // We can query by store_id if the column exists, or we might have to use store name if schema is older.
+      // Schema has store_id.
       const { data, error } = await supabase
         .from('price_history')
         .select('item_name, price, recorded_date')
         .eq('user_id', SHARED_USER_ID)
-        .eq('store', store)
+        .eq('store_id', selectedStoreId)
         .order('recorded_date', { ascending: false });
 
       if (error) {
@@ -211,16 +217,40 @@ function ReceiptsContent() {
     };
 
     loadLatestPricesForStore();
-  }, [store]);
+  }, [selectedStoreId]);
 
   const loadData = async () => {
+    // 1. Load all stores
     const { data: storesData } = await supabase
       .from('stores')
-      .select('name')
+      .select('id, name, location')
       .order('name');
 
     if (storesData) {
-      setStores(storesData.map(s => s.name));
+      // 2. Filter by favorites if household code exists
+      let filteredStores = storesData;
+      // Note: householdCode is already in state/props context or we can read it directly
+      // In this component, householdCode is defined at top level: const householdCode = ...
+      // However, it's defined as: localStorage.getItem('household_code') || ''
+
+      if (householdCode) {
+        const { data: favoritesData } = await supabase
+          .from('household_store_favorites')
+          .select('store_id')
+          .eq('household_code', householdCode);
+
+        if (favoritesData && favoritesData.length > 0) {
+          const favoriteIds = new Set(favoritesData.map(f => f.store_id));
+          filteredStores = storesData.filter(s => favoriteIds.has(s.id));
+        }
+      }
+
+      // 3. Sort by Name then Location
+      const sorted = filteredStores.sort((a, b) => {
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return (a.location || '').localeCompare(b.location || '');
+      });
+      setStores(sorted);
     }
 
     const { data: itemsData } = await supabase
@@ -324,7 +354,7 @@ function ReceiptsContent() {
   };
 
   const saveReceipt = async () => {
-    if (!store) {
+    if (!selectedStoreId) {
       alert('Please select a store');
       return;
     }
@@ -345,6 +375,14 @@ function ReceiptsContent() {
         return;
       }
     }
+
+    // Find store details from ID
+    const selectedStore = stores.find(s => s.id === selectedStoreId);
+    if (!selectedStore) {
+      alert('Selected store not found in list');
+      return;
+    }
+    const storeName = selectedStore.name;
 
     // Set recorded_date based on mode
     const recordedDate = mode === 'flyer' ? validFrom : tripEndLocal.slice(0, 10);
@@ -369,7 +407,7 @@ function ReceiptsContent() {
     const { data: storeData, error: storeErr } = await supabase
       .from('stores')
       .select('id')
-      .eq('name', store)
+      .eq('id', selectedStoreId)
       .single();
 
     if (storeErr || !storeData?.id) {
@@ -441,8 +479,8 @@ function ReceiptsContent() {
         const priceRow: any = {
           item_id: itemId,
           item_name: ri.item,
-          store_id: storeId,
-          store,
+          store_id: selectedStoreId,
+          store: storeName,
           price: ri.price,
           user_id: SHARED_USER_ID,
           household_code: householdCode,
@@ -475,8 +513,8 @@ function ReceiptsContent() {
         .from('trips')
         .insert({
           household_code: householdCode,
-          store_id: storeId,
-          store,
+          store_id: selectedStoreId,
+          store: storeName,
           started_at: startedAtIso,
           ended_at: endedAtIso,
         })
@@ -515,8 +553,8 @@ function ReceiptsContent() {
             return {
               trip_id: tripId,
               household_code: householdCode,
-              store_id: storeId,
-              store,
+              store_id: selectedStoreId,
+              store: storeName,
               item_id: itemId,
               item_name: ri.item,
               quantity: qtyNum,
@@ -539,19 +577,19 @@ function ReceiptsContent() {
 
     if (mode === 'flyer') {
       alert(
-        `Flyer prices saved! Updated ${validItems.length} prices for ${store} (valid ${new Date(
+        `Flyer prices saved! Updated ${validItems.length} prices for ${storeName} (valid ${new Date(
           validFrom
         ).toLocaleDateString()} - ${new Date(validUntil).toLocaleDateString()})`
       );
     } else {
       alert(
-        `Receipt saved! Added ${validItems.length} prices for ${store} on ${new Date(
+        `Receipt saved! Added ${validItems.length} prices for ${storeName} on ${new Date(
           tripEndLocal
         ).toLocaleString()}`
       );
     }
 
-    setStore('');
+    setSelectedStoreId('');
     setDate(new Date().toISOString().split('T')[0]);
     setReceiptItems([{ item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setValidFrom('');
@@ -634,13 +672,15 @@ function ReceiptsContent() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
                   <select
-                    value={store}
-                    onChange={(e) => setStore(e.target.value)}
+                    value={selectedStoreId}
+                    onChange={(e) => setSelectedStoreId(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
                   >
                     <option value="">Select</option>
-                    {stores.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                    {stores.map((s, idx) => (
+                      <option key={`${s.id}-${idx}`} value={s.id}>
+                        {s.name} {s.location ? `(${s.location})` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>

@@ -28,7 +28,12 @@ export const useWakeLock = () => {
             console.log('Wake Lock acquired');
             setReleased(false);
         } catch (err: any) {
-            console.error(`${err.name}, ${err.message}`);
+            // NotAllowedError is common if the page is hidden or system policy denies it
+            if (err.name === 'NotAllowedError') {
+                console.log('Wake Lock request denied (NotAllowedError)');
+            } else {
+                console.error(`${err.name}, ${err.message}`);
+            }
         }
     }, [isSupported]);
 

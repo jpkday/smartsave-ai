@@ -1,27 +1,167 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+interface Store {
+  id: string;
+  name: string;
+  location: string | null;
+}
+
+// --- Standalone ItemFilter Component ---
+interface ItemFilterProps {
+  items: string[];
+  selectedItem: string;
+  onSelect: (item: string) => void;
+  onAddNew: (newItem: string) => void;
+}
+
+function ItemFilter({ items, selectedItem, onSelect, onAddNew }: ItemFilterProps) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync query with selected item from parent (e.g. URL load)
+  useEffect(() => {
+    if (selectedItem) {
+      setQuery(selectedItem);
+    } else {
+      setQuery('');
+    }
+  }, [selectedItem]);
+
+  // Handle click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        if (selectedItem) {
+          setQuery(selectedItem);
+        } else {
+          setQuery('');
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [selectedItem]);
+
+  const getDropdownItems = () => {
+    let filtered = items;
+    if (query.trim()) {
+      filtered = items.filter(item => item.toLowerCase().includes(query.toLowerCase()));
+    }
+    return filtered.slice(0, 50);
+  };
+
+  const handleSelect = (item: string) => {
+    onSelect(item);
+    setIsOpen(false);
+  };
+
+  // Clear selection
+  const handleClear = () => {
+    onSelect('');
+    setQuery('');
+    setIsOpen(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search items..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={(e) => {
+            setIsOpen(true);
+            if (query === selectedItem && selectedItem) {
+              e.currentTarget.select();
+            }
+          }}
+          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white pr-10"
+        />
+        {query && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-60 overflow-y-auto w-full">
+          {getDropdownItems().map((item) => (
+            <button
+              key={item}
+              onClick={() => handleSelect(item)}
+              className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-50 last:border-0 flex justify-between items-center ${selectedItem === item ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-gray-700'}`}
+            >
+              {item}
+              {selectedItem === item && <span>✓</span>}
+            </button>
+          ))}
+
+          {/* "Add New" Logic */}
+          {query && !items.some(i => i.toLowerCase() === query.trim().toLowerCase()) && (
+            <button
+              onClick={() => {
+                onAddNew(query);
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-3 text-blue-600 hover:bg-blue-50 font-bold border-t border-gray-100"
+            >
+              + Add "{query}"
+            </button>
+          )}
+
+          {query && getDropdownItems().length === 0 && items.some(i => i.toLowerCase() === query.trim().toLowerCase()) && (
+            <div className="px-4 py-3 text-gray-500 text-sm">Item already exists</div>
+          )}
+
+          {getDropdownItems().length === 0 && !query && (
+            <div className="px-4 py-3 text-gray-500 text-sm">Type to search items...</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PricesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [stores, setStores] = useState<string[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: string }>({});
+  const [pricesDates, setPricesDates] = useState<{ [key: string]: string }>({});
   const [lastSaved, setLastSaved] = useState<string>('');
   const [items, setItems] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
-  const [selectedStore, setSelectedStore] = useState<string>('');
-  const [selectedItemFilter, setSelectedItemFilter] = useState<string>('All');
-  const [pricesDates, setPricesDates] = useState<{ [key: string]: string }>({});
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const [selectedItemFilter, setSelectedItemFilter] = useState<string>(''); // Default to empty
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
 
   useEffect(() => {
     loadData();
@@ -35,21 +175,24 @@ function PricesContent() {
     const itemParam = searchParams.get('item');
 
     if (storeParam || itemParam) {
-      // URL params take priority
       if (storeParam) {
-        setSelectedStore(storeParam);
-        localStorage.setItem('prices_last_store', storeParam);
+        const storeExists = stores.some(s => s.id === storeParam);
+        if (storeExists) {
+          setSelectedStoreId(storeParam);
+          localStorage.setItem('prices_last_store_id', storeParam);
+        } else {
+          setSelectedStoreId(stores[0]?.id || '');
+        }
       } else if (stores.length > 0) {
-        // Check localStorage for store if not in URL
         try {
-          const lastStore = localStorage.getItem('prices_last_store');
-          if (lastStore && stores.includes(lastStore)) {
-            setSelectedStore(lastStore);
+          const lastStoreId = localStorage.getItem('prices_last_store_id');
+          if (lastStoreId && stores.some(s => s.id === lastStoreId)) {
+            setSelectedStoreId(lastStoreId);
           } else {
-            setSelectedStore(stores[0]);
+            setSelectedStoreId(stores[0].id);
           }
         } catch (e) {
-          setSelectedStore(stores[0]);
+          setSelectedStoreId(stores[0].id);
         }
       }
 
@@ -57,10 +200,10 @@ function PricesContent() {
         setSelectedItemFilter(itemParam);
         localStorage.setItem('prices_last_item_filter', itemParam);
       } else {
-        // Check localStorage for item filter
+        // Don't auto-load "All" logic anymore, just empty if not set
         try {
           const lastItemFilter = localStorage.getItem('prices_last_item_filter');
-          if (lastItemFilter) {
+          if (lastItemFilter && lastItemFilter !== 'All') {
             setSelectedItemFilter(lastItemFilter);
           }
         } catch (e) {
@@ -68,29 +211,27 @@ function PricesContent() {
         }
       }
     } else {
-      // No URL params - check localStorage
       try {
-        const lastStore = localStorage.getItem('prices_last_store');
+        const lastStoreId = localStorage.getItem('prices_last_store_id');
         const lastItemFilter = localStorage.getItem('prices_last_item_filter');
 
-        if (lastStore && stores.includes(lastStore)) {
-          setSelectedStore(lastStore);
+        if (lastStoreId && stores.some(s => s.id === lastStoreId)) {
+          setSelectedStoreId(lastStoreId);
         } else if (stores.length > 0) {
-          setSelectedStore(stores[0]);
+          setSelectedStoreId(stores[0].id);
         }
 
-        if (lastItemFilter) {
+        if (lastItemFilter && lastItemFilter !== 'All') {
           setSelectedItemFilter(lastItemFilter);
         }
 
-        // Update URL with loaded preferences
-        if (lastStore || lastItemFilter) {
-          updateURL(lastStore || stores[0], lastItemFilter || 'All');
+        if (lastStoreId || lastItemFilter) {
+          updateURL(lastStoreId || stores[0]?.id || '', lastItemFilter || '');
         }
       } catch (e) {
         console.error('Failed to load from localStorage:', e);
         if (stores.length > 0) {
-          setSelectedStore(stores[0]);
+          setSelectedStoreId(stores[0].id);
         }
       }
     }
@@ -99,18 +240,6 @@ function PricesContent() {
   }, [searchParams, stores, isInitialLoad]);
 
   const loadData = async () => {
-    // Load stores
-    const { data: storesData } = await supabase
-      .from('stores')
-      .select('name')
-      .order('name');
-
-    if (storesData) {
-      const storeNames = storesData.map(s => s.name);
-      setStores(storeNames);
-    }
-
-    // Load items
     const { data: itemsData } = await supabase
       .from('items')
       .select('name')
@@ -120,7 +249,33 @@ function PricesContent() {
       setItems(itemsData.map(i => i.name));
     }
 
-    // Load latest prices from price_history
+    const { data: storesData } = await supabase
+      .from('stores')
+      .select('id, name, location')
+      .order('name');
+
+    if (storesData) {
+      let filteredStores = storesData;
+
+      if (householdCode) {
+        const { data: favoritesData } = await supabase
+          .from('household_store_favorites')
+          .select('store_id')
+          .eq('household_code', householdCode);
+
+        if (favoritesData && favoritesData.length > 0) {
+          const favoriteIds = new Set(favoritesData.map(f => f.store_id));
+          filteredStores = storesData.filter(s => favoriteIds.has(s.id));
+        }
+      }
+
+      const sorted = filteredStores.sort((a, b) => {
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return (a.location || '').localeCompare(b.location || '');
+      });
+      setStores(sorted);
+    }
+
     const { data: pricesData } = await supabase
       .from('price_history')
       .select('*')
@@ -132,20 +287,20 @@ function PricesContent() {
       const datesObj: { [key: string]: string } = {};
       const latestPrices: { [key: string]: any } = {};
 
-      // Get the most recent price for each item/store combination
       pricesData.forEach(p => {
-        const key = `${p.store}-${p.item_name}`;
-        if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
-          latestPrices[key] = p;
-          pricesObj[key] = parseFloat(p.price).toFixed(2);
-          datesObj[key] = p.recorded_date;
+        if (p.store_id) {
+          const key = `${p.store_id}-${p.item_name}`;
+          if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
+            latestPrices[key] = p;
+            pricesObj[key] = parseFloat(p.price).toFixed(2);
+            datesObj[key] = p.recorded_date;
+          }
         }
       });
 
       setPrices(pricesObj);
       setPricesDates(datesObj);
 
-      // Get most recent update time across all prices
       if (pricesData.length > 0) {
         const latest = pricesData.reduce((a, b) =>
           new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
@@ -155,9 +310,9 @@ function PricesContent() {
     }
   };
 
-  const updateURL = (store: string, item: string) => {
+  const updateURL = (storeId: string, item: string) => {
     const params = new URLSearchParams();
-    if (store) params.set('store', store);
+    if (storeId) params.set('store', storeId);
     if (item && item !== 'All') params.set('item', item);
 
     const newURL = params.toString() ? `/prices?${params.toString()}` : '/prices';
@@ -166,7 +321,6 @@ function PricesContent() {
 
   const shareLink = async () => {
     const url = window.location.href;
-
     try {
       await navigator.clipboard.writeText(url);
       setShowCopied(true);
@@ -176,30 +330,20 @@ function PricesContent() {
     }
   };
 
-  const handlePriceChange = (store: string, item: string, value: string) => {
-    // Remove all non-digit characters
+  const handlePriceChange = (storeId: string, item: string, value: string) => {
     const digits = value.replace(/\D/g, '');
-
     let priceValue = '';
     if (digits !== '') {
-      // Convert to cents, then to dollars
       const cents = parseInt(digits, 10);
       priceValue = (cents / 100).toFixed(2);
     }
-
-    // Update local state immediately (visual feedback)
-    setPrices({ ...prices, [`${store}-${item}`]: priceValue });
+    setPrices({ ...prices, [`${storeId}-${item}`]: priceValue });
   };
 
-  const handlePriceSave = async (store: string, item: string) => {
-    const priceValue = prices[`${store}-${item}`];
+  const handlePriceSave = async (storeId: string, item: string) => {
+    const priceValue = prices[`${storeId}-${item}`];
+    if (!priceValue || parseFloat(priceValue) === 0) return;
 
-    // Don't save if empty or 0.00
-    if (!priceValue || parseFloat(priceValue) === 0) {
-      return;
-    }
-
-    // Get item_id
     const { data: itemData } = await supabase
       .from('items')
       .select('id')
@@ -212,49 +356,35 @@ function PricesContent() {
       return;
     }
 
-    // Get store_id
-    const { data: storeData } = await supabase
-      .from('stores')
-      .select('id')
-      .eq('name', store)
-      .single();
+    const storeObj = stores.find(s => s.id === storeId);
+    if (!storeObj) return;
 
-    if (!storeData) {
-      console.error('Store not found:', store);
-      return;
-    }
-
-    // Insert new price record (never update - always insert for history)
     await supabase
       .from('price_history')
       .insert({
         item_id: itemData.id,
         item_name: item,
-        store_id: storeData.id,
-        store: store,
+        store_id: storeObj.id,
+        store: storeObj.name,
         price: priceValue,
         user_id: SHARED_USER_ID,
-        recorded_date: new Date().toISOString().split('T')[0], // Today's date
+        recorded_date: new Date().toISOString().split('T')[0],
         created_at: new Date().toISOString()
       });
 
-    // Update dates
     const today = new Date().toISOString().split('T')[0];
-    setPricesDates({ ...pricesDates, [`${store}-${item}`]: today });
-
-    // Update last saved time
-    const now = new Date().toLocaleDateString();
-    setLastSaved(now);
+    setPricesDates({ ...pricesDates, [`${storeId}-${item}`]: today });
+    setLastSaved(new Date().toLocaleDateString());
   };
 
-  const getPriceColor = (store: string, item: string) => {
-    const price = prices[`${store}-${item}`];
+  const getPriceColor = (storeId: string, item: string) => {
+    const price = prices[`${storeId}-${item}`];
     const numPrice = parseFloat(price || '0');
     return numPrice > 0 ? 'text-gray-800' : 'text-gray-200';
   };
 
-  const getDaysAgo = (store: string, item: string) => {
-    const priceDate = pricesDates[`${store}-${item}`];
+  const getDaysAgo = (storeId: string, item: string) => {
+    const priceDate = pricesDates[`${storeId}-${item}`];
     if (!priceDate) return '';
 
     const date = new Date(priceDate);
@@ -294,7 +424,6 @@ function PricesContent() {
       return;
     }
 
-    // Update in database
     const { error: itemError } = await supabase
       .from('items')
       .update({ name: editingValue.trim() })
@@ -306,34 +435,50 @@ function PricesContent() {
       return;
     }
 
-    // Update price history with new item name
     await supabase
       .from('price_history')
       .update({ item_name: editingValue.trim() })
       .eq('item_name', oldItem)
       .eq('user_id', SHARED_USER_ID);
 
-    // Update shopping list with new item name
     await supabase
       .from('shopping_list')
       .update({ item_name: editingValue.trim() })
       .eq('item_name', oldItem)
       .eq('user_id', SHARED_USER_ID);
 
-    // Update local state
     const updatedItems = items.map(i => i === oldItem ? editingValue.trim() : i);
     setItems(updatedItems);
 
     const updatedPrices: { [key: string]: string } = {};
     Object.keys(prices).forEach(key => {
-      if (key.includes(oldItem)) {
-        const newKey = key.replace(oldItem, editingValue.trim());
+      if (key.endsWith(`-${oldItem}`)) {
+        const storeIdPart = key.slice(0, key.lastIndexOf(`-${oldItem}`));
+        const newKey = `${storeIdPart}-${editingValue.trim()}`;
         updatedPrices[newKey] = prices[key];
       } else {
         updatedPrices[key] = prices[key];
       }
     });
     setPrices(updatedPrices);
+
+    const updatedDates: { [key: string]: string } = {};
+    Object.keys(pricesDates).forEach(key => {
+      if (key.endsWith(`-${oldItem}`)) {
+        const storeIdPart = key.slice(0, key.lastIndexOf(`-${oldItem}`));
+        const newKey = `${storeIdPart}-${editingValue.trim()}`;
+        updatedDates[newKey] = pricesDates[key];
+      } else {
+        updatedDates[key] = pricesDates[key];
+      }
+    });
+    setPricesDates(updatedDates);
+
+    // If we were filtering by the old name, update the filter too
+    if (selectedItemFilter === oldItem) {
+      setSelectedItemFilter(editingValue.trim());
+      updateURL(selectedStoreId, editingValue.trim());
+    }
 
     cancelEdit();
   };
@@ -343,7 +488,6 @@ function PricesContent() {
       return;
     }
 
-    // Delete from database
     const { error: itemError } = await supabase
       .from('items')
       .delete()
@@ -355,42 +499,32 @@ function PricesContent() {
       return;
     }
 
-    // Delete all price history for this item
     await supabase
       .from('price_history')
       .delete()
       .eq('item_name', itemToDelete);
 
-    // Delete from shopping list
     await supabase
       .from('shopping_list')
       .delete()
       .eq('item_name', itemToDelete);
 
-    // Update local state
     const updatedItems = items.filter(i => i !== itemToDelete);
     setItems(updatedItems);
 
-    const updatedPrices: { [key: string]: string } = {};
-    Object.keys(prices).forEach(key => {
-      if (!key.includes(itemToDelete)) {
-        updatedPrices[key] = prices[key];
-      }
-    });
-    setPrices(updatedPrices);
+    // Filter cleanup if deleted item was selected
+    if (selectedItemFilter === itemToDelete) {
+      setSelectedItemFilter('');
+      updateURL(selectedStoreId, '');
+    }
   };
 
-  const getCellColor = (store: string, item: string) => {
-    const currentPrice = parseFloat(prices[`${store}-${item}`] || '0');
-
+  const getCellColor = (storeId: string, item: string) => {
+    const currentPrice = parseFloat(prices[`${storeId}-${item}`] || '0');
     if (currentPrice === 0) return 'bg-white';
 
-    // Get all prices for this item across all stores
-    const itemPrices = stores.map(s => parseFloat(prices[`${s}-${item}`] || '0')).filter(p => p > 0);
-
+    const itemPrices = stores.map(s => parseFloat(prices[`${s.id}-${item}`] || '0')).filter(p => p > 0);
     if (itemPrices.length === 0) return 'bg-white';
-
-    // If only one price exists, make it green
     if (itemPrices.length === 1) return 'bg-green-100';
 
     const minPrice = Math.min(...itemPrices);
@@ -402,26 +536,34 @@ function PricesContent() {
     return 'bg-white';
   };
 
-  const sortedItems = items.sort((a, b) => a.localeCompare(b));
+  // --- Handlers for ItemFilter ---
+  const handleItemSelect = (item: string) => {
+    setSelectedItemFilter(item);
+    updateURL(selectedStoreId, item);
+    try { localStorage.setItem('prices_last_item_filter', item); } catch (e) { }
+  };
 
-  // Filter items based on selected item filter
+  const handleAddNewItem = async (newItemName: string) => {
+    const name = newItemName.trim();
+    if (!name) return;
+    if (items.includes(name)) { handleItemSelect(name); return; }
+    try {
+      const { error } = await supabase.from('items').insert({ name: name, user_id: SHARED_USER_ID, category: 'Other' }).select().single();
+      if (error) throw error;
+      const newItems = [...items, name].sort((a, b) => a.localeCompare(b));
+      setItems(newItems);
+      handleItemSelect(name);
+    } catch (e) {
+      console.error('Error adding item', e);
+      alert('Failed to add item');
+    }
+  };
+
+  const sortedItems = items.sort((a, b) => a.localeCompare(b));
   const filteredItems = sortedItems.filter(item => {
-    // Apply item filter
-    if (selectedItemFilter === 'All') return true;
+    if (!selectedItemFilter) return false;
     return item === selectedItemFilter;
   });
-
-  if (stores.length === 0) {
-    return (
-      <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <p className="text-gray-500 text-lg">Loading prices..</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
@@ -452,16 +594,16 @@ function PricesContent() {
           </div>
         </div>
 
-        {/* Mobile Store Selector */}
+        {/* Mobile Filter Controls */}
         <div className="md:hidden mb-4 bg-white rounded-2xl shadow-lg p-4">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
           <select
-            value={selectedStore}
+            value={selectedStoreId}
             onChange={(e) => {
-              setSelectedStore(e.target.value);
+              setSelectedStoreId(e.target.value);
               updateURL(e.target.value, selectedItemFilter);
               try {
-                localStorage.setItem('prices_last_store', e.target.value);
+                localStorage.setItem('prices_last_store_id', e.target.value);
               } catch (err) {
                 console.error('Failed to save to localStorage:', err);
               }
@@ -469,37 +611,27 @@ function PricesContent() {
             className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
           >
             {stores.map(store => (
-              <option key={store} value={store}>{store}</option>
+              <option key={store.id} value={store.id}>
+                {store.name} {store.location ? `(${store.location})` : ''}
+              </option>
             ))}
           </select>
 
           <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Item:</label>
-          <select
-            value={selectedItemFilter}
-            onChange={(e) => {
-              setSelectedItemFilter(e.target.value);
-              updateURL(selectedStore, e.target.value);
-              try {
-                localStorage.setItem('prices_last_item_filter', e.target.value);
-              } catch (err) {
-                console.error('Failed to save to localStorage:', err);
-              }
-            }}
-            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
-          >
-            <option value="All">All Items</option>
-            {sortedItems.map(item => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+          <ItemFilter
+            items={sortedItems}
+            selectedItem={selectedItemFilter}
+            onSelect={handleItemSelect}
+            onAddNew={handleAddNewItem}
+          />
         </div>
 
-        {/* Mobile View - Single Store */}
+        {/* Mobile View - Item List */}
         <div className="md:hidden bg-white rounded-2xl shadow-lg">
           <div className="divide-y">
             {filteredItems.map((item, idx) => {
-              const currentPrice = parseFloat(prices[`${selectedStore}-${item}`] || '0');
-              const priceDate = pricesDates[`${selectedStore}-${item}`];
+              const currentPrice = parseFloat(prices[`${selectedStoreId}-${item}`] || '0');
+              const priceDate = pricesDates[`${selectedStoreId}-${item}`];
 
               // Calculate days ago
               let daysAgo = '';
@@ -508,14 +640,11 @@ function PricesContent() {
                 const today = new Date();
                 const diffTime = today.getTime() - date.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays === 0) {
-                  daysAgo = 'today';
-                } else if (diffDays === 1) {
-                  daysAgo = 'yesterday';
-                } else if (diffDays < 7) {
-                  daysAgo = `${diffDays} days ago`;
-                } else if (diffDays < 30) {
+                // ... same logic as before ...
+                if (diffDays === 0) daysAgo = 'today';
+                else if (diffDays === 1) daysAgo = 'yesterday';
+                else if (diffDays < 7) daysAgo = `${diffDays} days ago`;
+                else if (diffDays < 30) {
                   const weeks = Math.floor(diffDays / 7);
                   daysAgo = weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
                 } else {
@@ -526,14 +655,16 @@ function PricesContent() {
 
               // Get all prices for this item
               const itemPrices = stores.map(store => ({
-                store,
-                price: parseFloat(prices[`${store}-${item}`] || '0')
+                storeName: store.name,
+                price: parseFloat(prices[`${store.id}-${item}`] || '0')
               })).filter(p => p.price > 0);
 
               const sortedPrices = itemPrices.sort((a, b) => a.price - b.price);
               const bestPrice = sortedPrices[0];
               const isBest = currentPrice > 0 && bestPrice && currentPrice === bestPrice.price;
               const savings = currentPrice > 0 && bestPrice ? currentPrice - bestPrice.price : 0;
+
+              const currentStoreObj = stores.find(s => s.id === selectedStoreId);
 
               return (
                 <div key={item} className="p-4">
@@ -589,20 +720,20 @@ function PricesContent() {
                         inputMode="decimal"
                         placeholder="0.00"
                         style={{ MozAppearance: 'textfield' }}
-                        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-2xl text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStore, item)} ${getCellColor(selectedStore, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                        value={prices[`${selectedStore}-${item}`] || ''}
-                        onChange={(e) => handlePriceChange(selectedStore, item, e.target.value)}
-                        onBlur={() => handlePriceSave(selectedStore, item)}
+                        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-2xl text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStoreId, item)} ${getCellColor(selectedStoreId, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                        value={prices[`${selectedStoreId}-${item}`] || ''}
+                        onChange={(e) => handlePriceChange(selectedStoreId, item, e.target.value)}
+                        onBlur={() => handlePriceSave(selectedStoreId, item)}
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
-                            handlePriceSave(selectedStore, item);
+                            handlePriceSave(selectedStoreId, item);
                             e.currentTarget.blur();
                           }
                         }}
                       />
-                      {prices[`${selectedStore}-${item}`] && parseFloat(prices[`${selectedStore}-${item}`]) > 0 && (
+                      {prices[`${selectedStoreId}-${item}`] && parseFloat(prices[`${selectedStoreId}-${item}`]) > 0 && (
                         <div className="text-xs text-gray-500 text-right mt-1">
-                          Updated {getDaysAgo(selectedStore, item)}
+                          Updated {getDaysAgo(selectedStoreId, item)}
                         </div>
                       )}
                     </div>
@@ -621,7 +752,7 @@ function PricesContent() {
                         <span className="text-2xl">✅</span>
                         <div className="flex-1">
                           <p className="text-base font-bold text-green-800">Best Price!</p>
-                          <p className="text-sm text-green-700">Buy now at {selectedStore}</p>
+                          <p className="text-sm text-green-700">Buy now at {currentStoreObj?.name}</p>
                           {daysAgo && <p className="text-xs text-green-600 mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
@@ -632,7 +763,7 @@ function PricesContent() {
                         <span className="text-2xl">⚠️</span>
                         <div className="flex-1">
                           <p className="text-base font-bold text-yellow-800">Close Enough</p>
-                          <p className="text-sm text-yellow-700">{bestPrice.store} is only ${savings.toFixed(2)} cheaper</p>
+                          <p className="text-sm text-yellow-700">{bestPrice.storeName} is only ${savings.toFixed(2)} cheaper</p>
                           {daysAgo && <p className="text-xs text-yellow-600 mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
@@ -643,7 +774,7 @@ function PricesContent() {
                         <span className="text-2xl">❌</span>
                         <div className="flex-1">
                           <p className="text-base font-bold text-red-800">Skip This One</p>
-                          <p className="text-sm text-red-700">{bestPrice.store} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
+                          <p className="text-sm text-red-700">{bestPrice.storeName} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
                           {daysAgo && <p className="text-xs text-red-600 mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
@@ -658,26 +789,16 @@ function PricesContent() {
         {/* Desktop View - Full Table */}
         <div className="hidden md:block bg-white rounded-2xl shadow-lg overflow-x-auto">
           {/* Desktop Item Filter */}
-          <div className="p-4 border-b bg-gray-50">
+          <div className="p-4 border-b bg-gray-50 flex items-center">
             <label className="inline-block text-sm font-semibold text-gray-700 mr-3">Filter Item:</label>
-            <select
-              value={selectedItemFilter}
-              onChange={(e) => {
-                setSelectedItemFilter(e.target.value);
-                updateURL(selectedStore, e.target.value);
-                try {
-                  localStorage.setItem('prices_last_item_filter', e.target.value);
-                } catch (err) {
-                  console.error('Failed to save to localStorage:', err);
-                }
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
-            >
-              <option value="All">All Items</option>
-              {sortedItems.map(item => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
+            <div className="w-80 relative">
+              <ItemFilter
+                items={sortedItems}
+                selectedItem={selectedItemFilter}
+                onSelect={handleItemSelect}
+                onAddNew={handleAddNewItem}
+              />
+            </div>
           </div>
 
           <table className="w-full">
@@ -685,7 +806,10 @@ function PricesContent() {
               <tr>
                 <th className="p-4 text-left font-semibold">Item</th>
                 {stores.map(store => (
-                  <th key={store} className="p-4 text-center font-semibold">{store}</th>
+                  <th key={store.id} className="p-4 text-center font-semibold text-sm">
+                    {store.name}
+                    {store.location && <div className="text-xs text-blue-100 font-normal">({store.location})</div>}
+                  </th>
                 ))}
                 <th className="p-4 text-center font-semibold"></th>
               </tr>
@@ -730,7 +854,7 @@ function PricesContent() {
                   </td>
 
                   {stores.map(store => (
-                    <td key={store} className="p-4">
+                    <td key={store.id} className="p-4">
                       <div className="flex flex-col items-end justify-center">
                         <div className="flex items-center">
                           <span className="text-gray-800 font-semibold mr-1">$</span>
@@ -739,20 +863,20 @@ function PricesContent() {
                             inputMode="decimal"
                             placeholder=""
                             style={{ MozAppearance: 'textfield' }}
-                            className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store, item)} ${getCellColor(store, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                            value={prices[`${store}-${item}`] || ''}
-                            onChange={(e) => handlePriceChange(store, item, e.target.value)}
-                            onBlur={() => handlePriceSave(store, item)}
+                            className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store.id, item)} ${getCellColor(store.id, item)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                            value={prices[`${store.id}-${item}`] || ''}
+                            onChange={(e) => handlePriceChange(store.id, item, e.target.value)}
+                            onBlur={() => handlePriceSave(store.id, item)}
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
-                                handlePriceSave(store, item);
+                                handlePriceSave(store.id, item);
                                 e.currentTarget.blur();
                               }
                             }}
                           />
                         </div>
-                        {prices[`${store}-${item}`] && parseFloat(prices[`${store}-${item}`]) > 0 && (
-                          <span className="text-xs text-gray-500 mt-1">{getDaysAgo(store, item)}</span>
+                        {prices[`${store.id}-${item}`] && parseFloat(prices[`${store.id}-${item}`]) > 0 && (
+                          <span className="text-xs text-gray-500 mt-1">{getDaysAgo(store.id, item)}</span>
                         )}
                       </div>
                     </td>
