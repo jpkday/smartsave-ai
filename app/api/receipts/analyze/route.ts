@@ -1,7 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
         const { image } = await req.json();
 
@@ -26,7 +26,6 @@ export async function POST(req: Request) {
         // Initialize Gemini
         const genAI = new GoogleGenerativeAI(apiKey.trim());
         console.log("Using API Key length:", apiKey.trim().length);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         // Remove header from base64 string if present (data:image/jpeg;base64,...)
         const match = image.match(/^data:(.+);base64,(.+)$/);
@@ -47,7 +46,8 @@ export async function POST(req: Request) {
       Analyze this receipt image and extract the following information in strict JSON format:
       1. Store Name (store)
       2. Date of purchase (date) in YYYY-MM-DD format
-      3. A list of items (items), where each item has:
+      3. Time of purchase (time) in HH:MM format (24-hour). If not found, use "12:00".
+      4. A list of items (items), where each item has:
          - name: The product name (fix abbreviations if obvious, e.g., 'HVY CRM' -> 'Heavy Cream')
          - price: The unit price (number)
          - quantity: The quantity (number, default to 1)
@@ -59,26 +59,60 @@ export async function POST(req: Request) {
       {
         "store": "Store Name",
         "date": "YYYY-MM-DD",
+        "time": "HH:MM",
         "items": [
           { "name": "Item Name", "price": 2.99, "quantity": 1, "sku": "12345" }
         ]
       }
     `;
 
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: mimeType,
-                },
-            },
-        ]);
+        // Candidate models to try in order (preferring faster/cheaper models first)
+        const candidateModels = [
+            "gemini-3-flash-preview",  // Newest Flash (2026)
+            "gemini-2.5-flash",        // Stable Flash
+            "gemini-3-pro-preview",    // Newest Pro
+            "gemini-2.5-pro",          // Stable Pro
+            "gemini-1.5-flash",        // Legacy Fallback
+        ];
+
+        let result = null;
+        let lastError = null;
+        let usedModel = "";
+
+        for (const modelName of candidateModels) {
+            try {
+                console.log(`Attempting model: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+
+                result = await model.generateContent([
+                    prompt,
+                    {
+                        inlineData: {
+                            data: base64Data,
+                            mimeType: mimeType,
+                        },
+                    },
+                ]);
+
+                usedModel = modelName;
+                console.log(`SUCCESS: Model ${modelName} worked.`);
+                break; // Exit loop on success
+            } catch (err: any) {
+                console.warn(`FAILED: Model ${modelName} - ${err.message}`);
+                lastError = err;
+                // Continue to next model
+            }
+        }
+
+        if (!result) {
+            console.error("All models failed.");
+            throw lastError || new Error("All Gemini models failed to generate content.");
+        }
 
         const response = await result.response;
         const text = response.text();
 
-        console.log("Gemini Raw Response:", text);
+        console.log(`Gemini Response (via ${usedModel}):`, text);
 
         // Clean up markdown code blocks if present
         const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();

@@ -419,6 +419,7 @@ function ReceiptsContent() {
           finalBase64 = rawBase64;
         }
 
+        // Always try to set preview. Mobile browsers (iOS) can typically render HEIC.
         setScanPreview(finalBase64);
 
         try {
@@ -464,13 +465,14 @@ function ReceiptsContent() {
               }
             }
 
-            // Set date
+            // Set date and time
             if (data.date) {
               setDate(data.date);
-              setTripEndLocal(`${data.date}T12:00`);
+              // If time is provided, use it. Otherwise default to 12:00
+              const timeStr = data.time || '12:00';
+              setTripEndLocal(`${data.date}T${timeStr}`);
             }
           }
-
         } catch (error: any) {
           console.error("Scan error:", error);
           alert(`Scan failed: ${error.message}`);
