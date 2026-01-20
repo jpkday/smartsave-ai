@@ -41,7 +41,72 @@ export default function Header({ currentPage }: HeaderProps) {
   const mobileCurrentClass =
     mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
 
+  const pageIcons: Record<string, React.ReactNode> = {
+    'Home': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+    'Shopping List': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+    'Local Deals': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+      </svg>
+    ),
+    'Insights': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" />
+      </svg>
+    ),
+    'Recent Trips': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    'Compare Items': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+      </svg>
+    ),
+    'Price History': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+      </svg>
+    ),
+    'Manage Items': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+    ),
+    'Enter Prices': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    'Add Receipt': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    'Add Flyer': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+      </svg>
+    ),
+    'Manage Stores': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    ),
+  };
+
   const [showHome, setShowHome] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -75,51 +140,93 @@ export default function Header({ currentPage }: HeaderProps) {
           <div
             className={`w-full px-4 py-3.5 rounded-2xl font-bold text-white ${mobileCurrentClass} transition text-center flex items-center justify-center gap-2`}
           >
-            <span>
-              {pages.find((p) => p.name === currentPage)?.icon} {currentPage}
+            <span className="flex items-center gap-2">
+              {pageIcons[currentPage] || pages.find((p) => p.name === currentPage)?.icon} {currentPage}
             </span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
 
-          <select
-            value={currentPage}
-            onChange={(e) => {
-              const page = pages.find((p) => p.name === e.target.value);
-              if (page) window.location.href = page.path;
-            }}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-          >
-            <optgroup label="Shop">
-              {pages.filter(p => ['Home', 'Shopping List', 'Local Deals'].includes(p.name)).map(page => (
-                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                  {page.icon} {page.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Analyze">
-              {pages.filter(p => ['Insights', 'Recent Trips', 'Compare Items', 'Price History'].includes(p.name)).map(page => (
-                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                  {page.icon} {page.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Contribute">
-              {pages.filter(p => ['Add Receipt', 'Add Flyer', 'Enter Prices'].includes(p.name)).map(page => (
-                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                  {page.icon} {page.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Manage">
-              {pages.filter(p => ['Manage Items', 'Manage Stores'].includes(p.name)).map(page => (
-                <option key={page.name} value={page.name} disabled={page.name === currentPage}>
-                  {page.icon} {page.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          />
+
+          {isMobileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/5 z-40"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
+              <div
+                id="mobile-menu-dropdown"
+                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden border border-white/50 z-50 max-h-[80vh] overflow-y-auto ring-1 ring-black/5"
+              >
+                <div className="py-2">
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50">Shop</div>
+                  {['Home', 'Shopping List', 'Local Deals'].map(pageName => (
+                    <Link
+                      key={pageName}
+                      href={pages.find(p => p.name === pageName)?.path || '#'}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {pageIcons[pageName]}
+                      </div>
+                      {pageName}
+                    </Link>
+                  ))}
+
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Analyze</div>
+                  {['Insights', 'Recent Trips', 'Compare Items', 'Price History'].map(pageName => (
+                    <Link
+                      key={pageName}
+                      href={pages.find(p => p.name === pageName)?.path || '#'}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {pageIcons[pageName]}
+                      </div>
+                      {pageName}
+                    </Link>
+                  ))}
+
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Contribute</div>
+                  {['Add Receipt', 'Add Flyer', 'Enter Prices'].map(pageName => (
+                    <Link
+                      key={pageName}
+                      href={pages.find(p => p.name === pageName)?.path || '#'}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {pageIcons[pageName]}
+                      </div>
+                      {pageName}
+                    </Link>
+                  ))}
+
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Manage</div>
+                  {['Manage Items', 'Manage Stores'].map(pageName => (
+                    <Link
+                      key={pageName}
+                      href={pages.find(p => p.name === pageName)?.path || '#'}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {pageIcons[pageName]}
+                      </div>
+                      {pageName}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

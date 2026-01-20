@@ -2285,7 +2285,7 @@ export default function ShoppingList() {
                                       onClick={() => endTrip(activeTrips[storeId], storeId)}
                                       className="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
                                     >
-                                      End Trip
+                                      Complete
                                     </button>
                                     <span className="text-sm text-gray-500 font-medium">
                                       {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
@@ -2546,9 +2546,8 @@ export default function ShoppingList() {
                                         }}
                                         className="bg-white border border-indigo-200 hover:bg-indigo-200 text-indigo-700 text-sm font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5"
                                       >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-
-                                          <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                                         </svg>
                                         Shop
                                       </button>
