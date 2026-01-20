@@ -193,7 +193,7 @@ export default function Header({ currentPage }: HeaderProps) {
                   ))}
 
                   <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorites</div>
-                  {['Stores', 'Items'].map(pageName => (
+                  {['Items', 'Stores'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}

@@ -33,6 +33,7 @@ function ItemsContent() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoritedIds, setFavoritedIds] = useState<Set<number>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
 
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const isMasterAccount = householdCode === 'ASDF';
@@ -50,6 +51,9 @@ function ItemsContent() {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
 
+  // View Filter: ALL (default), FAVORITES, or HIDDEN
+  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('ALL');
+
   // Mobile bottom sheet edit
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
@@ -65,11 +69,6 @@ function ItemsContent() {
   const [inlineSaving, setInlineSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const editRowRef = useRef<HTMLDivElement | null>(null);
-
-  const [selectItemsFilter, setSelectItemsFilter] =
-    useState<'ALL' | 'FAVORITES'>('ALL');
-
-  useState<'ALL' | 'FAVORITES'>('ALL');
 
   const { categories, getCategoryName } = useCategories();
   // Sort categories alphabetically or however desired
@@ -193,6 +192,15 @@ function ItemsContent() {
       .eq('household_code', householdCode);
 
     setFavoritedIds(new Set(favData?.map(f => f.item_id) || []));
+
+    // Load hidden items for this household
+    const { data: hiddenData } = await supabase
+      .from('household_item_hidden')
+      .select('item_id')
+      .eq('household_code', householdCode);
+
+    setHiddenIds(new Set(hiddenData?.map(h => h.item_id) || []));
+
     setLoading(false);
   };
 
@@ -207,6 +215,9 @@ function ItemsContent() {
       const itemName = JSON.parse(itemParam);
       const found = items.find(i => i.name === itemName);
       if (found) {
+        // Even if hidden, user explicitly navigated here, so showing it via search param logic is fine
+        // but might want to ensure viewFilter allows it? 
+        // For simplicity, we just open it.
         if (window.innerWidth < 768) {
           openSheet(found);
         } else {
@@ -245,16 +256,28 @@ function ItemsContent() {
   const filtered = useMemo(() => {
     let base = items;
 
+    // 1. Filter by View (Active vs Hidden vs Favorites)
+    if (viewFilter === 'HIDDEN') {
+      base = base.filter(i => hiddenIds.has(i.id));
+    } else if (viewFilter === 'FAVORITES') {
+      base = base.filter(i => favoritedIds.has(i.id) && !hiddenIds.has(i.id));
+    } else {
+      // ALL: Show everything (Active + Hidden)
+      // no-op
+    }
+
+    // 2. Filter by Search Input
     if (inputValue.trim()) {
       base = base.filter((i) => i.name.toLowerCase().includes(inputValue.toLowerCase()));
     }
 
+    // 3. Filter by Letter
     if (filterLetter === 'All') return base.sort((a, b) => a.name.localeCompare(b.name));
 
     return base
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter((i) => i.name.toUpperCase().startsWith(filterLetter));
-  }, [items, inputValue, filterLetter]);
+  }, [items, inputValue, filterLetter, viewFilter, hiddenIds, favoritedIds]);
 
   const favorites = useMemo(
     () => filtered.filter((i) => favoritedIds.has(i.id)).sort((a, b) => a.name.localeCompare(b.name)),
@@ -379,6 +402,48 @@ function ItemsContent() {
     }
   };
 
+  const toggleHidden = async (itemId: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!householdCode) return;
+
+    const isHidden = hiddenIds.has(itemId);
+
+    if (isHidden) {
+      // Unhide
+      const { error } = await supabase
+        .from('household_item_hidden')
+        .delete()
+        .eq('household_code', householdCode)
+        .eq('item_id', itemId);
+
+      if (error) {
+        console.error('Error unhiding item:', error);
+        return;
+      }
+
+      setHiddenIds(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    } else {
+      // Hide
+      const { error } = await supabase
+        .from('household_item_hidden')
+        .insert({
+          household_code: householdCode,
+          item_id: itemId,
+        });
+
+      if (error) {
+        console.error('Error hiding item:', error);
+        return;
+      }
+
+      setHiddenIds(prev => new Set([...prev, itemId]));
+    }
+  };
+
   const deleteItem = async (item: Item) => {
     const canDelete = canDeleteItem(item);
 
@@ -425,6 +490,11 @@ function ItemsContent() {
       // Update UI
       setItems((prev) => prev.filter((i) => i.id !== item.id));
       setFavoritedIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      setHiddenIds(prev => {
         const next = new Set(prev);
         next.delete(item.id);
         return next;
@@ -484,34 +554,41 @@ function ItemsContent() {
     const itemId = selected.id;
     const nextCategory = (editCategory || 'Other').trim() || 'Other';
     const nextFavorite = !!editFavorite;
+    const nextName = editValue.trim();
+    const nameChanged = nextName && nextName !== selected.name;
 
     const prevItems = items;
     const prevFavorites = favoritedIds;
 
     setSaving(true);
 
-    // Optimistic UI update
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId ? { ...i, category: nextCategory } : i
-      )
-    );
-
-    if (nextFavorite && !favoritedIds.has(itemId)) {
-      setFavoritedIds(prev => new Set([...prev, itemId]));
-    } else if (!nextFavorite && favoritedIds.has(itemId)) {
-      setFavoritedIds(prev => {
-        const next = new Set(prev);
-        next.delete(itemId);
-        return next;
-      });
-    }
-
     try {
-      // Update category
-      // Look up ID for the chosen name
-      const targetCatId = categories.find(c => c.name === nextCategory)?.id || null;
+      // 1. Rename if needed
+      if (nameChanged) {
+        await renameItem(selected.name, nextName);
+        // renameItem updates 'items' state with the new name
+      }
 
+      // 2. Update Category (Optimistic)
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === itemId ? { ...i, category: nextCategory } : i
+        )
+      );
+
+      // 3. Update Favorites (Optimistic)
+      if (nextFavorite && !favoritedIds.has(itemId)) {
+        setFavoritedIds(prev => new Set([...prev, itemId]));
+      } else if (!nextFavorite && favoritedIds.has(itemId)) {
+        setFavoritedIds(prev => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }
+
+      // 4. Persist Category
+      const targetCatId = categories.find(c => c.name === nextCategory)?.id || null;
       const { error: catError } = await supabase
         .from('items')
         .update({ category: nextCategory, category_id: targetCatId })
@@ -520,7 +597,7 @@ function ItemsContent() {
 
       if (catError) throw catError;
 
-      // Update favorite
+      // 5. Persist Favorite
       const isFavorited = prevFavorites.has(itemId);
       if (nextFavorite && !isFavorited) {
         const { error: favError } = await supabase
@@ -542,12 +619,10 @@ function ItemsContent() {
       closeSheet();
     } catch (e) {
       console.error('Save failed:', e);
-
-      // rollback
-      setItems(prevItems);
-      setFavoritedIds(prevFavorites);
-
-      alert('Failed to save changes. Check your connection and try again.');
+      // If rename succeeded but others failed, state might be partially updated.
+      // Reloading items is safest fallback involves fetching.
+      // For now just alert.
+      alert('An error occurred while saving. Please check your connection.');
       setSaving(false);
     }
   };
@@ -624,7 +699,31 @@ function ItemsContent() {
           <div className="text-xs text-gray-500">Tap to edit</div>
         </button>
 
-        <span className="text-gray-400 flex-shrink-0">›</span>
+        {viewFilter === 'ALL' && (
+          <button
+            type="button"
+            onClick={(e) => toggleHidden(item.id, e)}
+            className={hiddenIds.has(item.id) ? "p-2 text-red-600 hover:text-red-700" : "p-2 text-gray-400 hover:text-red-500"}
+            title={hiddenIds.has(item.id) ? "Unhide item" : "Hide item"}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={hiddenIds.has(item.id) ? 3 : 2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
+        )}
+        {viewFilter === 'HIDDEN' && (
+          <button
+            type="button"
+            onClick={(e) => toggleHidden(item.id, e)}
+            className="p-2 text-gray-400 hover:text-green-500"
+            title="Unhide item"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        )}
       </div>
     );
   };
@@ -696,17 +795,45 @@ function ItemsContent() {
                 </button>
               </span>
 
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => deleteItem(item)}
-                  className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
-                  title="Delete item"
-                  disabled={inlineSaving}
-                >
-                  🗑️
-                </button>
-              )}
+              <div className="flex items-center gap-1">
+                {viewFilter === 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={(e) => toggleHidden(item.id, e)}
+                    className={hiddenIds.has(item.id) ? "text-red-600 hover:text-red-700 p-2" : "text-gray-300 hover:text-red-500 p-2"}
+                    title={hiddenIds.has(item.id) ? "Unhide item" : "Hide item"}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={hiddenIds.has(item.id) ? 3 : 2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  </button>
+                )}
+                {viewFilter === 'HIDDEN' && (
+                  <button
+                    type="button"
+                    onClick={(e) => toggleHidden(item.id, e)}
+                    className="text-gray-300 hover:text-green-500 p-2"
+                    title="Unhide item"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                )}
+
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => deleteItem(item)}
+                    className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
+                    title="Delete item"
+                    disabled={inlineSaving}
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -728,7 +855,7 @@ function ItemsContent() {
               </Link>
             </div>
             <div className="w-full">
-              <Header currentPage="Manage Items" />
+              <Header currentPage="Items" />
             </div>
           </div>
         </div>
@@ -737,8 +864,10 @@ function ItemsContent() {
       <div className="max-w-5xl mx-auto px-2 md:px-6 pt-4">
         <div className="max-w-5xl mx-auto space-y-3">
 
+
+
           {/* Alphabet Filter */}
-          <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-1 md:mb-6">
+          <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4">
             <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
               <button
                 type="button"
@@ -833,78 +962,76 @@ function ItemsContent() {
             {loading ? (
               <div className="text-gray-600 text-sm">Loading items…</div>
             ) : (
-              (() => {
-                const isFavoritesView = selectItemsFilter === 'FAVORITES';
+              <>
+                {/* View Filters (Moved Here) - Styled like List Build Mode */}
+                <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-gray-100">
+                  <button
+                    onClick={() => setViewFilter('ALL')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'ALL'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
+                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                      }`}
+                  >
+                    All Items
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('FAVORITES')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'FAVORITES'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
+                      : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+                      }`}
+                  >
+                    Favorites
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('HIDDEN')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'HIDDEN'
+                      ? 'bg-gray-400 text-white border-gray-400 shadow-md transform scale-105'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                  >
+                    Hidden
+                  </button>
+                </div>
 
-                // One unified list:
-                // - ALL: favorites + regular, but sorted alphabetically (no favorites-on-top)
-                // - FAVORITES: favorites only
-                const unifiedItems = (isFavoritesView ? favorites : [...favorites, ...regular])
-                  .slice()
-                  .sort((a, b) => a.name.localeCompare(b.name));
+                {/* List Header / Stats */}
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                    {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorites' : 'All Items'}
+                  </h2>
+                  <span className="text-xs text-gray-500">{filtered.length} shown</span>
+                </div>
 
-                const LIST_MAX = 'max-h-[calc(10*3.65rem)] overflow-y-auto';
+                {/* No Items State */}
+                {filtered.length === 0 && (
+                  <div className="text-sm text-gray-500 italic py-4 text-center">
+                    {viewFilter === 'HIDDEN'
+                      ? "No hidden items."
+                      : "No items found."}
+                  </div>
+                )}
 
-                return (
+                {/* List Content */}
+                {filtered.length > 0 && (
                   <>
-                    {/* Filters - All Items and Favorites */}
-                    <div className="flex justify-between items-center mb-3">
-                      <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-                        {isFavoritesView ? 'Favorites' : 'All Items'}
-                      </h2>
-                      <span className="text-xs text-gray-500">{unifiedItems.length} shown</span>
+                    {/* Mobile List */}
+                    <div className="md:hidden space-y-2 max-h-[calc(10*3.65rem)] overflow-y-auto">
+                      {filtered.map((item) => {
+                        const isFavorite = favoritedIds.has(item.id);
+                        return renderMobileRow(item, isFavorite);
+                      })}
                     </div>
 
-                    <div className="grid grid-flow-col auto-cols-fr gap-2 mb-3">
-                      <button
-                        onClick={() => setSelectItemsFilter('ALL')}
-                        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'ALL'
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'
-                          }`}
-                      >
-                        All Items
-                      </button>
-
-                      <button
-                        onClick={() => setSelectItemsFilter('FAVORITES')}
-                        className={`px-3 py-1 rounded-full text-sm font-semibold border transition cursor-pointer ${selectItemsFilter === 'FAVORITES'
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50'
-                          }`}
-                      >
-                        Favorites
-                      </button>
+                    {/* Desktop List */}
+                    <div className="hidden md:block space-y-2 max-h-[calc(10*3.65rem)] overflow-y-auto">
+                      {filtered.map((item) => {
+                        const isFavorite = favoritedIds.has(item.id);
+                        return renderDesktopRow(item, isFavorite);
+                      })}
                     </div>
-
-                    {/* Empty states */}
-                    {isFavoritesView && favorites.length === 0 ? (
-                      <div className="text-sm text-gray-500 italic">
-                        Favorite your high-frequency items to keep them on top.
-                      </div>
-                    ) : !isFavoritesView && unifiedItems.length === 0 ? (
-                      <div className="text-sm text-gray-500 italic">No matches. Try a different search.</div>
-                    ) : (
-                      <>
-                        {/* ONE list (mobile + desktop), preserves favorite styling + star behavior */}
-                        <div className={`md:hidden space-y-2 ${LIST_MAX}`}>
-                          {unifiedItems.map((item) => {
-                            const isFavorite = favoritedIds.has(item.id);
-                            return renderMobileRow(item, isFavorite);
-                          })}
-                        </div>
-
-                        <div className={`hidden md:block space-y-2 ${LIST_MAX}`}>
-                          {unifiedItems.map((item) => {
-                            const isFavorite = favoritedIds.has(item.id);
-                            return renderDesktopRow(item, isFavorite);
-                          })}
-                        </div>
-                      </>
-                    )}
                   </>
-                );
-              })()
+                )}
+              </>
             )}
           </div>
         </div>

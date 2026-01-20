@@ -241,7 +241,7 @@ export default function Stores() {
               </Link>
             </div>
             <div className="w-full">
-              <Header currentPage="Manage Stores" />
+              <Header currentPage="Stores" />
             </div>
           </div>
         </div>
