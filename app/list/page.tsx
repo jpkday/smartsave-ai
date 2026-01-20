@@ -310,8 +310,17 @@ export default function ShoppingList() {
       // 1. Delete the trip (cascade should handle events if DB configured, but let's be safe)
       // Actually, if we just delete the trip, we might leave events without a trip_id or delete them?
       // For now, let's just delete the trip record.
-      const { error } = await supabase.from('trips').delete().eq('id', tripStartedToastTripId);
-      if (error) throw error;
+      const response = await fetch('/api/trips/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripStartedToastTripId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete trip');
+      }
+
 
       // 2. If this was implicit (via item check), uncheck that item
       if (lastImplicitStartItemId) {
@@ -346,7 +355,12 @@ export default function ShoppingList() {
         pinStore(storeId);
         await loadData();
         showTripStartedToast(storeName, data.trip.id, null); // Explicit start, no implicit item
+      } else {
+        console.error('Start trip failed:', data);
+        alert(data.error || 'Failed to start trip. Please try again.');
+        // If it failed, unpin just in case? No, we haven't pinned yet.
       }
+
     } catch (error) {
       console.error('Error starting trip:', error);
       alert('Failed to start trip. Please try again.');
@@ -989,14 +1003,22 @@ export default function ShoppingList() {
       const now = new Date();
 
       (tripsData ?? []).forEach((trip) => {
-        if (trip.store_id) {
+        const startTime = new Date(trip.started_at).getTime();
+        const isStale = (now.getTime() - startTime) > STALE_TRIP_MS;
+
+        if (isStale) {
           supabase.from('trips').update({ ended_at: now.toISOString() }).eq('id', trip.id).then(({ error }) => {
             if (error) console.error('Failed to auto-close stale trip:', trip.id, error);
+            else console.log('Auto-closed stale trip:', trip.id);
           });
-        } else if (!tripsByStore[trip.store_id]) {
-          tripsByStore[trip.store_id] = trip.id;
+        } else {
+          // Valid trip
+          if (!tripsByStore[trip.store_id]) {
+            tripsByStore[trip.store_id] = trip.id;
+          }
         }
       });
+
 
       setActiveTrips(tripsByStore);
     }
@@ -2006,7 +2028,7 @@ export default function ShoppingList() {
                           {/* 1. Favorites */}
                           <button
                             onClick={() => toggleFilter('FAVORITES')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'FAVORITES'
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
                               ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
                               : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
                               }`}
@@ -2017,7 +2039,7 @@ export default function ShoppingList() {
                           {/* 2. Frequent */}
                           <button
                             onClick={() => toggleFilter('FREQUENT')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'FREQUENT'
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
                               ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
                               : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
                               }`}
@@ -2028,7 +2050,7 @@ export default function ShoppingList() {
                           {/* 3. Recent */}
                           <button
                             onClick={() => toggleFilter('RECENT')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate ${selectItemsFilter === 'RECENT'
+                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
                               ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
                               : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
                               }`}
@@ -2110,7 +2132,8 @@ export default function ShoppingList() {
 
                                 <button
                                   onClick={() => toggleItemById(it.id, it.name)}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+
                                 >
                                   Add
                                 </button>
@@ -2723,7 +2746,8 @@ export default function ShoppingList() {
                                         const id = storesByName[store];
                                         if (id) startTrip(id, store);
                                       }}
-                                      className="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                                      className="bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm cursor-pointer"
+
                                     >
                                       Start Trip
                                     </button>
@@ -3620,6 +3644,43 @@ export default function ShoppingList() {
             </div>
           )
         }
+
+        {/* =========================
+        TOAST NOTIFICATION
+        
+        TRIP STARTED
+        (WITH UNDO BUTTON)
+        ========================= */}
+        {
+          mounted && tripStartedToastStore && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
+              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+                <span className="flex-1 font-medium">Trip started at {tripStartedToastStore}</span>
+
+                <button
+                  onClick={undoTripStart}
+                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap cursor-pointer"
+                >
+                  Undo
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (tripStartedToastTimeout) clearTimeout(tripStartedToastTimeout);
+                    setTripStartedToastStore(null);
+                    setTripStartedToastTripId(null);
+                    setTripStartedToastTimeout(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-xl cursor-pointer"
+                  aria-label="Dismiss"
+                >
+                  ✖
+                </button>
+              </div>
+            </div>
+          )
+        }
+
       </div>
     </div >
   );

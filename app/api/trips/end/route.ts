@@ -1,10 +1,20 @@
-import { supabase } from '../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function POST(request: NextRequest) {
     try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+        if (!supabaseServiceKey) {
+            return NextResponse.json({ error: 'Server misconfiguration: Missing SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 });
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
         const { trip_id, store_id, household_code } = await request.json();
 
         if (!trip_id || !store_id || !household_code) {
