@@ -358,128 +358,148 @@ function ReceiptsContent() {
   const [scanPreview, setScanPreview] = useState<string | null>(null);
 
   // Helper to resize image
-  const resizeImage = (file: File): Promise<string> => {
+  const resizeImage = (input: File | string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_SIZE = 1024;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 1024;
 
-          if (width > height) {
-            if (width > MAX_SIZE) {
-              height = Math.round((height * MAX_SIZE) / width);
-              width = MAX_SIZE;
-            }
-          } else {
-            if (height > MAX_SIZE) {
-              width = Math.round((width * MAX_SIZE) / height);
-              height = MAX_SIZE;
-            }
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
           }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
 
-          // Compress to JPEG 0.7 quality
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          resolve(dataUrl);
-        };
-        img.onerror = reject;
-        img.src = e.target?.result as string;
+        // Compress to JPEG 0.7 quality
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(dataUrl);
       };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      img.onerror = reject;
+
+      if (typeof input === 'string') {
+        img.src = input;
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          img.src = e.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(input);
+      }
     });
   };
+
+  const processReceiptImage = async (rawBase64: string) => {
+    setScanning(true);
+    let finalBase64 = rawBase64;
+
+    try {
+      // Try to resize (safari/chrome handle standard formats)
+      // IF HEIC, this might fail or browser might not render it to canvas
+      finalBase64 = await resizeImage(rawBase64);
+    } catch (resizeErr) {
+      console.warn("Image resize failed (likely HEIC/unsupported format), sending original:", resizeErr);
+      // Fallback to original
+      finalBase64 = rawBase64;
+    }
+
+    // Always try to set preview. Mobile browsers (iOS) can typically render HEIC.
+    setScanPreview(finalBase64);
+
+    try {
+      const response = await fetch('/api/receipts/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: finalBase64 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze receipt');
+      }
+
+      if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
+        // Map API items to frontend ReceiptItem format
+        const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
+          item: apiItem.name,
+          quantity: String(apiItem.quantity || 1),
+          price: String(apiItem.price || ''),
+          sku: apiItem.sku || '',
+          priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
+        }));
+
+        // If we got items, update state
+        if (mappedItems.length > 0) {
+          setReceiptItems(mappedItems);
+        }
+
+        // Attempt to match store
+        if (data.store) {
+          // Simple fuzzy match or partial inclusion
+          const match = stores.find(s =>
+            s.name.toLowerCase().includes(data.store.toLowerCase()) ||
+            data.store.toLowerCase().includes(s.name.toLowerCase())
+          );
+          if (match) {
+            setSelectedStoreId(match.id);
+          } else {
+            // If no ID match, user will have to select manually, but we captured the name
+            console.log("Could not auto-match store:", data.store);
+          }
+        }
+
+        // Set date and time
+        if (data.date) {
+          setDate(data.date);
+          // If time is provided, use it. Otherwise default to 12:00
+          const timeStr = data.time || '12:00';
+          setTripEndLocal(`${data.date}T${timeStr}`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Scan error:", error);
+      alert(`Scan failed: ${error.message}`);
+    } finally {
+      setScanning(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
+    }
+  };
+
+  useEffect(() => {
+    const autoLoad = searchParams.get('autoLoad');
+    if (autoLoad === 'true') {
+      const pendingImage = localStorage.getItem('pendingRxImage');
+      if (pendingImage) {
+        localStorage.removeItem('pendingRxImage');
+        // Clear param logic could go here but not critical
+        processReceiptImage(pendingImage);
+      }
+    }
+  }, [searchParams]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setScanning(true);
-
       const reader = new FileReader();
 
       reader.onload = async (event) => {
         const rawBase64 = event.target?.result as string;
-        let finalBase64 = rawBase64;
-
-        try {
-          // Try to resize (safari/chrome handle standard formats)
-          // IF HEIC, this might fail or browser might not render it to canvas
-          finalBase64 = await resizeImage(file);
-        } catch (resizeErr) {
-          console.warn("Image resize failed (likely HEIC/unsupported format), sending original:", resizeErr);
-          // Fallback to original
-          finalBase64 = rawBase64;
-        }
-
-        // Always try to set preview. Mobile browsers (iOS) can typically render HEIC.
-        setScanPreview(finalBase64);
-
-        try {
-          const response = await fetch('/api/receipts/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: finalBase64 }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to analyze receipt');
-          }
-
-          if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
-            // Map API items to frontend ReceiptItem format
-            const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
-              item: apiItem.name,
-              quantity: String(apiItem.quantity || 1),
-              price: String(apiItem.price || ''),
-              sku: apiItem.sku || '',
-              priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
-            }));
-
-            // If we got items, update state
-            if (mappedItems.length > 0) {
-              setReceiptItems(mappedItems);
-            }
-
-            // Attempt to match store
-            if (data.store) {
-              // Simple fuzzy match or partial inclusion
-              const match = stores.find(s =>
-                s.name.toLowerCase().includes(data.store.toLowerCase()) ||
-                data.store.toLowerCase().includes(s.name.toLowerCase())
-              );
-              if (match) {
-                setSelectedStoreId(match.id);
-              } else {
-                // If no ID match, user will have to select manually, but we captured the name
-                console.log("Could not auto-match store:", data.store);
-              }
-            }
-
-            // Set date and time
-            if (data.date) {
-              setDate(data.date);
-              // If time is provided, use it. Otherwise default to 12:00
-              const timeStr = data.time || '12:00';
-              setTripEndLocal(`${data.date}T${timeStr}`);
-            }
-          }
-        } catch (error: any) {
-          console.error("Scan error:", error);
-          alert(`Scan failed: ${error.message}`);
-        } finally {
-          setScanning(false);
-          if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
-        }
+        await processReceiptImage(rawBase64);
       };
 
       reader.readAsDataURL(file);

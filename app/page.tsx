@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import HouseholdSelector from './components/HouseholdSelector';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function HomeContent() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [householdCode, setHouseholdCode] = useState<string | null>(null);
@@ -14,10 +16,47 @@ function HomeContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // ... existing household code logic ...
     const code = localStorage.getItem('household_code');
     setHouseholdCode(code);
     setIsLoadingCode(false);
   }, []);
+
+  // ... (existing searchParams effect) ...
+
+  const handleScanClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        try {
+          localStorage.setItem('pendingRxImage', base64);
+          router.push('/receipts?autoLoad=true');
+        } catch (err) {
+          console.error("Storage failed (quota?):", err);
+          // Fallback: just go to receipts page if storage fails
+          router.push('/receipts');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // ... existing handlers ...
+
+  // Replace links with buttons in JSX below
+  // Note: I will need to use multiple replace calls or one big one.
+  // Since I can't easily target scattered buttons, I will use a larger replacement for the `Scan` button blocks.
+
+  // For now, let's inject the refs/hooks and the input element first.
+  // Wait, I should do imports first.
+
 
   useEffect(() => {
     const urlCode = searchParams.get('code');
@@ -115,10 +154,10 @@ function HomeContent() {
 
               {/* Secondary Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <Link href="/receipts" className="bg-orange-500 text-white p-5 rounded-2xl font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition flex flex-col items-center gap-2 text-center">
+                <button onClick={handleScanClick} className="bg-orange-500 text-white p-5 rounded-2xl font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition flex flex-col items-center gap-2 text-center">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   <span className="leading-none">Scan<br /><span className="text-xs opacity-75 font-normal">Receipt</span></span>
-                </Link>
+                </button>
                 <Link href="/deals" className="bg-red-500 text-white p-5 rounded-2xl font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition flex flex-col items-center gap-2 text-center">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
                   <span className="leading-none">Save<br /><span className="text-xs opacity-75 font-normal">Deals</span></span>
@@ -330,6 +369,16 @@ function HomeContent() {
           initialCode={householdCode || ''}
         />
       )}
+
+      {/* Hidden File Input for 1-Tap Scan */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileCapture}
+      />
     </div>
   );
 }
