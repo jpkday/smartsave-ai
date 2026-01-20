@@ -227,7 +227,7 @@ function HomeContent() {
                   Add Flyer
                 </button>
               ) : (
-                <Link href="/receipts?mode=flyer" className="flex-1 bg-indigo-600/80 hover:bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold transition text-center">
+                <Link href="/flyers" className="flex-1 bg-indigo-600/80 hover:bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold transition text-center">
                   Add Flyer
                 </Link>
               )}
@@ -350,7 +350,7 @@ function HomeContent() {
                 - /prices
                */}
 
-              <Link href="/receipts?mode=flyer" onClick={() => setShowMoreMenu(false)} className="w-full bg-indigo-600 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-indigo-700 transition cursor-pointer text-center relative flex items-center">
+              <Link href="/flyers" onClick={() => setShowMoreMenu(false)} className="w-full bg-indigo-600 text-white px-10 py-3 rounded-lg text-base font-semibold hover:bg-indigo-700 transition cursor-pointer text-center relative flex items-center">
                 <span className="absolute left-4">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                 </span>

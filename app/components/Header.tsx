@@ -19,8 +19,8 @@ export default function Header({ currentPage }: HeaderProps) {
     // { name: 'Manage Items', path: '/items', icon: '📋' }, // Remaining as commented reference if needed
     { name: 'Items', path: '/items', icon: '📋' },
     // { name: 'Enter Prices', path: '/prices', icon: '💰' }, // Hidden for Beta
-    { name: 'Add Receipt', path: '/receipts?mode=receipt', icon: '🧾' },
-    { name: 'Add Flyer', path: '/receipts?mode=flyer', icon: '✄' },
+    { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
+    { name: 'Add Flyer', path: '/flyers', icon: '✄' },
     { name: 'Stores', path: '/stores', icon: '🛍️' },
   ];
 
@@ -278,11 +278,11 @@ export default function Header({ currentPage }: HeaderProps) {
               </button>
               <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
                 <div className="py-2">
-                  <Link href="/receipts?mode=receipt" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
+                  <Link href="/receipts" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Add Receipt
                   </Link>
-                  <Link href="/receipts?mode=flyer" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
+                  <Link href="/flyers" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                     Add Flyer
                   </Link>

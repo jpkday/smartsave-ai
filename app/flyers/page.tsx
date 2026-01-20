@@ -8,11 +8,13 @@ import { supabase } from '../lib/supabase';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
 
+type ReceiptMode = 'receipt' | 'flyer';
+
 type ReceiptDraft = {
   store: string;
-  date: string;
-  tripEndLocal: string;
   receiptItems: ReceiptItem[];
+  validFrom?: string;
+  validUntil?: string;
 };
 
 interface ReceiptItem {
@@ -30,33 +32,32 @@ interface Store {
 }
 
 // Wrapper component with Suspense for useSearchParams
-export default function Receipts() {
+export default function Flyers() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-8 flex items-center justify-center"><div className="text-white text-xl">Loading...</div></div>}>
-      <ReceiptsContent />
+      <FlyersContent />
     </Suspense>
   );
 }
 
-function ReceiptsContent() {
+function FlyersContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [items, setItems] = useState<string[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
-  const [date, setDate] = useState('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
     { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
   ]);
   const [skuMappings, setSkuMappings] = useState<Record<string, string>>({}); // itemName -> sku
   const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [createPastTrip, setCreatePastTrip] = useState(true);
   const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
-  const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
 
-  // No validity dates for receipts
+  // Hardcoded Mode
+  const mode: ReceiptMode = 'flyer';
+
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
 
@@ -93,15 +94,13 @@ function ReceiptsContent() {
   useEffect(() => {
     loadData();
 
-    const now = new Date();
-    now.setSeconds(0, 0);
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-
-    setTripEndLocal(local);
-    // Determine date from local time
-    setDate(local.split('T')[0]);
+    // Set default validity dates: today to 7 days from today
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10);
+    setValidFrom(dateStr);
+    const sixDaysLater = new Date(today);
+    sixDaysLater.setDate(sixDaysLater.getDate() + 6);
+    setValidUntil(sixDaysLater.toISOString().slice(0, 10));
   }, []);
 
   useEffect(() => {
@@ -114,8 +113,6 @@ function ReceiptsContent() {
       if (draft.store) {
         setSelectedStoreId(draft.store);
       }
-      if (draft.date) setDate(draft.date);
-      if (draft.tripEndLocal) setTripEndLocal(draft.tripEndLocal);
       if (draft.receiptItems) {
         // Ensure SKU exists for old drafts
         const itemsWithSku = draft.receiptItems.map(item => ({
@@ -124,6 +121,8 @@ function ReceiptsContent() {
         }));
         setReceiptItems(itemsWithSku);
       }
+      if (draft.validFrom) setValidFrom(draft.validFrom);
+      if (draft.validUntil) setValidUntil(draft.validUntil);
     } catch (e) {
       console.warn('Failed to restore receipt draft', e);
       localStorage.removeItem(RECEIPT_DRAFT_KEY);
@@ -133,13 +132,15 @@ function ReceiptsContent() {
   useEffect(() => {
     const draft: ReceiptDraft = {
       store: selectedStoreId,
-      date,
-      tripEndLocal,
-      receiptItems
+      receiptItems,
+      validFrom,
+      validUntil,
     };
 
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft));
-  }, [selectedStoreId, date, tripEndLocal, receiptItems]);
+  }, [selectedStoreId, receiptItems, validFrom, validUntil]);
+
+
 
   useEffect(() => {
     const loadLatestPricesForStore = async () => {
@@ -293,171 +294,19 @@ function ReceiptsContent() {
     });
   };
 
-  const toIsoFromLocalDateTime = (local: string) => {
-    const [datePart, timePart] = local.split('T');
-    if (!datePart || !timePart) return null;
-
-    const [y, m, d] = datePart.split('-').map(Number);
-    const [hh, mm] = timePart.split(':').map(Number);
-
-    const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
-    return dt.toISOString();
-  };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [scanning, setScanning] = useState(false);
-  const [scanPreview, setScanPreview] = useState<string | null>(null);
-
-  // Helper to resize image
-  const resizeImage = (input: File | string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_SIZE = 1024;
-
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height = Math.round((height * MAX_SIZE) / width);
-            width = MAX_SIZE;
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width = Math.round((width * MAX_SIZE) / height);
-            height = MAX_SIZE;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        // Compress to JPEG 0.7 quality
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        resolve(dataUrl);
-      };
-      img.onerror = reject;
-
-      if (typeof input === 'string') {
-        img.src = input;
-      } else {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          img.src = e.target?.result as string;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(input);
-      }
-    });
-  };
-
-  const processReceiptImage = async (rawBase64: string) => {
-    setScanning(true);
-    let finalBase64 = rawBase64;
-
-    try {
-      // Try to resize (safari/chrome handle standard formats)
-      // IF HEIC, this might fail or browser might not render it to canvas
-      finalBase64 = await resizeImage(rawBase64);
-    } catch (resizeErr) {
-      console.warn("Image resize failed (likely HEIC/unsupported format), sending original:", resizeErr);
-      // Fallback to original
-      finalBase64 = rawBase64;
-    }
-
-    // Always try to set preview. Mobile browsers (iOS) can typically render HEIC.
-    setScanPreview(finalBase64);
-
-    try {
-      const response = await fetch('/api/receipts/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: finalBase64 }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze receipt');
-      }
-
-      if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
-        // Map API items to frontend ReceiptItem format
-        const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
-          item: apiItem.name,
-          quantity: String(apiItem.quantity || 1),
-          price: String(apiItem.price || ''),
-          sku: apiItem.sku || '',
-          priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
-        }));
-
-        // If we got items, update state
-        if (mappedItems.length > 0) {
-          setReceiptItems(mappedItems);
-        }
-
-        // Attempt to match store
-        if (data.store) {
-          // Simple fuzzy match or partial inclusion
-          const match = stores.find(s =>
-            s.name.toLowerCase().includes(data.store.toLowerCase()) ||
-            data.store.toLowerCase().includes(s.name.toLowerCase())
-          );
-          if (match) {
-            setSelectedStoreId(match.id);
-          } else {
-            // If no ID match, user will have to select manually, but we captured the name
-            console.log("Could not auto-match store:", data.store);
-          }
-        }
-
-        // Set date and time
-        if (data.date) {
-          setDate(data.date);
-          // If time is provided, use it. Otherwise default to 12:00
-          const timeStr = data.time || '12:00';
-          setTripEndLocal(`${data.date}T${timeStr}`);
-        }
-      }
-    } catch (error: any) {
-      console.error("Scan error:", error);
-      alert(`Scan failed: ${error.message}`);
-    } finally {
-      setScanning(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-
-      reader.onload = async (event) => {
-        const rawBase64 = event.target?.result as string;
-        await processReceiptImage(rawBase64);
-      };
-
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const clearScan = () => {
-    setScanPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const saveReceipt = async () => {
     if (!selectedStoreId) {
       alert('Please select a store');
       return;
     }
 
-    if (!tripEndLocal) {
-      alert('Please select a trip end date/time');
+    // Validate Flyer Mode (Always)
+    if (!validFrom || !validUntil) {
+      alert('Please specify when these prices are valid');
+      return;
+    }
+    if (validFrom > validUntil) {
+      alert('Valid From date must be before Valid Until date');
       return;
     }
 
@@ -469,14 +318,8 @@ function ReceiptsContent() {
     }
     const storeName = selectedStore.name;
 
-    // Set recorded_date (Receipt = tripEndLocal)
-    const recordedDate = tripEndLocal.slice(0, 10);
-    const endedAtIso = toIsoFromLocalDateTime(tripEndLocal);
-
-    if (!endedAtIso) {
-      alert('Invalid date/time');
-      return;
-    }
+    // Set recorded_date (Flyer = validFrom)
+    const recordedDate = validFrom;
 
     const validItems = receiptItems.filter((ri) => {
       const price = parseFloat(ri.price || '0');
@@ -499,8 +342,6 @@ function ReceiptsContent() {
       alert('Store not found');
       return;
     }
-
-    const storeId = storeData.id;
 
     const uniqueNames = Array.from(new Set(validItems.map((x) => x.item)));
 
@@ -571,6 +412,8 @@ function ReceiptsContent() {
           household_code: householdCode,
           recorded_date: recordedDate,
           created_at: createdAt,
+          valid_from: validFrom,
+          valid_until: validUntil,
         };
 
         return priceRow;
@@ -585,94 +428,20 @@ function ReceiptsContent() {
       return;
     }
 
-    if (createPastTrip) {
-      const startedAtIso = new Date(new Date(endedAtIso).getTime() - 20 * 60 * 1000).toISOString();
-
-      const { data: tripRow, error: tripErr } = await supabase
-        .from('trips')
-        .insert({
-          household_code: householdCode,
-          store_id: selectedStoreId,
-          store: storeName,
-          started_at: startedAtIso,
-          ended_at: endedAtIso,
-        })
-        .select('id')
-        .single();
-
-      if (tripErr || !tripRow?.id) {
-        console.error(tripErr);
-        alert('Saved prices, but failed to create the trip.');
-      } else {
-        const tripId = tripRow.id;
-
-        const eventRows = validItems
-          .map((ri) => {
-            const itemId = itemIdByName[ri.item];
-            if (!itemId) return null;
-
-            const qtyNum = parseFloat(ri.quantity || '1') || 1;
-            const priceNum = parseFloat(ri.price || '0') || 0;
-
-            // Upsert SKU if provided
-            const sku = ri.sku?.trim();
-            if (sku) {
-              supabase.from('store_item_sku').upsert(
-                {
-                  store_id: storeId,
-                  item_id: itemId,
-                  store_sku: sku
-                },
-                { onConflict: 'store_id,item_id' }
-              ).then(({ error }) => {
-                if (error) console.error('Error upserting SKU:', error);
-              });
-            }
-
-            return {
-              trip_id: tripId,
-              household_code: householdCode,
-              store_id: selectedStoreId,
-              store: storeName,
-              item_id: itemId,
-              item_name: ri.item,
-              quantity: qtyNum,
-              price: priceNum,
-              checked_at: endedAtIso
-            };
-          })
-          .filter(Boolean);
-
-        const { error: eventsErr } = await supabase
-          .from('shopping_list_events')
-          .insert(eventRows as any);
-
-        if (eventsErr) {
-          console.error(eventsErr);
-          alert('Saved prices + trip, but failed to save trip items.');
-        }
-      }
-    }
-
     alert(
-      `Receipt saved! Added ${validItems.length} prices for ${storeName} on ${new Date(
-        tripEndLocal
-      ).toLocaleString()}`
+      `Flyer prices saved! Updated ${validItems.length} prices for ${storeName} (valid ${new Date(
+        validFrom
+      ).toLocaleDateString()} - ${new Date(validUntil).toLocaleDateString()})`
     );
 
     setSelectedStoreId('');
-    setDate(new Date().toISOString().split('T')[0]);
     setReceiptItems([{ item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setValidFrom('');
+    setValidUntil('');
     localStorage.removeItem(RECEIPT_DRAFT_KEY);
 
     loadData();
   };
-
-  const total = receiptItems.reduce((sum, ri) => {
-    const price = parseFloat(ri.price || '0') || 0;
-    const qty = parseFloat(ri.quantity || '1') || 1;
-    return sum + price * qty;
-  }, 0);
 
   return (
     <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
@@ -686,7 +455,7 @@ function ReceiptsContent() {
               </Link>
             </div>
             <div className="w-full">
-              <Header currentPage="Add Receipt" />
+              <Header currentPage="Add Flyer" />
             </div>
           </div>
         </div>
@@ -695,53 +464,9 @@ function ReceiptsContent() {
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
 
-          {/* Scan Receipt Button */}
-          <div className="w-full bg-white p-3 mb-2">
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4 bg-blue-50">
-              <div className="flex flex-col items-center justify-center gap-4">
-
-                {scanPreview ? (
-                  <div className="relative w-full max-w-md">
-                    <img src={scanPreview} alt="Receipt Preview" className="w-full rounded-lg shadow-lg" />
-                    <button
-                      onClick={clearScan}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md"
-                    >
-                      ✕
-                    </button>
-                    {scanning && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <div className="text-white font-bold animate-pulse text-xl">Analyzing... 🤖</div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center w-full">
-                    <h3 className="font-bold text-blue-900 mb-2"></h3>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={scanning}
-                      className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] transition flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                      Scan Receipt
-                    </button>
-                    <p className="text-xs text-blue-700 mt-2">
-                      We'll extract item and price data automatically.
-                    </p>
-                  </div>
-                )}
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                />
-              </div>
-            </div>
+          {/* Intro / Instructions */}
+          <div className="mb-6 px-2 text-center">
+            <h2 className="text-gray-600 text-sm">Enter deals from your local flyers manually.</h2>
           </div>
 
           <div className="w-full bg-white p-3">
@@ -764,38 +489,29 @@ function ReceiptsContent() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2">
-                    Date & Time of Purchase
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={tripEndLocal}
-                    onChange={(e) => setTripEndLocal(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
-                  />
+
+                {/* Validity Dates */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Valid From</label>
+                    <input
+                      type="date"
+                      value={validFrom}
+                      onChange={(e) => setValidFrom(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Until</label>
+                    <input
+                      type="date"
+                      value={validUntil}
+                      onChange={(e) => setValidUntil(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Create past trip toggle */}
-          <div className="w-full bg-white p-3">
-            <div className="border border-slate-200 rounded-2xl shadow-md p-4">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={createPastTrip}
-                  onChange={(e) => setCreatePastTrip(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 cursor-pointer"
-                />
-                <span className="text-s font-semibold text-gray-700">
-                  Save Receipt to your Recent Trips
-                </span>
-              </label>
-              <p className="text-s text-gray-500 mt-2">
-                Use this to track purchases made outside the app.
-              </p>
             </div>
           </div>
 
@@ -831,18 +547,6 @@ function ReceiptsContent() {
                         value={ri.sku || ''}
                         onChange={(e) => updateItem(idx, 'sku', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                      />
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="w-16">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={ri.quantity}
-                        onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
                       />
                     </div>
 
@@ -885,20 +589,13 @@ function ReceiptsContent() {
             </div>
           </div>
 
-          {/* Total & Save */}
+          {/* Save Button */}
           <div className="w-full bg-white p-5">
-            <div className="border-t pt-4 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-gray-800">Total:</span>
-                <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
-              </div>
-            </div>
-
             <button
               onClick={saveReceipt}
-              className="w-full bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
             >
-              Save Receipt
+              Save Flyer Prices
             </button>
           </div>
         </div>
