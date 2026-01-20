@@ -20,7 +20,8 @@ export async function POST(req: Request) {
         }
 
         // Initialize Gemini
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI(apiKey.trim());
+        console.log("Using API Key length:", apiKey.trim().length);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Remove header from base64 string if present (data:image/jpeg;base64,...)
