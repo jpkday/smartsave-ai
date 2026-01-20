@@ -403,66 +403,84 @@ function ReceiptsContent() {
       const file = e.target.files[0];
       setScanning(true);
 
-      try {
-        const base64 = await resizeImage(file);
-        setScanPreview(base64);
+      const reader = new FileReader();
 
-        const response = await fetch('/api/receipts/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64 }),
-        });
+      reader.onload = async (event) => {
+        const rawBase64 = event.target?.result as string;
+        let finalBase64 = rawBase64;
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to analyze receipt');
+        try {
+          // Try to resize (safari/chrome handle standard formats)
+          // IF HEIC, this might fail or browser might not render it to canvas
+          finalBase64 = await resizeImage(file);
+        } catch (resizeErr) {
+          console.warn("Image resize failed (likely HEIC/unsupported format), sending original:", resizeErr);
+          // Fallback to original
+          finalBase64 = rawBase64;
         }
 
-        if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
-          // Map API items to frontend ReceiptItem format
-          const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
-            item: apiItem.name,
-            quantity: String(apiItem.quantity || 1),
-            price: String(apiItem.price || ''),
-            sku: apiItem.sku || '',
-            priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
-          }));
+        setScanPreview(finalBase64);
 
-          // If we got items, update state
-          if (mappedItems.length > 0) {
-            setReceiptItems(mappedItems);
+        try {
+          const response = await fetch('/api/receipts/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: finalBase64 }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to analyze receipt');
           }
 
-          // Attempt to match store
-          if (data.store) {
-            // Simple fuzzy match or partial inclusion
-            const match = stores.find(s =>
-              s.name.toLowerCase().includes(data.store.toLowerCase()) ||
-              data.store.toLowerCase().includes(s.name.toLowerCase())
-            );
-            if (match) {
-              setSelectedStoreId(match.id);
-            } else {
-              // If no ID match, user will have to select manually, but we captured the name
-              console.log("Could not auto-match store:", data.store);
+          if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
+            // Map API items to frontend ReceiptItem format
+            const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
+              item: apiItem.name,
+              quantity: String(apiItem.quantity || 1),
+              price: String(apiItem.price || ''),
+              sku: apiItem.sku || '',
+              priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
+            }));
+
+            // If we got items, update state
+            if (mappedItems.length > 0) {
+              setReceiptItems(mappedItems);
+            }
+
+            // Attempt to match store
+            if (data.store) {
+              // Simple fuzzy match or partial inclusion
+              const match = stores.find(s =>
+                s.name.toLowerCase().includes(data.store.toLowerCase()) ||
+                data.store.toLowerCase().includes(s.name.toLowerCase())
+              );
+              if (match) {
+                setSelectedStoreId(match.id);
+              } else {
+                // If no ID match, user will have to select manually, but we captured the name
+                console.log("Could not auto-match store:", data.store);
+              }
+            }
+
+            // Set date
+            if (data.date) {
+              setDate(data.date);
+              setTripEndLocal(`${data.date}T12:00`);
             }
           }
 
-          // Set date
-          if (data.date) {
-            setDate(data.date);
-            setTripEndLocal(`${data.date}T12:00`);
-          }
+        } catch (error: any) {
+          console.error("Scan error:", error);
+          alert(`Scan failed: ${error.message}`);
+        } finally {
+          setScanning(false);
+          if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
         }
+      };
 
-      } catch (error: any) {
-        console.error("Scan error:", error);
-        alert(`Scan failed: ${error.message}`);
-      } finally {
-        setScanning(false);
-        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
-      }
+      reader.readAsDataURL(file);
     }
   };
 

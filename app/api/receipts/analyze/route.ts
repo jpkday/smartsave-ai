@@ -11,6 +11,10 @@ export async function POST(req: Request) {
 
         const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
+        console.log("Environment Keys:", Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('AI')));
+        console.log("API Key found?", !!apiKey);
+        if (apiKey) console.log("API Key length:", apiKey.length);
+
         if (!apiKey) {
             console.error("Missing GOOGLE_GENERATIVE_AI_API_KEY");
             return NextResponse.json(
@@ -22,10 +26,22 @@ export async function POST(req: Request) {
         // Initialize Gemini
         const genAI = new GoogleGenerativeAI(apiKey.trim());
         console.log("Using API Key length:", apiKey.trim().length);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         // Remove header from base64 string if present (data:image/jpeg;base64,...)
-        const base64Data = image.split(",")[1] || image;
+        const match = image.match(/^data:(.+);base64,(.+)$/);
+        let mimeType = "image/jpeg";
+        let base64Data = image;
+
+        if (match) {
+            mimeType = match[1];
+            base64Data = match[2];
+        } else if (image.includes('base64,')) {
+            // Fallback split if regex fails but header exists
+            base64Data = image.split(",")[1];
+        }
+
+        console.log("Processing image type:", mimeType);
 
         const prompt = `
       Analyze this receipt image and extract the following information in strict JSON format:
@@ -54,7 +70,7 @@ export async function POST(req: Request) {
             {
                 inlineData: {
                     data: base64Data,
-                    mimeType: "image/jpeg", // Assuming JPEG for simplicity, usually fine for canvas/upload
+                    mimeType: mimeType,
                 },
             },
         ]);
