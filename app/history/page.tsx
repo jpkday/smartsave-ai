@@ -134,6 +134,42 @@ function HistoryContent() {
     setIsInitialLoad(false);
   }, [searchParams, isInitialLoad]);
 
+  // Fix for legacy store names in URL/localStorage causing 400 errors
+  useEffect(() => {
+    if (stores.length === 0 || selectedStoreId === 'All') return;
+
+    // Check if current selection is a valid ID in our loaded stores
+    const isValidId = stores.some(s => s.id === selectedStoreId);
+    if (isValidId) return;
+
+    // Not a valid ID. Try to fuzzy match by name (legacy support)
+    // The dropdown format is: Name (Location)
+    const match = stores.find(s =>
+      s.name === selectedStoreId ||
+      (s.location && `${s.name} (${s.location})` === selectedStoreId)
+    );
+
+    if (match) {
+      // Found a match, update to ID
+      setSelectedStoreId(match.id);
+      // Update localStorage so it's correct for next time
+      try {
+        localStorage.setItem('history_last_store', match.id);
+      } catch (e) {
+        console.error('Failed to update localStorage', e);
+      }
+    } else {
+      // No match, and not a valid ID in list. 
+      // If it looks like a UUID, we leave it (might be a store not in our list?)
+      // If it doesn't look like a UUID, it's definitely invalid (garbage name), reset to All.
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedStoreId);
+      if (!isUuid) {
+        setSelectedStoreId('All');
+        updateURL(selectedItem, 'All');
+      }
+    }
+  }, [stores, selectedStoreId, selectedItem]);
+
   useEffect(() => {
     if (selectedItem) {
       loadPriceHistory();
@@ -241,6 +277,14 @@ function HistoryContent() {
       .order('created_at', { ascending: false });
 
     if (selectedStoreId !== 'All') {
+      // Validate UUID format to prevent sending names to API (prevents 400 error)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedStoreId);
+      if (!isUuid) {
+        // If it's not a UUID, we shouldn't send it. 
+        // The useEffect above will likely resolve it to an ID or 'All' shortly.
+        setLoading(false);
+        return;
+      }
       query = query.eq('store_id', selectedStoreId);
     }
 
