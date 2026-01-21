@@ -2240,10 +2240,10 @@ export default function ShoppingList() {
                           }`}
                         title="Show Urgent Items Only"
                       >
-                        <svg className="w-4 h-4" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-6 h-6" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                         </svg>
-                        {showPriorityOnly ? 'Flagged Only' : 'Flagged'}
+                        {/* {showPriorityOnly ? 'Flagged Only' : 'Flagged'} */}
                       </button>
 
                       {listItems.some((i) => i.checked) && (
@@ -2686,34 +2686,23 @@ export default function ShoppingList() {
                                               return (
                                                 <div
                                                   key={item.id}
-                                                  onClick={() => {
-                                                    if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
-                                                    toggleChecked(item.id);
-                                                  }}
-                                                  className={`flex flex-wrap items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
+                                                  className={`flex flex-wrap items-center gap-3 p-3.5 rounded-2xl border transition ${item.checked
                                                     ? 'bg-gray-100 border-gray-300'
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                                       : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                    } ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-default' : 'cursor-pointer'
+                                                    } ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-default' : 'cursor-default' // Changed cursor to default since card is not clickable
                                                     }`}
                                                 >
                                                   <input
                                                     type="checkbox"
                                                     checked={item.checked}
                                                     disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
-                                                    onChange={() => { }} // Supress React warning, logic handled by parent click or custom handler below
-                                                    onClick={(e) => {
-                                                      // Prevent double-toggle when clicking the checkbox directly
-                                                      // Actually let's just let the row handle it and make this purely visual/controlled
-                                                      // But for a checkbox, native behavior is weird.
-                                                      // Best: e.stopPropagation() and call toggleChecked here manually?
-                                                      // OR: e.stopPropagation() and let the native change happen?
-                                                      // With React controlled components, we need to call logic.
-                                                      e.stopPropagation();
+                                                    onChange={() => {
                                                       if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
                                                       toggleChecked(item.id);
                                                     }}
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
                                                       }`}
                                                   />
@@ -3071,11 +3060,19 @@ export default function ShoppingList() {
                         )
                         }
 
-                        <div className="mt-1 pt-1">
-                          <p className="text-sm text-gray-500 text-left">Click an item to rename, update quantity or set the latest price.</p>
-                        </div>
+                        {showPriorityOnly && displayItems.length === 0 && (
+                          <div className="mt-1 pt-1">
+                            <div className="py-12 px-6 text-center rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200">
+                              <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
+                              </svg>
+                              <p className="text-xl font-bold text-gray-700 mb-2">No flagged items found</p>
+                              <p className="text-base text-gray-500 max-w-sm mx-auto">Flag important items so they don't get buried or forgotten.</p>
+                            </div>
+                          </div>
+                        )}
 
-                        <div className="mt-6 pt-4 border-t-2 border-gray-300">
+                        <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200">
                           <div className="flex justify-between items-center">
                             <span className="text-xl font-bold text-gray-800">Total</span>
                             <span className="text-2xl font-bold text-teal-600">
