@@ -2126,7 +2126,7 @@ export default function ShoppingList() {
                           )}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3 max-h-96 md:max-h-[70vh] overflow-y-auto">
+                        <div className="grid grid-cols-1 gap-3 max-h-96 md:max-h-[70vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {renderList.map((it: ItemRow) => {
                             const isFavorite = favorites.includes(it.name);
 
@@ -2431,7 +2431,7 @@ export default function ShoppingList() {
                                                       }`}
                                                   />
 
-                                                  <div className="flex-1">
+                                                  <div className="flex-1 min-w-[160px]">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                       <button
                                                         type="button"
@@ -2588,8 +2588,9 @@ export default function ShoppingList() {
 
                             return (
                               <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                                <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-gray-50 p-3.5 border-b border-gray-200">
-                                  <div className="flex items-center gap-3">
+                                <h3 className="text-lg font-bold text-gray-700 bg-gray-50 p-3.5 border-b border-gray-200">
+                                  {/* First row: Store name + Shop button */}
+                                  <div className="flex items-center gap-3 mb-2">
                                     <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
 
                                     {(!isMobile || mobileMode === 'store') && (
@@ -2606,13 +2607,17 @@ export default function ShoppingList() {
                                         Shop
                                       </button>
                                     )}
-                                    <span className="text-sm text-gray-500 font-medium">
-                                      {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
+                                  </div>
+
+                                  {/* Second row: Item count + Total */}
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-500 font-normal">
+                                      ({storeItems.length} {storeItems.length === 1 ? 'item' : 'items'})
+                                    </span>
+                                    <span className="text-xl font-bold text-teal-700">
+                                      ${storeTotal.toFixed(2)}
                                     </span>
                                   </div>
-                                  <span className="text-xl font-bold text-teal-700">
-                                    ${storeTotal.toFixed(2)}
-                                  </span>
                                 </h3>
 
                                 {/* ONE cohesive store panel with categories inside */}
@@ -2710,7 +2715,7 @@ export default function ShoppingList() {
                                                       }`}
                                                   />
 
-                                                  <div className="flex-1">
+                                                  <div className="flex-1 min-w-[160px]">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                       <button
                                                         type="button"
@@ -2927,7 +2932,7 @@ export default function ShoppingList() {
                                                   }`}
                                               />
 
-                                              <div className="flex-1">
+                                              <div className="flex-1 min-w-[160px]">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                   <button
                                                     type="button"
