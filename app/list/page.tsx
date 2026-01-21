@@ -1912,7 +1912,7 @@ export default function ShoppingList() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Select existing or add new"
+                      placeholder="Search items or add new"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                       value={newItem}
                       onChange={(e) => handleInputChange(e.target.value)}
@@ -2166,7 +2166,7 @@ export default function ShoppingList() {
                                     <p className="text-xs text-green-600 mt-0.5">
                                       {formatMoney(price)}{' '}
                                       <span className="text-gray-400 ml-1">
-                                        ({getDaysAgo(priceData.date)}, at {effStore})
+                                        ({getDaysAgo(priceData.date)}, {effStore})
                                       </span>
                                     </p>
                                   ) : (
@@ -2226,8 +2226,9 @@ export default function ShoppingList() {
                 {/* SHOPPING LIST HEADER */}
                 <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3">
-                      Shopping List ({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length} items)
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                      <span className="block">Shopping List</span>
+                      <span className="block text-base font-normal text-gray-600">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length} items)</span>
 
                     </h2>
                     <div className="flex gap-2 items-center">
@@ -2411,7 +2412,7 @@ export default function ShoppingList() {
                                               return (
                                                 <div
                                                   key={item.id}
-                                                  className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                                  className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
                                                     ? 'bg-gray-100 border-gray-300'
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -2681,7 +2682,7 @@ export default function ShoppingList() {
                                                     if (mobileMode == 'build') return;
                                                     toggleChecked(item.id);
                                                   }}
-                                                  className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
+                                                  className={`flex flex-wrap items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
                                                     ? 'bg-gray-100 border-gray-300'
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -2906,7 +2907,7 @@ export default function ShoppingList() {
                                           return (
                                             <div
                                               key={item.id}
-                                              className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
+                                              className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
                                                 ? 'bg-gray-100 border-gray-300'
                                                 : isFavorite
                                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -3099,7 +3100,7 @@ export default function ShoppingList() {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Select existing or add new"
+                          placeholder="Search items or add new"
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                           value={newItem}
                           onChange={(e) => handleInputChange(e.target.value)}
@@ -3384,8 +3385,8 @@ export default function ShoppingList() {
                             onClick={() => toggleFavorite(editModalItem?.item_name || editModalName)}
                             className={
                               favorites.includes(editModalItem?.item_name || editModalName)
-                                ? 'text-3xl leading-none cursor-pointer'
-                                : 'text-3xl leading-none text-gray-300 cursor-pointer'
+                                ? 'text-4xl leading-none cursor-pointer'
+                                : 'text-4xl leading-none text-gray-300 cursor-pointer'
                             }
                             aria-label={favorites.includes(editModalItem?.item_name || editModalName) ? 'Unfavorite item' : 'Favorite item'}
                             title={favorites.includes(editModalItem?.item_name || editModalName) ? "Remove from Favorites" : "Add to Favorites"}
@@ -3449,7 +3450,7 @@ export default function ShoppingList() {
                           <select
                             value={editModalNote}
                             onChange={(e) => setEditModalNote(e.target.value)}
-                            className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                            className={`w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 ${editModalNote ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}
                           >
                             <option value="">No note</option>
                             <option value="Poor quality item">Poor quality item</option>
@@ -3461,7 +3462,7 @@ export default function ShoppingList() {
                           <select
                             value={editModalNoteStore}
                             onChange={(e) => setEditModalNoteStore(e.target.value)}
-                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-3 py-3 text-gray-600"
+                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-3 py-3"
                           >
                             <option value="Any">Any Store</option>
                             {stores.map(s => <option key={s} value={s}>{s}</option>)}
