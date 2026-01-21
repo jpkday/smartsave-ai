@@ -2138,7 +2138,7 @@ export default function ShoppingList() {
                             return (
                               <div
                                 key={it.id}
-                                className={`flex items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
+                                className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
                                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                   : 'bg-white border-gray-300 hover:bg-gray-50'
                                   }`}
@@ -2157,7 +2157,7 @@ export default function ShoppingList() {
                                         category: it.category
                                       });
                                     }}
-                                    className="font-medium text-gray-800 truncate hover:text-teal-600 cursor-pointer text-left"
+                                    className="font-medium text-gray-800 hover:text-teal-600 cursor-pointer text-left break-words"
                                   >
                                     {it.name}
                                   </button>
