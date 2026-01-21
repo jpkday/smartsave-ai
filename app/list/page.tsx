@@ -3378,28 +3378,29 @@ export default function ShoppingList() {
                     <div className="space-y-3">
                       {/* Name + Favorite Star */}
                       <div>
-                        <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
-                        <div className="mt-1 flex items-center gap-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-semibold text-gray-700">Name</label>
                           <button
                             type="button"
                             onClick={() => toggleFavorite(editModalItem?.item_name || editModalName)}
                             className={
                               favorites.includes(editModalItem?.item_name || editModalName)
-                                ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
-                                : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+                                ? 'text-3xl leading-none cursor-pointer'
+                                : 'text-3xl leading-none text-gray-300 cursor-pointer'
                             }
                             aria-label={favorites.includes(editModalItem?.item_name || editModalName) ? 'Unfavorite item' : 'Favorite item'}
                             title={favorites.includes(editModalItem?.item_name || editModalName) ? "Remove from Favorites" : "Add to Favorites"}
                           >
                             {favorites.includes(editModalItem?.item_name || editModalName) ? '⭐' : '☆'}
                           </button>
-
+                        </div>
+                        <div className="mt-1">
                           <input
                             autoFocus={editModalFocusField === 'name'}
                             type="text"
                             value={editModalName}
                             onChange={(e) => setEditModalName(e.target.value)}
-                            className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base bg-white"
+                            className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base bg-white"
                             placeholder="e.g., Grapefruit (ct)"
 
                           />
@@ -3446,18 +3447,18 @@ export default function ShoppingList() {
                         <label className="text-sm font-semibold text-gray-700">Note (Optional)</label>
                         <div className="flex gap-2">
                           <textarea
-                            rows={2}
+                            rows={1}
                             value={editModalNote}
                             onChange={(e) => setEditModalNote(e.target.value)}
                             placeholder="e.g. Out of Stock"
                             className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
                           />
                         </div>
-                        <div className="mt-1 flex justify-end">
+                        <div className="mt-1 w-full">
                           <select
                             value={editModalNoteStore}
                             onChange={(e) => setEditModalNoteStore(e.target.value)}
-                            className="text-s bg-gray-100 border-none rounded-lg px-2 py-2 text-gray-600"
+                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-2 py-2 text-gray-600"
                           >
                             <option value="Any">Any Store</option>
                             {stores.map(s => <option key={s} value={s}>{s}</option>)}
