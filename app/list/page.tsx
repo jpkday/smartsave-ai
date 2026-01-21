@@ -3773,7 +3773,7 @@ export default function ShoppingList() {
         
         TRIP STARTED
         (WITH UNDO BUTTON)
-        ========================= */}
+        ========================== */}
         {
           mounted && tripStartedToastStore && (
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
