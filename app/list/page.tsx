@@ -2589,34 +2589,37 @@ export default function ShoppingList() {
                             return (
                               <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                                 <h3 className="text-lg font-bold text-gray-700 bg-gray-50 p-3.5 border-b border-gray-200">
-                                  {/* First row: Store name + Shop button */}
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">{store}</span>
+                                  {/* Two-column layout */}
+                                  <div className="flex items-start justify-between">
+                                    {/* Left column: Store name + Shop button */}
+                                    <div className="flex flex-col gap-2">
+                                      <span className="text-lg font-bold text-gray-800">{store}</span>
 
-                                    {(!isMobile || mobileMode === 'store') && (
-                                      <button
-                                        onClick={() => {
-                                          const id = storesByName[store];
-                                          if (id) startTrip(id, store);
-                                        }}
-                                        className="bg-white border border-indigo-200 hover:bg-indigo-200 text-indigo-700 text-sm font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                                        </svg>
-                                        Shop
-                                      </button>
-                                    )}
-                                  </div>
+                                      {(!isMobile || mobileMode === 'store') && (
+                                        <button
+                                          onClick={() => {
+                                            const id = storesByName[store];
+                                            if (id) startTrip(id, store);
+                                          }}
+                                          className="bg-white border border-indigo-200 hover:bg-indigo-200 text-indigo-700 text-sm font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5 w-fit"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                                          </svg>
+                                          Start Trip
+                                        </button>
+                                      )}
+                                    </div>
 
-                                  {/* Second row: Item count + Total */}
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-500 font-normal">
-                                      ({storeItems.length} {storeItems.length === 1 ? 'item' : 'items'})
-                                    </span>
-                                    <span className="text-xl font-bold text-teal-700">
-                                      ${storeTotal.toFixed(2)}
-                                    </span>
+                                    {/* Right column: Total + Item count */}
+                                    <div className="flex flex-col gap-2 items-end">
+                                      <span className="text-xl font-bold text-teal-700">
+                                        ${storeTotal.toFixed(2)}
+                                      </span>
+                                      <span className="text-sm text-gray-500 font-normal">
+                                        ({storeItems.length} {storeItems.length === 1 ? 'item' : 'items'})
+                                      </span>
+                                    </div>
                                   </div>
                                 </h3>
 
