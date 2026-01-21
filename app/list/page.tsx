@@ -2422,12 +2422,12 @@ export default function ShoppingList() {
                                                   <input
                                                     type="checkbox"
                                                     checked={item.checked}
-                                                    disabled={mobileMode == 'build'}
+                                                    disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
                                                     onChange={() => {
-                                                      if (mobileMode == 'build') return;
+                                                      if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
                                                       toggleChecked(item.id);
                                                     }}
-                                                    className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                    className={`w-6 h-6 rounded transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
                                                       }`}
                                                   />
 
@@ -2687,7 +2687,7 @@ export default function ShoppingList() {
                                                 <div
                                                   key={item.id}
                                                   onClick={() => {
-                                                    if (mobileMode == 'build') return;
+                                                    if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
                                                     toggleChecked(item.id);
                                                   }}
                                                   className={`flex flex-wrap items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer active:scale-[0.99] ${item.checked
@@ -2695,13 +2695,13 @@ export default function ShoppingList() {
                                                     : isFavorite
                                                       ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                                                       : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                    } ${mobileMode == 'build' ? 'cursor-default' : 'cursor-pointer'
+                                                    } ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-default' : 'cursor-pointer'
                                                     }`}
                                                 >
                                                   <input
                                                     type="checkbox"
                                                     checked={item.checked}
-                                                    disabled={mobileMode == 'build'}
+                                                    disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
                                                     onChange={() => { }} // Supress React warning, logic handled by parent click or custom handler below
                                                     onClick={(e) => {
                                                       // Prevent double-toggle when clicking the checkbox directly
@@ -2711,10 +2711,10 @@ export default function ShoppingList() {
                                                       // OR: e.stopPropagation() and let the native change happen?
                                                       // With React controlled components, we need to call logic.
                                                       e.stopPropagation();
-                                                      if (mobileMode == 'build') return;
+                                                      if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
                                                       toggleChecked(item.id);
                                                     }}
-                                                    className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                    className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
                                                       }`}
                                                   />
 
@@ -2925,13 +2925,13 @@ export default function ShoppingList() {
                                               <input
                                                 type="checkbox"
                                                 checked={item.checked}
-                                                disabled={mobileMode == 'build'}
+                                                disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
                                                 onClick={(e) => e.stopPropagation()}
                                                 onChange={() => {
-                                                  if (mobileMode == 'build') return;
+                                                  if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
                                                   toggleChecked(item.id);
                                                 }}
-                                                className={`w-5 h-5 rounded transition ${mobileMode == 'build' ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
+                                                className={`w-6 h-6 rounded transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
                                                   }`}
                                               />
 
