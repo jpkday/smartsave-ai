@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import HouseholdSelector from './components/HouseholdSelector';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { ChartBarIcon, ClockIcon, NewspaperIcon } from '@heroicons/react/24/solid';
 
 function HomeContent() {
   const router = useRouter();
@@ -191,16 +192,16 @@ function HomeContent() {
 
           {/* Core Loop */}
           <div className="col-span-1 bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20">
-            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Start Shopping</h3>
+            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Shop</h3>
             {isLocked ? (
               <button onClick={handleLockedClick} className="w-full bg-yellow-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-yellow-400 transition flex items-center gap-4">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                <span>Open List</span>
+                <span>Shopping List</span>
               </button>
             ) : (
               <Link href="/list" className="w-full bg-yellow-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-yellow-400 transition flex items-center gap-4">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                <span>Open List</span>
+                <span>Shopping List</span>
               </Link>
             )}
             <p className="text-white/60 text-sm mt-4 px-1">
@@ -209,7 +210,41 @@ function HomeContent() {
           </div>
 
           <div className="col-span-1 bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20">
-            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Add Data</h3>
+            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Save</h3>
+            {isLocked ? (
+              <button onClick={handleLockedClick} className="w-full bg-red-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-red-400 transition flex items-center gap-4">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
+                <span>Local Deals</span>
+              </button>
+            ) : (
+              <Link href="/deals" className="w-full bg-red-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-red-400 transition flex items-center gap-4">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
+                <span>Local Deals</span>
+              </Link>
+            )}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {isLocked ? (
+                <>
+                  <button onClick={handleLockedClick} className="bg-violet-600/80 hover:bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold transition">Insights</button>
+                  <button onClick={handleLockedClick} className="bg-lime-500/80 hover:bg-lime-500 text-white py-2 rounded-lg text-sm font-semibold transition">Recent</button>
+                </>
+              ) : (
+                <>
+                  <Link href="/insights" className="bg-violet-600/80 hover:bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
+                    <ChartBarIcon className="w-4 h-4" />
+                    Insights
+                  </Link>
+                  <Link href="/trips" className="bg-lime-500/80 hover:bg-lime-500 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
+                    <ClockIcon className="w-4 h-4" />
+                    Recent
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="col-span-1 bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20">
+            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Scan</h3>
             {isLocked ? (
               <button onClick={handleLockedClick} className="w-full bg-orange-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-orange-400 transition flex items-center gap-4">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -227,40 +262,14 @@ function HomeContent() {
                   Add Flyer
                 </button>
               ) : (
-                <Link href="/flyers" className="flex-1 bg-indigo-600/80 hover:bg-indigo-600 text-white py-2 rounded-lg text-sm font-semibold transition text-center">
+                <Link href="/flyers" className="flex-1 bg-indigo-600/80 hover:bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
+                  <NewspaperIcon className="w-4 h-4" />
                   Add Flyer
                 </Link>
               )}
             </div>
           </div>
 
-          <div className="col-span-1 bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20">
-            <h3 className="text-white/80 font-bold uppercase tracking-wider text-sm mb-4">Save Money</h3>
-            {isLocked ? (
-              <button onClick={handleLockedClick} className="w-full bg-red-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-red-400 transition flex items-center gap-4">
-                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
-                <span>View Deals</span>
-              </button>
-            ) : (
-              <Link href="/deals" className="w-full bg-red-500 text-white p-6 rounded-2xl text-xl font-bold shadow-lg hover:bg-red-400 transition flex items-center gap-4">
-                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>
-                <span>View Deals</span>
-              </Link>
-            )}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {isLocked ? (
-                <>
-                  <button onClick={handleLockedClick} className="bg-violet-600/80 hover:bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold transition">Insights</button>
-                  <button onClick={handleLockedClick} className="bg-lime-500/80 hover:bg-lime-500 text-white py-2 rounded-lg text-sm font-semibold transition">Recent</button>
-                </>
-              ) : (
-                <>
-                  <Link href="/insights" className="bg-violet-600/80 hover:bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold transition text-center">Insights</Link>
-                  <Link href="/trips" className="bg-lime-500/80 hover:bg-lime-500 text-white py-2 rounded-lg text-sm font-semibold transition text-center">Recent</Link>
-                </>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Beta Code Section at Bottom */}

@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
     try {
-        const { image } = await req.json();
+        const { image, candidateItems = [] } = await req.json();
 
         if (!image) {
             return NextResponse.json({ error: "No image provided" }, { status: 400 });
@@ -42,16 +42,22 @@ export async function POST(req: NextRequest) {
 
         console.log("Processing image type:", mimeType);
 
+        // Prepare candidate list string (cap at 500 to be safe)
+        const knownItemsList = (candidateItems as string[]).slice(0, 500).join(", ");
+
         const prompt = `
       Analyze this receipt image and extract the following information in strict JSON format:
       1. Store Name (store)
       2. Date of purchase (date) in YYYY-MM-DD format
       3. Time of purchase (time) in HH:MM format (24-hour). If not found, use "12:00".
       4. A list of items (items), where each item has:
-         - name: The product name (fix abbreviations if obvious, e.g., 'HVY CRM' -> 'Heavy Cream')
+         - name: The product name as seen on receipt (fix abbreviations if obvious, e.g., 'HVY CRM' -> 'Heavy Cream')
          - price: The unit price (number)
          - quantity: The quantity (number, default to 1)
          - sku: The SKU or product code if visible (string, optional)
+         - ai_match: The exact string from the "Known Items" list below that best matches this item. If no semantic match exists, return null.
+
+      KNOWN ITEMS LIST: [${knownItemsList}]
 
       Ignore tax lines, subtotals, and savings summary. Focus on the actual line items.
       
@@ -61,7 +67,7 @@ export async function POST(req: NextRequest) {
         "date": "YYYY-MM-DD",
         "time": "HH:MM",
         "items": [
-          { "name": "Item Name", "price": 2.99, "quantity": 1, "sku": "12345" }
+          { "name": "Item Name", "price": 2.99, "quantity": 1, "sku": "12345", "ai_match": "Milk" }
         ]
       }
     `;
@@ -117,14 +123,81 @@ export async function POST(req: NextRequest) {
         // Clean up markdown code blocks if present
         const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
+        // ... (Generated AI response parsing)
+
         try {
             const data = JSON.parse(cleanedText);
-            return NextResponse.json(data);
-        } catch (parseError) {
-            console.error("JSON Parse Error:", parseError, "Text:", text);
-            return NextResponse.json({ error: "Failed to parse receipt data", raw: text }, { status: 500 });
-        }
 
+            // --- NEW: Staging Logic ---
+            const { createClient } = require('@supabase/supabase-js');
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (!supabaseUrl || !supabaseServiceKey) {
+                // Fallback to direct return if no DB config (shouldn't happen in prod)
+                console.warn("Missing Supabase Service Key, returning JSON directly.");
+                return NextResponse.json(data);
+            }
+
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+            // 1. Determine Household (Use a header or default for now - context is scarce in simple API)
+            // Ideally passed via header. For now, we'll try to find a store to infer context or just save.
+            // Wait, this is a public API route. We need the user context.
+            // The frontend should pass `household_code`.
+            const householdCode = req.headers.get('x-household-code');
+
+            if (!householdCode) {
+                return NextResponse.json({ error: "Missing x-household-code header" }, { status: 400 });
+            }
+
+            // 2. Identify Store
+            let storeId = null;
+            if (data.store) {
+                const { data: stores } = await supabase
+                    .from('stores')
+                    .select('id, name')
+                    .ilike('name', `%${data.store}%`); // Simple fuzzy
+
+                if (stores && stores.length > 0) {
+                    storeId = stores[0].id;
+                    // Inject identified store matches into response for UI
+                    data.store_match = stores[0];
+                }
+            }
+
+            // 3. Save to Staging
+            const { data: inserted, error: dbError } = await supabase
+                .from('imported_receipts')
+                .insert({
+                    household_code: householdCode,
+                    store_id: storeId,
+                    image_url: base64Data.slice(0, 100) + "...", // Don't save huge base64 to text col if not needed, or use Storage. 
+                    // ideally we upload image to Storage. For now, let's just save the OCR data. 
+                    // If we need the image to review, we should probably upload it.
+                    // For this iteration, let's assume the frontend holds the image or we assume "ocr_data" is enough for the text-based review.
+                    // Actually, the user wants "Scanned Item vs Match". We need the OCR text implies we rely on "ocr_data".
+                    ocr_data: data,
+                    status: 'pending'
+                })
+                .select('id')
+                .single();
+
+            if (dbError) {
+                throw new Error("Database Staging Error: " + dbError.message);
+            }
+
+            return NextResponse.json({
+                success: true,
+                importId: inserted.id,
+                message: "Receipt staged for review.",
+                ocr_preview: data
+            });
+
+        } catch (parseError: any) {
+            console.error("Processing Error:", parseError, "Text:", text);
+            return NextResponse.json({ error: "Failed to process receipt: " + parseError.message, raw: text }, { status: 500 });
+        }
     } catch (error: any) {
         console.error("Gemini API Error:", error);
         return NextResponse.json(

@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { getFuzzyMatch } from '../lib/utils';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -21,6 +22,7 @@ interface ReceiptItem {
   price: string;
   sku: string;
   priceDirty?: boolean;
+  originalName?: string; // OCR name for alias learning
 }
 
 interface Store {
@@ -43,6 +45,7 @@ function ReceiptsContent() {
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [items, setItems] = useState<string[]>([]);
+  const [itemAliases, setItemAliases] = useState<{ alias: string; itemName: string }[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [date, setDate] = useState('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
@@ -55,6 +58,9 @@ function ReceiptsContent() {
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
+
+  // Alias Modal Removed
+
 
   // No validity dates for receipts
   const [validFrom, setValidFrom] = useState('');
@@ -212,6 +218,19 @@ function ReceiptsContent() {
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
     }
+
+    // 4. Load Item Aliases
+    const { data: aliasesData } = await supabase
+      .from('item_aliases')
+      .select('alias, items!inner(name)');
+
+    if (aliasesData) {
+      const mappedAliases = aliasesData.map((a: any) => ({
+        alias: a.alias,
+        itemName: a.items.name
+      }));
+      setItemAliases(mappedAliases);
+    }
   };
 
   const addRow = () => {
@@ -291,6 +310,13 @@ function ReceiptsContent() {
       newItems[index] = currentRow;
       return newItems;
     });
+  };
+
+  // Removed saveAlias and handleItemSelect as they correspond to legacy modal learning.
+  // Reconciliation is now handled on /receipts/import/[id]
+
+  const handleItemSelect = (index: number, selectedItem: string) => {
+    updateItem(index, 'item', selectedItem);
   };
 
   const toIsoFromLocalDateTime = (local: string) => {
@@ -374,60 +400,41 @@ function ReceiptsContent() {
     try {
       const response = await fetch('/api/receipts/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: finalBase64 }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-household-code': householdCode
+        },
+        body: JSON.stringify({
+          image: finalBase64,
+          candidateItems: items // Inject known items for AI matching
+        }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse API response:", text);
+        throw new Error(`Server returned invalid response: ${text.slice(0, 100)}...`);
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to analyze receipt');
       }
 
-      if (confirm(`Scanned ${data.items?.length || 0} items from ${data.store || 'store'}. Load them?`)) {
-        // Map API items to frontend ReceiptItem format
-        const mappedItems: ReceiptItem[] = (data.items || []).map((apiItem: any) => ({
-          item: apiItem.name,
-          quantity: String(apiItem.quantity || 1),
-          price: String(apiItem.price || ''),
-          sku: apiItem.sku || '',
-          priceDirty: true, // Mark as dirty so we don't auto-overwrite with old db prices immediately
-        }));
-
-        // If we got items, update state
-        if (mappedItems.length > 0) {
-          setReceiptItems(mappedItems);
-        }
-
-        // Attempt to match store
-        if (data.store) {
-          // Simple fuzzy match or partial inclusion
-          const match = stores.find(s =>
-            s.name.toLowerCase().includes(data.store.toLowerCase()) ||
-            data.store.toLowerCase().includes(s.name.toLowerCase())
-          );
-          if (match) {
-            setSelectedStoreId(match.id);
-          } else {
-            // If no ID match, user will have to select manually, but we captured the name
-            console.log("Could not auto-match store:", data.store);
-          }
-        }
-
-        // Set date and time
-        if (data.date) {
-          setDate(data.date);
-          // If time is provided, use it. Otherwise default to 12:00
-          const timeStr = data.time || '12:00';
-          setTripEndLocal(`${data.date}T${timeStr}`);
-        }
+      if (data.success && data.importId) {
+        // Redirect to reconciliation page
+        router.push(`/receipts/import/${data.importId}`);
+      } else {
+        alert("Unexpected response from analysis. Please try again.");
       }
     } catch (error: any) {
       console.error("Scan error:", error);
       alert(`Scan failed: ${error.message}`);
     } finally {
       setScanning(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input so same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -711,7 +718,7 @@ function ReceiptsContent() {
                     </button>
                     {scanning && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <div className="text-white font-bold animate-pulse text-xl">Analyzing... 🤖</div>
+                        <div className="text-white font-bold animate-pulse text-xl">Analyzing... </div>
                       </div>
                     )}
                   </div>
@@ -812,6 +819,20 @@ function ReceiptsContent() {
                         list={`items-${idx}`}
                         value={ri.item}
                         onChange={(e) => updateItem(idx, 'item', e.target.value)}
+                        onBlur={(e) => {
+                          // Trigger alias prompt on blur if value matches a canonical item
+                          if (items.includes(e.target.value) &&
+                            ri.originalName &&
+                            ri.originalName !== e.target.value) {
+                            // Optional: handleItemSelect(idx, e.target.value);
+                            // Only prompt if they explicitly selected/typed a known item
+                            // Using blur might be annoying, maybe relying on datalist selection is better?
+                            // Let's stick to a manual "Learn" button or just simple onChange logic? 
+                            // Actually, `handleItemSelect` usage in `onChange` is hard because it triggers on every keystroke.
+                            // Let's rely on the user finishing the entry.
+                            handleItemSelect(idx, e.target.value);
+                          }
+                        }}
                         placeholder="Type or select item..."
                         ref={(el) => { if (el) itemRefs.current[idx] = el; }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"

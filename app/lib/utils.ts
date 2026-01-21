@@ -16,7 +16,7 @@ export const getDaysAgo = (dateString: string): string => {
   const today = new Date();
   const diffTime = Math.abs(today.getTime() - date.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return '1 day ago';
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -54,19 +54,19 @@ export interface StoreData {
 export type PriceClassificationType = 'best' | 'close' | 'skip' | null;
 
 export const getPriceClassification = (
-  itemName: string, 
+  itemName: string,
   currentPrice: number,
-  prices: {[key: string]: PriceData | string},
+  prices: { [key: string]: PriceData | string },
   stores: string[]
 ): PriceClassificationType => {
   // Get all prices for this item across all stores
   const itemPrices: number[] = [];
-  
+
   stores.forEach(store => {
     const priceData = prices[`${store}-${itemName}`];
     if (priceData) {
-      const price = typeof priceData === 'string' 
-        ? parseFloat(priceData) 
+      const price = typeof priceData === 'string'
+        ? parseFloat(priceData)
         : parseFloat(priceData.price);
       if (price > 0) {
         itemPrices.push(price);
@@ -106,14 +106,14 @@ export const formatPrice = (price: number | string): string => {
 export const formatPriceInput = (value: string): string => {
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
-  
+
   let priceValue = '';
   if (digits !== '') {
     // Convert to cents, then to dollars
     const cents = parseInt(digits, 10);
     priceValue = (cents / 100).toFixed(2);
   }
-  
+
   return priceValue;
 };
 
@@ -123,15 +123,15 @@ export const formatPriceInput = (value: string): string => {
 
 export const calculateBestStores = (
   items: Array<{ item_name: string; quantity: number }>,
-  prices: {[key: string]: PriceData},
+  prices: { [key: string]: PriceData },
   stores: string[]
-): {[store: string]: StoreData} => {
-  const storeData: {[store: string]: StoreData} = {};
-  
+): { [store: string]: StoreData } => {
+  const storeData: { [store: string]: StoreData } = {};
+
   stores.forEach(store => {
     let total = 0;
     let coverage = 0;
-    
+
     items.forEach(item => {
       const priceData = prices[`${store}-${item.item_name}`];
       if (priceData) {
@@ -140,7 +140,7 @@ export const calculateBestStores = (
         coverage++;
       }
     });
-    
+
     storeData[store] = {
       total,
       coverage,
@@ -152,7 +152,7 @@ export const calculateBestStores = (
 };
 
 export const sortStoresByBestValue = (
-  storeData: {[store: string]: StoreData}
+  storeData: { [store: string]: StoreData }
 ): [string, StoreData][] => {
   return Object.entries(storeData)
     .filter(([, data]) => data.coverage > 0)
@@ -190,13 +190,13 @@ export const getAlphabet = (): string[] => {
 
 export const getAvailableLetters = (items: string[]): string[] => {
   const alphabet = getAlphabet();
-  return alphabet.filter(letter => 
+  return alphabet.filter(letter =>
     items.some(item => item.toUpperCase().startsWith(letter))
   );
 };
 
 export const filterItemsByLetter = (
-  items: string[], 
+  items: string[],
   letter: string
 ): string[] => {
   if (letter === 'All') return items.sort();
@@ -214,14 +214,89 @@ export const sortItemsByFavorites = <T extends { item_name?: string; name?: stri
   return items.sort((a, b) => {
     const aName = a.item_name || a.name || '';
     const bName = b.item_name || b.name || '';
-    
+
     // First sort by favorite status (favorites first)
     const aIsFav = favorites.includes(aName);
     const bIsFav = favorites.includes(bName);
     if (aIsFav && !bIsFav) return -1;
     if (!aIsFav && bIsFav) return 1;
-    
+
     // Then sort alphabetically
     return aName.localeCompare(bName);
   });
+};
+
+// ============================================================================
+// FUZZY MATCHING (LEVENSHTEIN)
+// ============================================================================
+
+export const levenshtein = (a: string, b: string): number => {
+  const matrix: number[][] = [];
+
+  // increment along the first column of each row
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  // increment each column in the first row
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1 // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+};
+
+export const getFuzzyMatch = (
+  text: string,
+  candidates: string[],
+  threshold: number = 3
+): string | null => {
+  const normalizedText = text.toLowerCase().trim();
+  if (!normalizedText) return null;
+
+  // Allow slightly looser threshold for longer strings
+  const adjustedThreshold = Math.max(threshold, Math.floor(normalizedText.length * 0.4));
+
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+
+  for (const candidate of candidates) {
+    const normalizedCandidate = candidate.toLowerCase();
+
+    // Exact match check
+    if (normalizedCandidate === normalizedText) {
+      return candidate;
+    }
+
+    // Quick length check optimization
+    if (Math.abs(normalizedCandidate.length - normalizedText.length) > adjustedThreshold) {
+      continue;
+    }
+
+    const distance = levenshtein(normalizedText, normalizedCandidate);
+
+    if (distance < bestDistance && distance <= adjustedThreshold) {
+      bestDistance = distance;
+      bestMatch = candidate;
+    }
+  }
+
+  return bestMatch;
 };
