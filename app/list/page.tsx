@@ -3378,8 +3378,7 @@ export default function ShoppingList() {
                     <div className="space-y-3">
                       {/* Name + Favorite Star */}
                       <div>
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-semibold text-gray-700">Name</label>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => toggleFavorite(editModalItem?.item_name || editModalName)}
@@ -3393,6 +3392,7 @@ export default function ShoppingList() {
                           >
                             {favorites.includes(editModalItem?.item_name || editModalName) ? '⭐' : '☆'}
                           </button>
+                          <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
                         </div>
                         <div className="mt-1">
                           <input
@@ -3414,7 +3414,7 @@ export default function ShoppingList() {
                           autoFocus={editModalFocusField === 'category'}
                           value={editModalCategory}
                           onChange={(e) => setEditModalCategory(e.target.value)}
-                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
                         >
                           {Array.from(new Set([...categoryOptions, editModalCategory])).filter(Boolean).map(c => (
                             <option key={c} value={c}>{c}</option>
@@ -3436,7 +3436,7 @@ export default function ShoppingList() {
                               setEditModalQuantity(val);
                             }
                           }}
-                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl bg-white
+                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl bg-white
                               font-semibold text-gray-800
                               focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                         />
@@ -3446,19 +3446,22 @@ export default function ShoppingList() {
                       <div>
                         <label className="text-sm font-semibold text-gray-700">Note (Optional)</label>
                         <div className="flex gap-2">
-                          <textarea
-                            rows={1}
+                          <select
                             value={editModalNote}
                             onChange={(e) => setEditModalNote(e.target.value)}
-                            placeholder="e.g. Out of Stock"
-                            className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                          />
+                            className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                          >
+                            <option value="">No note</option>
+                            <option value="Poor quality item">Poor quality item</option>
+                            <option value="Out of stock!">Out of stock!</option>
+                            <option value="Wrong price at register!">Wrong price at register!</option>
+                          </select>
                         </div>
                         <div className="mt-1 w-full">
                           <select
                             value={editModalNoteStore}
                             onChange={(e) => setEditModalNoteStore(e.target.value)}
-                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-2 py-2 text-gray-600"
+                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-3 py-3 text-gray-600"
                           >
                             <option value="Any">Any Store</option>
                             {stores.map(s => <option key={s} value={s}>{s}</option>)}
@@ -3533,7 +3536,7 @@ export default function ShoppingList() {
                             }
                           }}
 
-                          className="w-full h-11 mt-1 px-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
+                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
                         >
                           <option value="">Select a store</option>
                           {stores.map((s) => (
