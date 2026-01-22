@@ -2147,7 +2147,7 @@ export default function ShoppingList() {
                               <p className="text-sm">Items you've bought recently will appear here. Click the Recent tab again to clear the filter.</p>
                             </div>
                           ) : (
-                            <div className="text-sm">Nothing to show here.</div>
+                            <div className="text-sm">Loading items...</div>
                           )}
                         </div>
                       ) : (
