@@ -2062,7 +2062,7 @@ export default function ShoppingList() {
                               <button
                                 key={letter}
                                 onClick={() => toggleLetter(letter)}
-                                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                className={`min-w-[2.25rem] md:min-w-[2.5rem] flex items-center justify-center px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                   }`}
                               >
                                 {letter}
