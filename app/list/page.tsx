@@ -1973,7 +1973,9 @@ export default function ShoppingList() {
                     <>
                       {/* Header */}
                       <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-xl font-semibold text-gray-800">Item Library</h2>
+                        <h2 className="text-xl font-semibold text-gray-800">
+                          Item Library <span className="text-sm text-gray-500 font-normal">({list.length})</span>
+                        </h2>
                       </div>
 
                       {/* Search Bar */}
@@ -2119,10 +2121,7 @@ export default function ShoppingList() {
                         </button>
                       </div>
 
-                      {/* Item Count */}
-                      <div className="text-right mb-3">
-                        <span className="text-xs text-gray-500">{list.length} items</span>
-                      </div>
+
 
                       {/* Item List */}
                       {list.length === 0 ? (
@@ -2261,9 +2260,7 @@ export default function ShoppingList() {
                 <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                      <span className="block">Shopping List</span>
-                      <span className="block text-base font-normal text-gray-600">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length} items)</span>
-
+                      Shopping List <span className="text-xl text-gray-500 font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
                     </h2>
                     <div className="flex gap-2 items-center">
                       <button
