@@ -3645,7 +3645,7 @@ export default function ShoppingList() {
 
         ITEM REMOVED FROM SHOPPING LIST
         (WITH UNDO BUTTON)
-        ========================= */}
+        ========================== */}
         {
           mounted && removedFromListToastItem && (
             <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
