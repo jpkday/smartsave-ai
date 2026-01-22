@@ -2132,25 +2132,22 @@ export default function ShoppingList() {
                             <div className="flex flex-col items-center gap-2">
                               <span className="text-4xl">⭐</span>
                               <p className="font-semibold text-gray-700">No favorites yet</p>
-                              <p className="text-sm">Star items to easily find them here.</p>
-                              <p className="text-sm">Click the Favorites tab again to clear the filter.</p>
+                              <p className="text-sm">Star items to easily find them here. Click the Favorites tab again to clear the filter.</p>
                             </div>
                           ) : selectItemsFilter === 'FREQUENT' ? (
                             <div className="flex flex-col items-center gap-2">
                               <span className="text-4xl">📈</span>
                               <p className="font-semibold text-gray-700">No frequently bought items</p>
-                              <p className="text-sm">Items you buy often will appear here.</p>
-                              <p className="text-sm">Click the Frequent tab again to clear the filter.</p>
+                              <p className="text-sm">Items you buy often will appear here. Click the Frequent tab again to clear the filter.</p>
                             </div>
                           ) : selectItemsFilter === 'RECENT' ? (
                             <div className="flex flex-col items-center gap-2">
                               <span className="text-4xl">🕒</span>
                               <p className="font-semibold text-gray-700">No recent items</p>
-                              <p className="text-sm">Items you've bought recently will appear here.</p>
-                              <p className="text-sm">Click the Recent tab again to clear the filter.</p>
+                              <p className="text-sm">Items you've bought recently will appear here. Click the Recent tab again to clear the filter.</p>
                             </div>
                           ) : (
-                            <div className="text-sm">All items for this letter are already in your list.</div>
+                            <div className="text-sm">Nothing to show here.</div>
                           )}
                         </div>
                       ) : (
