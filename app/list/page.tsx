@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useCategories } from '../hooks/useCategories';
 import Link from 'next/link';
+import { getFormattedUnitPrice } from '../utils/unitPrice';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 
@@ -1715,18 +1716,18 @@ export default function ShoppingList() {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return 'today';
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays === 1) return '1d ago';
+    if (diffDays < 7) return `${diffDays}d ago`;
     if (diffDays < 30) {
       const weeks = Math.floor(diffDays / 7);
-      return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+      return weeks === 1 ? '1w ago' : `${weeks}w ago`;
     }
     if (diffDays < 365) {
       const months = Math.floor(diffDays / 30);
-      return months === 1 ? '1 month ago' : `${months} months ago`;
+      return months === 1 ? '1mo ago' : `${months}mo ago`;
     }
     const years = Math.floor(diffDays / 365);
-    return years === 1 ? '1 year ago' : `${years} years ago`;
+    return years === 1 ? '1y ago' : `${years}y ago`;
   };
 
   const getPriceClassification = (itemName: string, currentPrice: number) => {
@@ -2194,6 +2195,14 @@ export default function ShoppingList() {
                                       <span className="text-gray-400 ml-1">
                                         ({getDaysAgo(priceData.date)}, {effStore})
                                       </span>
+                                      {(() => {
+                                        const unitPrice = getFormattedUnitPrice(it.name, price);
+                                        return unitPrice ? (
+                                          <span className="text-teal-600 ml-1">
+                                            • {unitPrice}
+                                          </span>
+                                        ) : null;
+                                      })()}
                                     </p>
                                   ) : (
                                     <p className="text-xs text-gray-400 mt-0.5">
@@ -2756,13 +2765,23 @@ export default function ShoppingList() {
                                                     </div>
 
                                                     <div className="mt-0.5 flex items-center gap-2">
-                                                      <p className="text-xs text-green-600 min-w-0">
-                                                        {formatMoney(price)}{' '}
-                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                        {priceData?.date ? (
-                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
-                                                        ) : null}
-                                                      </p>
+                                                      <div className="min-w-0">
+                                                        <p className="text-xs text-green-600">
+                                                          {formatMoney(price)}{' '}
+                                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                          {priceData?.date ? (
+                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                          ) : null}
+                                                        </p>
+                                                        {(() => {
+                                                          const unitPrice = getFormattedUnitPrice(item.item_name, price);
+                                                          return unitPrice ? (
+                                                            <p className="text-xs text-gray-500">
+                                                              {unitPrice}
+                                                            </p>
+                                                          ) : null;
+                                                        })()}
+                                                      </div>
 
                                                       {missingCategory && (
                                                         <button
