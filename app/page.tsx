@@ -109,7 +109,7 @@ function HomeContent() {
               <button onClick={handleLockedClick} className="w-full bg-yellow-500 text-white px-6 py-6 rounded-2xl text-xl font-extrabold shadow-lg hover:shadow-xl hover:scale-[1.02] transition flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                  <span className="text-yellow-50 drop-shadow-sm">Go Shopping</span>
+                  <span className="text-yellow-50 drop-shadow-sm">Shopping List</span>
                 </div>
                 <svg className="w-6 h-6 opacity-75 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
               </button>
@@ -148,7 +148,7 @@ function HomeContent() {
               <Link href="/list" className="w-full bg-yellow-500 text-white px-6 py-6 rounded-2xl text-xl font-extrabold shadow-lg hover:shadow-xl hover:scale-[1.02] transition flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                  <span className="text-yellow-50 drop-shadow-sm">Go Shopping</span>
+                  <span className="text-yellow-50 drop-shadow-sm">Shopping List</span>
                 </div>
                 <svg className="w-6 h-6 opacity-75 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
               </Link>

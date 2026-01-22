@@ -2620,7 +2620,7 @@ export default function ShoppingList() {
                                     <div className="flex flex-col gap-2">
                                       <span className="text-lg font-bold text-gray-800">{store}</span>
 
-                                      {(!isMobile || mobileMode === 'store') && (
+                                      {isMobile && mobileMode === 'store' && (
                                         <button
                                           onClick={() => {
                                             const id = storesByName[store];
