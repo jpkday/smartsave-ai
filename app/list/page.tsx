@@ -1716,18 +1716,18 @@ export default function ShoppingList() {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return 'today';
-    if (diffDays === 1) return '1d ago';
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays === 1) return '1d';
+    if (diffDays < 7) return `${diffDays}d`;
     if (diffDays < 30) {
       const weeks = Math.floor(diffDays / 7);
-      return weeks === 1 ? '1w ago' : `${weeks}w ago`;
+      return weeks === 1 ? '1w' : `${weeks}w`;
     }
     if (diffDays < 365) {
       const months = Math.floor(diffDays / 30);
-      return months === 1 ? '1mo ago' : `${months}mo ago`;
+      return months === 1 ? '1mo' : `${months}mo`;
     }
     const years = Math.floor(diffDays / 365);
-    return years === 1 ? '1y ago' : `${years}y ago`;
+    return years === 1 ? '1y' : `${years}y`;
   };
 
   const getPriceClassification = (itemName: string, currentPrice: number) => {
@@ -2490,8 +2490,16 @@ export default function ShoppingList() {
                                                         {formatMoney(price)}{' '}
                                                         {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
                                                         {priceData?.date ? (
-                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
                                                         ) : null}
+                                                        {(() => {
+                                                          const unitPrice = getFormattedUnitPrice(item.item_name, price);
+                                                          return unitPrice ? (
+                                                            <span className="text-teal-600 ml-1">
+                                                              • {unitPrice}
+                                                            </span>
+                                                          ) : null;
+                                                        })()}
                                                       </p>
 
                                                       {missingCategory && (
@@ -2770,17 +2778,17 @@ export default function ShoppingList() {
                                                           {formatMoney(price)}{' '}
                                                           {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
                                                           {priceData?.date ? (
-                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)})</span>
+                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
                                                           ) : null}
+                                                          {(() => {
+                                                            const unitPrice = getFormattedUnitPrice(item.item_name, price);
+                                                            return unitPrice ? (
+                                                              <span className="text-teal-600 ml-1">
+                                                                • {unitPrice}
+                                                              </span>
+                                                            ) : null;
+                                                          })()}
                                                         </p>
-                                                        {(() => {
-                                                          const unitPrice = getFormattedUnitPrice(item.item_name, price);
-                                                          return unitPrice ? (
-                                                            <p className="text-xs text-gray-500">
-                                                              {unitPrice}
-                                                            </p>
-                                                          ) : null;
-                                                        })()}
                                                       </div>
 
                                                       {missingCategory && (
