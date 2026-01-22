@@ -1876,87 +1876,8 @@ export default function ShoppingList() {
           {/* LEFT COLUMN: Filter, Search, Select Items */}
           <div className="w-full md:w-2/5 space-y-4">
 
-            {/* Alphabet Filter - Desktop + Mobile (Build Mode only) */}
-            <div
-              className={`${isMobile ? (mobileMode === 'build' ? 'block' : 'hidden') : 'hidden md:block'} bg-white rounded-2xl shadow-lg p-3 md:p-4`}
-            >
-              <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
-                <button
-                  onClick={() => setFilterLetter('All')}
-                  className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                  All
-                </button>
-                {alphabet
-                  .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
-                  .map((letter) => (
-                    <button
-                      key={letter}
-                      onClick={() => toggleLetter(letter)}
-                      className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      {letter}
-                    </button>
-                  ))}
-              </div>
-            </div>
-
-            {/* Add to List Widget - Desktop + Mobile(Build) */}
+            {/* UNIFIED ITEM LIBRARY - Desktop + Mobile (Build Mode only) */}
             {(!isMobile || mobileMode === 'build') && (
-              <div className="bg-white rounded-2xl shadow-lg p-4">
-                <h2 className="text-xl font-semibold mb-3 text-gray-800">Search Items</h2>
-
-                <div className="relative autocomplete-container">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search items or add new"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                      value={newItem}
-                      onChange={(e) => handleInputChange(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-                      onFocus={() => {
-                        const listIds = new Set(
-                          listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
-                        );
-                        const available = allItems
-                          .filter((it) => !listIds.has(it.id))
-                          .map((it) => it.name);
-
-                        setAutocompleteItems(available);
-                        setShowAutocomplete(available.length > 0);
-                      }}
-                    />
-
-                    <button
-                      onClick={addNewItem}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  {showAutocomplete && autocompleteItems.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                      {autocompleteItems.slice(0, 10).map((item) => (
-                        <button
-                          key={item}
-                          onClick={() => selectItem(item)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Combined Select Items Widget - Desktop + Mobile(Build) */}
-            {((isMobile && mobileMode === 'build') || !isMobile) && (
               <div className="bg-white rounded-2xl shadow-lg p-4">
                 {(() => {
                   // ------------------------------------------------------------
@@ -1965,7 +1886,6 @@ export default function ShoppingList() {
                   // ------------------------------------------------------------
 
                   let list: ItemRow[] = buildModeAvailableAll;
-
 
                   if (selectItemsFilter === 'FAVORITES') {
                     const favSet = new Set(favorites);
@@ -2038,11 +1958,6 @@ export default function ShoppingList() {
                     }
                   };
 
-                  // Filter Counts
-                  const countFav = buildModeAvailableAll.filter((it) => favorites.includes(it.name)).length;
-                  const countRecent = buildModeAvailableAll.filter((it) => recentRank.has(it.id)).length;
-                  const countFrequent = buildModeAvailableAll.filter((it) => frequentItemCounts[it.name] !== undefined).length;
-
                   // Toggle Logic
                   const toggleFilter = (filter: SelectItemsFilter) => {
                     if (selectItemsFilter === filter) {
@@ -2054,50 +1969,122 @@ export default function ShoppingList() {
 
                   return (
                     <>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <h2 className="text-xl font-semibold text-gray-800">Select Items</h2>
-                          <span className="text-xs text-gray-500">{list.length} available</span>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 w-full mb-4">
-                          {/* 1. Favorites */}
-                          <button
-                            onClick={() => toggleFilter('FAVORITES')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
-                              ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
-                              : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
-                              }`}
-                          >
-                            Favorites
-                          </button>
-
-                          {/* 2. Frequent */}
-                          <button
-                            onClick={() => toggleFilter('FREQUENT')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
-                              : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
-                              }`}
-                          >
-                            Frequent
-                          </button>
-
-                          {/* 3. Recent */}
-                          <button
-                            onClick={() => toggleFilter('RECENT')}
-                            className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
-                              ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
-                              : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
-                              }`}
-                          >
-                            Recent
-                          </button>
-                        </div>
-
-
+                      {/* Header */}
+                      <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-xl font-semibold text-gray-800">Item Library</h2>
                       </div>
 
+                      {/* Search Bar */}
+                      <div className="relative autocomplete-container mb-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Search items to add..."
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                            value={newItem}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
+                            onFocus={() => {
+                              const listIds = new Set(
+                                listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
+                              );
+                              const available = allItems
+                                .filter((it) => !listIds.has(it.id))
+                                .map((it) => it.name);
+
+                              setAutocompleteItems(available);
+                              setShowAutocomplete(available.length > 0);
+                            }}
+                          />
+
+                          <button
+                            onClick={addNewItem}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
+                          >
+                            Add
+                          </button>
+                        </div>
+
+                        {showAutocomplete && autocompleteItems.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                            {autocompleteItems.slice(0, 10).map((item) => (
+                              <button
+                                key={item}
+                                onClick={() => selectItem(item)}
+                                className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
+                              >
+                                {item}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Alphabet Filter */}
+                      <div className="flex gap-1.5 md:gap-2 mb-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <button
+                          onClick={() => setFilterLetter('All')}
+                          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          All
+                        </button>
+                        {alphabet
+                          .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
+                          .map((letter) => (
+                            <button
+                              key={letter}
+                              onClick={() => toggleLetter(letter)}
+                              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                              {letter}
+                            </button>
+                          ))}
+                      </div>
+
+                      {/* Filter Pills (Favorites/Frequent/Recent) */}
+                      <div className="grid grid-cols-3 gap-2 w-full mb-2">
+                        {/* 1. Favorites */}
+                        <button
+                          onClick={() => toggleFilter('FAVORITES')}
+                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
+                            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+                            }`}
+                        >
+                          Favorites
+                        </button>
+
+                        {/* 2. Frequent */}
+                        <button
+                          onClick={() => toggleFilter('FREQUENT')}
+                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
+                            : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
+                            }`}
+                        >
+                          Frequent
+                        </button>
+
+                        {/* 3. Recent */}
+                        <button
+                          onClick={() => toggleFilter('RECENT')}
+                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
+                            ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
+                            : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
+                            }`}
+                        >
+                          Recent
+                        </button>
+                      </div>
+
+                      {/* Item Count */}
+                      <div className="text-right mb-3">
+                        <span className="text-xs text-gray-500">{list.length} items</span>
+                      </div>
+
+                      {/* Item List */}
                       {list.length === 0 ? (
                         <div className="text-gray-500 text-center py-8">
                           {selectItemsFilter === 'FAVORITES' ? (
@@ -2126,7 +2113,7 @@ export default function ShoppingList() {
                           )}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3 max-h-96 md:max-h-[70vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {renderList.map((it: ItemRow) => {
                             const isFavorite = favorites.includes(it.name);
 
@@ -2194,7 +2181,6 @@ export default function ShoppingList() {
                                 <button
                                   onClick={() => toggleItemById(it.id, it.name)}
                                   className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
-
                                 >
                                   Add
                                 </button>
