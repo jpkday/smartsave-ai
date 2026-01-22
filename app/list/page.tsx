@@ -522,6 +522,7 @@ export default function ShoppingList() {
   const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name) : [];
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category' | 'note'>('name');
   const storeSelectRef = useRef<HTMLSelectElement | null>(null);
+  const alphabetScrollRef = useRef<HTMLDivElement | null>(null);
   const [needsStoreHint, setNeedsStoreHint] = useState(false);
   const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
   const [editModalPriceDirty, setEditModalPriceDirty] = useState(false);
@@ -2021,26 +2022,64 @@ export default function ShoppingList() {
                       </div>
 
                       {/* Alphabet Filter */}
-                      <div className="flex gap-1.5 md:gap-2 mb-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      <div className="relative flex items-center gap-2 mb-3">
+                        {/* Left Arrow - Desktop Only */}
                         <button
-                          onClick={() => setFilterLetter('All')}
-                          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                          onClick={() => {
+                            if (alphabetScrollRef.current) {
+                              const scrollAmount = alphabetScrollRef.current.clientWidth;
+                              alphabetScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                            }
+                          }}
+                          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
+                          aria-label="Scroll left"
                         >
-                          All
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                          </svg>
                         </button>
-                        {alphabet
-                          .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
-                          .map((letter) => (
-                            <button
-                              key={letter}
-                              onClick={() => toggleLetter(letter)}
-                              className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                            >
-                              {letter}
-                            </button>
-                          ))}
+
+                        {/* Alphabet Buttons */}
+                        <div
+                          ref={alphabetScrollRef}
+                          className="flex gap-1.5 md:gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1"
+                        >
+                          <button
+                            onClick={() => setFilterLetter('All')}
+                            className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                          >
+                            All
+                          </button>
+                          {alphabet
+                            .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
+                            .map((letter) => (
+                              <button
+                                key={letter}
+                                onClick={() => toggleLetter(letter)}
+                                className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                              >
+                                {letter}
+                              </button>
+                            ))}
+                        </div>
+
+                        {/* Right Arrow - Desktop Only */}
+                        <button
+                          onClick={() => {
+                            if (alphabetScrollRef.current) {
+                              const scrollAmount = alphabetScrollRef.current.clientWidth;
+                              alphabetScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                            }
+                          }}
+                          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
+                          aria-label="Scroll right"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                          </svg>
+                        </button>
                       </div>
 
                       {/* Filter Pills (Favorites/Frequent/Recent) */}
@@ -2113,7 +2152,7 @@ export default function ShoppingList() {
                           )}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {renderList.map((it: ItemRow) => {
                             const isFavorite = favorites.includes(it.name);
 
