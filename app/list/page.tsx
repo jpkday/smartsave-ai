@@ -2042,18 +2042,20 @@ export default function ShoppingList() {
                           </svg>
                         </button>
 
-                        {/* Alphabet Buttons */}
+                        {/* Pinned "All" Button */}
+                        <button
+                          onClick={() => setFilterLetter('All')}
+                          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap flex-shrink-0 ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                          All
+                        </button>
+
+                        {/* Scrollable Alphabet Buttons */}
                         <div
                           ref={alphabetScrollRef}
                           className="flex gap-1.5 md:gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1"
                         >
-                          <button
-                            onClick={() => setFilterLetter('All')}
-                            className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                          >
-                            All
-                          </button>
                           {alphabet
                             .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
                             .map((letter) => (
