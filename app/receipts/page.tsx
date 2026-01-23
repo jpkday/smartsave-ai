@@ -1039,12 +1039,14 @@ function ReceiptsContent() {
               </div>
             </div>
 
-            <button
-              onClick={saveReceipt}
-              className="w-full bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
-            >
-              Save Receipt
-            </button>
+            <div className="md:flex md:justify-end">
+              <button
+                onClick={saveReceipt}
+                className="w-full md:w-auto md:px-16 bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              >
+                Save Receipt
+              </button>
+            </div>
           </div>
         </div>
       </div>

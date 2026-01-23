@@ -855,7 +855,7 @@ function ItemsContent() {
               </Link>
             </div>
             <div className="w-full">
-              <Header currentPage="Items" />
+              <Header currentPage="Favorite Items" />
             </div>
           </div>
         </div>

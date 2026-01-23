@@ -241,7 +241,7 @@ export default function Stores() {
               </Link>
             </div>
             <div className="w-full">
-              <Header currentPage="Stores" />
+              <Header currentPage="Favorite Stores" />
             </div>
           </div>
         </div>

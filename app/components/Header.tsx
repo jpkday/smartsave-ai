@@ -16,12 +16,11 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Recent Trips', path: '/trips', icon: '🛒' },
     // { name: 'Compare Items', path: '/compare', icon: '⚖️' }, // Hidden for Beta
     // { name: 'Price History', path: '/history', icon: '📊' }, // Hidden for Beta
-    // { name: 'Manage Items', path: '/items', icon: '📋' }, // Remaining as commented reference if needed
-    { name: 'Items', path: '/items', icon: '📋' },
+    { name: 'Favorite Items', path: '/items', icon: '📋' },
     // { name: 'Enter Prices', path: '/prices', icon: '💰' }, // Hidden for Beta
     { name: 'Add Receipt', path: '/receipts', icon: '🧾' },
     { name: 'Add Flyer', path: '/flyers', icon: '✄' },
-    { name: 'Stores', path: '/stores', icon: '🛍️' },
+    { name: 'Favorite Stores', path: '/stores', icon: '🛍️' },
   ];
 
   const mobileColorByPage: Record<string, string> = {
@@ -32,8 +31,8 @@ export default function Header({ currentPage }: HeaderProps) {
     'Recent Trips': 'bg-lime-500 hover:bg-lime-600',
     'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
     'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',
-    'Stores': 'bg-pink-500 hover:bg-pink-600',
-    'Items': 'bg-teal-500 hover:bg-teal-600',
+    'Favorite Stores': 'bg-pink-500 hover:bg-pink-600',
+    'Favorite Items': 'bg-teal-500 hover:bg-teal-600',
   };
 
   const mobileCurrentClass =
@@ -76,12 +75,12 @@ export default function Header({ currentPage }: HeaderProps) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
       </svg>
     ),
-    'Stores': (
+    'Favorite Stores': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
       </svg>
     ),
-    'Items': (
+    'Favorite Items': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
       </svg>
@@ -193,7 +192,7 @@ export default function Header({ currentPage }: HeaderProps) {
                   ))}
 
                   <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorites</div>
-                  {['Items', 'Stores'].map(pageName => (
+                  {['Favorite Items', 'Favorite Stores'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
@@ -290,25 +289,24 @@ export default function Header({ currentPage }: HeaderProps) {
               </div>
             </div>
 
-            {/* MANAGE GROUP (Dropdown) */}
+            {/* FAVORITES GROUP (Dropdown) */}
             <div className="group relative">
-              <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Manage Stores'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
+              <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Favorite Stores', 'Favorite Items', 'Stores', 'Items'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                Manage
+                Favorites
                 <svg className="w-4 h-4 transition group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
                 <div className="py-2">
                   <Link href="/items" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    Manage Items
+                    Favorite Items
                   </Link>
                   <Link href="/stores" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                    Manage Stores
+                    Favorite Stores
                   </Link>
                 </div>
               </div>

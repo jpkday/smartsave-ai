@@ -482,10 +482,14 @@ function FlyersContent() {
 
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
+          {/* Desktop Header */}
+          <div className="hidden md:block mb-2 px-3 pt-2">
+            <h1 className="text-2xl font-bold text-gray-800">Add Flyer</h1>
+          </div>
 
           {/* Intro / Instructions */}
-          <div className="mb-6 px-2 text-center">
-            <h2 className="text-gray-600 text-sm">Enter deals from your local flyers manually.</h2>
+          <div className="mb-6 px-3 text-center md:text-left">
+            <h2 className="text-gray-600 text-sm font-medium">Enter deals from your local flyers manually.</h2>
           </div>
 
           <div className="w-full bg-white p-3">
@@ -517,7 +521,7 @@ function FlyersContent() {
                       type="date"
                       value={validFrom}
                       onChange={(e) => setValidFrom(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
                     />
                   </div>
                   <div>
@@ -526,7 +530,7 @@ function FlyersContent() {
                       type="date"
                       value={validUntil}
                       onChange={(e) => setValidUntil(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
                     />
                   </div>
                 </div>
@@ -609,10 +613,10 @@ function FlyersContent() {
           </div>
 
           {/* Save Button */}
-          <div className="w-full bg-white p-5">
+          <div className="w-full bg-white p-5 md:flex md:justify-end">
             <button
               onClick={saveReceipt}
-              className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              className="w-full md:w-auto md:px-16 bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
             >
               Save Flyer Prices
             </button>
