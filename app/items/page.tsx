@@ -51,8 +51,8 @@ function ItemsContent() {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
 
-  // View Filter: ALL (default), FAVORITES, or HIDDEN
-  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('ALL');
+  // View Filter: ALL, FAVORITES (default), or HIDDEN
+  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('FAVORITES');
 
   // Mobile bottom sheet edit
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -428,6 +428,22 @@ function ItemsContent() {
       });
     } else {
       // Hide
+      // 1. Check if it's favorited, if so remove it (user rule: can't be both)
+      if (favoritedIds.has(itemId)) {
+        await supabase
+          .from('household_item_favorites')
+          .delete()
+          .eq('household_code', householdCode)
+          .eq('item_id', itemId);
+
+        setFavoritedIds(prev => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }
+
+      // 2. Add to hidden
       const { error } = await supabase
         .from('household_item_hidden')
         .insert({
@@ -680,12 +696,14 @@ function ItemsContent() {
             e.stopPropagation();
             toggleFavorite(item.id);
           }}
+          disabled={viewFilter === 'HIDDEN'}
           className={
             isFavorite
-              ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
-              : 'text-2xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+              ? `text-2xl leading-none flex-shrink-0 px-1 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              : `text-2xl leading-none flex-shrink-0 px-1 text-gray-300 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
           }
           aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
+          title={viewFilter === 'HIDDEN' ? 'Unhide item to favorite' : (isFavorite ? 'Remove from Favorites' : 'Add to Favorites')}
         >
           {isFavorite ? '⭐' : '☆'}
         </button>
@@ -699,7 +717,7 @@ function ItemsContent() {
           <div className="text-xs text-gray-500">Tap to edit</div>
         </button>
 
-        {viewFilter === 'ALL' && (
+        {(viewFilter === 'ALL' || viewFilter === 'FAVORITES') && (
           <button
             type="button"
             onClick={(e) => toggleHidden(item.id, e)}
@@ -745,13 +763,14 @@ function ItemsContent() {
         <button
           type="button"
           onClick={() => toggleFavorite(item.id)}
+          disabled={inlineSaving || viewFilter === 'HIDDEN'}
           className={
             isFavorite
-              ? 'text-2xl leading-none flex-shrink-0 px-1 cursor-pointer'
-              : 'text-2xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
+              ? `text-2xl leading-none flex-shrink-0 px-1 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              : `text-2xl leading-none flex-shrink-0 px-1 text-gray-300 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
           }
           aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
-          disabled={inlineSaving}
+          title={viewFilter === 'HIDDEN' ? 'Unhide item to favorite' : (isFavorite ? 'Remove from Favorites' : 'Add to Favorites')}
         >
           {isFavorite ? '⭐' : '☆'}
         </button>
@@ -796,7 +815,7 @@ function ItemsContent() {
               </span>
 
               <div className="flex items-center gap-1">
-                {viewFilter === 'ALL' && (
+                {(viewFilter === 'ALL' || viewFilter === 'FAVORITES') && (
                   <button
                     type="button"
                     onClick={(e) => toggleHidden(item.id, e)}
@@ -826,9 +845,9 @@ function ItemsContent() {
                   <button
                     type="button"
                     onClick={() => deleteItem(item)}
-                    className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0"
-                    title="Delete item"
-                    disabled={inlineSaving}
+                    className={`text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    title={viewFilter === 'HIDDEN' ? 'Unhide item before deleting' : 'Delete item'}
+                    disabled={inlineSaving || viewFilter === 'HIDDEN'}
                   >
                     🗑️
                   </button>
@@ -952,7 +971,6 @@ function ItemsContent() {
                       ? 'Loading…'
                       : `${filtered.length} shown / ${items.length} total`}
                 </span>
-                <span className="hidden sm:inline">Tip: search → tap item → rename</span>
               </div>
             </div>
           </div>
@@ -964,40 +982,48 @@ function ItemsContent() {
             ) : (
               <>
                 {/* View Filters (Moved Here) - Styled like List Build Mode */}
-                <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-gray-100">
+                <div className="grid grid-cols-3 gap-2 mb-2">
                   <button
-                    onClick={() => setViewFilter('ALL')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'ALL'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
-                      }`}
-                  >
-                    All Items
-                  </button>
-                  <button
-                    onClick={() => setViewFilter('FAVORITES')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'FAVORITES'
+                    onClick={() => setViewFilter(prev => prev === 'FAVORITES' ? 'ALL' : 'FAVORITES')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'FAVORITES'
                       ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
                       : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
                       }`}
                   >
-                    Favorites
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    Favorite Items
                   </button>
                   <button
-                    onClick={() => setViewFilter('HIDDEN')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${viewFilter === 'HIDDEN'
+                    onClick={() => setViewFilter(prev => prev === 'HIDDEN' ? 'ALL' : 'HIDDEN')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'HIDDEN'
                       ? 'bg-gray-400 text-white border-gray-400 shadow-md transform scale-105'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                       }`}
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
                     Hidden
                   </button>
+                  <div />
                 </div>
+
+                {viewFilter !== 'ALL' && (
+                  <div className="mb-4 text-left animate-in fade-in slide-in-from-top-1 duration-200 px-1">
+                    <p className="text-xs text-gray-500 font-medium">
+                      Filter applied. Click the filter again to see all items.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mb-4 border-b border-gray-100"></div>
 
                 {/* List Header / Stats */}
                 <div className="flex justify-between items-center mb-3">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-                    {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorites' : 'All Items'}
+                    {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorite Items' : 'All Items'}
                   </h2>
                   <span className="text-xs text-gray-500">{filtered.length} shown</span>
                 </div>
