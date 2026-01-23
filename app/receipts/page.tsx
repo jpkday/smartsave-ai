@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { getFuzzyMatch } from '../lib/utils';
+import { PlusIcon } from '@heroicons/react/24/solid';
+import StatusModal from '../components/StatusModal';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -58,6 +60,18 @@ function ReceiptsContent() {
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
+  const [showManualMobile, setShowManualMobile] = useState(false);
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   // Alias Modal Removed
 
@@ -427,11 +441,21 @@ function ReceiptsContent() {
         // Redirect to reconciliation page
         router.push(`/receipts/import/${data.importId}`);
       } else {
-        alert("Unexpected response from analysis. Please try again.");
+        setStatusModal({
+          isOpen: true,
+          title: 'Analysis Problem',
+          message: 'Unexpected response from analysis. Please try again.',
+          type: 'warning'
+        });
       }
     } catch (error: any) {
       console.error("Scan error:", error);
-      alert(`Scan failed: ${error.message}`);
+      setStatusModal({
+        isOpen: true,
+        title: 'Scan Failed',
+        message: error.message,
+        type: 'error'
+      });
     } finally {
       setScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -459,19 +483,34 @@ function ReceiptsContent() {
 
   const saveReceipt = async () => {
     if (!selectedStoreId) {
-      alert('Please select a store');
+      setStatusModal({
+        isOpen: true,
+        title: 'Store Required',
+        message: 'Please select a store before saving.',
+        type: 'warning'
+      });
       return;
     }
 
     if (!tripEndLocal) {
-      alert('Please select a trip end date/time');
+      setStatusModal({
+        isOpen: true,
+        title: 'Date Required',
+        message: 'Please select a trip end date/time.',
+        type: 'warning'
+      });
       return;
     }
 
     // Find store details from ID
     const selectedStore = stores.find(s => s.id === selectedStoreId);
     if (!selectedStore) {
-      alert('Selected store not found in list');
+      setStatusModal({
+        isOpen: true,
+        title: 'Store Not Found',
+        message: 'Selected store not found in list.',
+        type: 'error'
+      });
       return;
     }
     const storeName = selectedStore.name;
@@ -481,7 +520,12 @@ function ReceiptsContent() {
     const endedAtIso = toIsoFromLocalDateTime(tripEndLocal);
 
     if (!endedAtIso) {
-      alert('Invalid date/time');
+      setStatusModal({
+        isOpen: true,
+        title: 'Invalid Date',
+        message: 'The selected date/time is invalid.',
+        type: 'error'
+      });
       return;
     }
 
@@ -492,7 +536,12 @@ function ReceiptsContent() {
     });
 
     if (validItems.length === 0) {
-      alert('Please add at least one item with a price');
+      setStatusModal({
+        isOpen: true,
+        title: 'No Items',
+        message: 'Please add at least one item with a valid price.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -503,7 +552,12 @@ function ReceiptsContent() {
       .single();
 
     if (storeErr || !storeData?.id) {
-      alert('Store not found');
+      setStatusModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Store not found in database.',
+        type: 'error'
+      });
       return;
     }
 
@@ -519,7 +573,12 @@ function ReceiptsContent() {
 
     if (existingItemsErr) {
       console.error(existingItemsErr);
-      alert('Failed to load items. Check your connection and try again.');
+      setStatusModal({
+        isOpen: true,
+        title: 'Connection Error',
+        message: 'Failed to load items. Check your connection.',
+        type: 'error'
+      });
       return;
     }
 
@@ -537,7 +596,12 @@ function ReceiptsContent() {
 
       if (insertItemsErr) {
         console.error('Error inserting items:', insertItemsErr);
-        alert('Failed to add new items. Check your connection and try again.');
+        setStatusModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to add new items. Please try again.',
+          type: 'error'
+        });
         return;
       }
 
@@ -552,7 +616,12 @@ function ReceiptsContent() {
 
     if (allItemsErr) {
       console.error(allItemsErr);
-      alert('Failed to load item ids. Check your connection and try again.');
+      setStatusModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to load item IDs.',
+        type: 'error'
+      });
       return;
     }
 
@@ -588,7 +657,12 @@ function ReceiptsContent() {
 
     if (priceInsertErr) {
       console.error(priceInsertErr);
-      alert('Failed to save prices. Check your connection and try again.');
+      setStatusModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: 'Failed to save prices. Please try again.',
+        type: 'error'
+      });
       return;
     }
 
@@ -609,7 +683,12 @@ function ReceiptsContent() {
 
       if (tripErr || !tripRow?.id) {
         console.error(tripErr);
-        alert('Saved prices, but failed to create the trip.');
+        setStatusModal({
+          isOpen: true,
+          title: 'Trip Error',
+          message: 'Saved prices, but failed to create the trip.',
+          type: 'warning'
+        });
       } else {
         const tripId = tripRow.id;
 
@@ -656,16 +735,22 @@ function ReceiptsContent() {
 
         if (eventsErr) {
           console.error(eventsErr);
-          alert('Saved prices + trip, but failed to save trip items.');
+          setStatusModal({
+            isOpen: true,
+            title: 'Trip Update Error',
+            message: 'Saved prices + trip, but failed to save trip items.',
+            type: 'warning'
+          });
         }
       }
     }
 
-    alert(
-      `Receipt saved! Added ${validItems.length} prices for ${storeName} on ${new Date(
-        tripEndLocal
-      ).toLocaleString()}`
-    );
+    setStatusModal({
+      isOpen: true,
+      title: 'Success!',
+      message: `Receipt saved! Added ${validItems.length} prices for ${storeName} on ${new Date(tripEndLocal).toLocaleString()}`,
+      type: 'success'
+    });
 
     setSelectedStoreId('');
     setDate(new Date().toISOString().split('T')[0]);
@@ -701,9 +786,13 @@ function ReceiptsContent() {
 
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
         <div className="bg-white rounded-2xl shadow-lg p-3">
+          {/* Desktop Header */}
+          <div className="hidden md:block mb-2 px-3 pt-2">
+            <h1 className="text-2xl font-bold text-gray-800">Add Receipt</h1>
+          </div>
 
           {/* Scan Receipt Button */}
-          <div className="w-full bg-white p-3 mb-2">
+          <div className="w-full bg-white p-3 mb-2 md:hidden">
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4 bg-blue-50">
               <div className="flex flex-col items-center justify-center gap-4">
 
@@ -749,15 +838,50 @@ function ReceiptsContent() {
                 />
               </div>
             </div>
+
+            {/* Mobile Fallback: Add Manually instead */}
+            {!showManualMobile && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowManualMobile(true)}
+                  className="text-blue-600 font-semibold text-sm hover:underline flex items-center justify-center gap-1 mx-auto"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add manually instead
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="w-full bg-white p-3">
+          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
 
               {/* Store and Date Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">Store</label>
+                    {/* Desktop Upload Button */}
+                    <div className="hidden md:flex items-center gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={scanning}
+                        className="text-xs font-bold text-blue-600 hover:text-indigo-600 flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        {scanning ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            Upload Receipt
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                   <select
                     value={selectedStoreId}
                     onChange={(e) => setSelectedStoreId(e.target.value)}
@@ -779,7 +903,7 @@ function ReceiptsContent() {
                     type="datetime-local"
                     value={tripEndLocal}
                     onChange={(e) => setTripEndLocal(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
                   />
                 </div>
               </div>
@@ -787,7 +911,7 @@ function ReceiptsContent() {
           </div>
 
           {/* Create past trip toggle */}
-          <div className="w-full bg-white p-3">
+          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
             <div className="border border-slate-200 rounded-2xl shadow-md p-4">
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input
@@ -807,7 +931,7 @@ function ReceiptsContent() {
           </div>
 
           {/* Items Table */}
-          <div className="w-full bg-white p-3">
+          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
               <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
               <div className="space-y-3">
@@ -907,7 +1031,7 @@ function ReceiptsContent() {
           </div>
 
           {/* Total & Save */}
-          <div className="w-full bg-white p-5">
+          <div className={`w-full bg-white p-5 ${(showManualMobile ? '' : 'hidden md:block')}`}>
             <div className="border-t pt-4 mb-6">
               <div className="flex justify-between items-center">
                 <span className="text-xl font-bold text-gray-800">Total:</span>
@@ -924,6 +1048,14 @@ function ReceiptsContent() {
           </div>
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div>
   );
 }

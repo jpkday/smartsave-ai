@@ -6,6 +6,7 @@ import { getFuzzyMatch } from '../../../lib/utils';
 import Link from 'next/link';
 import { ArrowLeftIcon, CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import ItemSearchableDropdown from '../../../components/ItemSearchableDropdown';
+import StatusModal from '../../../components/StatusModal';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -43,6 +44,18 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     const [allItems, setAllItems] = useState<{ id: string, name: string }[]>([]);
     const [storeId, setStoreId] = useState<string>('');
     const [importing, setImporting] = useState(false);
+    const [statusModal, setStatusModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'info' | 'warning';
+        onCloseOverride?: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
     const unwrappedParams = use(params);
 
 
@@ -54,8 +67,13 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
         try {
             const householdCode = localStorage.getItem('household_code') || '';
             if (!householdCode) {
-                alert("No household code found.");
-                router.push('/');
+                setStatusModal({
+                    isOpen: true,
+                    title: 'Missing Access',
+                    message: "No household code found. Please sign in.",
+                    type: 'error',
+                    onCloseOverride: () => router.push('/')
+                });
                 return;
             }
 
@@ -68,14 +86,24 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
             if (error || !receiptData) {
                 console.error("Error loading receipt:", error);
-                alert("Receipt not found");
-                router.push('/receipts');
+                setStatusModal({
+                    isOpen: true,
+                    title: 'Not Found',
+                    message: "Receipt not found.",
+                    type: 'error',
+                    onCloseOverride: () => router.push('/receipts')
+                });
                 return;
             }
 
             if (receiptData.status === 'processed') {
-                alert("This receipt has already been processed.");
-                router.push('/receipts');
+                setStatusModal({
+                    isOpen: true,
+                    title: 'Already Processed',
+                    message: "This receipt has already been processed.",
+                    type: 'info',
+                    onCloseOverride: () => router.push('/receipts')
+                });
                 return;
             }
 
@@ -347,12 +375,22 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             // 3. Mark Receipt Processed
             await supabase.from('imported_receipts').update({ status: 'processed' }).eq('id', unwrappedParams.id);
 
-            alert("Receipt imported successfully!");
-            router.push('/receipts'); // Back to list
+            setStatusModal({
+                isOpen: true,
+                title: 'Import Success',
+                message: "Receipt imported successfully!",
+                type: 'success',
+                onCloseOverride: () => router.push('/receipts')
+            });
 
         } catch (err: any) {
             console.error(err);
-            alert("Import failed: " + err.message);
+            setStatusModal({
+                isOpen: true,
+                title: 'Import Failed',
+                message: err.message,
+                type: 'error'
+            });
             setImporting(false);
         }
     };
@@ -553,6 +591,20 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     </div>
                 </div>
             </div>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => {
+                    if (statusModal.onCloseOverride) {
+                        statusModal.onCloseOverride();
+                    } else {
+                        setStatusModal(prev => ({ ...prev, isOpen: false }));
+                    }
+                }}
+                title={statusModal.title}
+                message={statusModal.message}
+                type={statusModal.type}
+            />
         </div>
     );
 }
