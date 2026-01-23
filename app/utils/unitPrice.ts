@@ -7,7 +7,7 @@
 
 export interface UnitInfo {
     quantity: number;
-    unit: 'lb' | 'oz' | 'ct' | 'doz' | 'ea' | 'qt' | 'gal' | 'pt' | 'L' | 'ml' | 'sqft' | 'sqin' | null;
+    unit: 'lb' | 'oz' | 'fz' | 'ct' | 'doz' | 'ea' | 'qt' | 'gal' | 'pt' | 'L' | 'ml' | 'sqft' | 'sqin' | null;
     rawText: string;
 }
 
@@ -18,39 +18,43 @@ export interface UnitInfo {
  * - "Apples, Honeycrisp (4 lb)" → { quantity: 4, unit: 'lb', rawText: '4 lb' }
  * - "Broth, Chicken (6/32 oz)" → { quantity: 192, unit: 'oz', rawText: '6/32 oz' }
  * - "Almond Milk (6x32 oz)" → { quantity: 192, unit: 'oz', rawText: '6x32 oz' }
+ * - "Water (33.8 fz)" → { quantity: 33.8, unit: 'fz', rawText: '33.8 fz' }
  * - "Eggs (18 ct)" → { quantity: 18, unit: 'ct', rawText: '18 ct' }
  * - "Eggs, 1 doz" → { quantity: 1, unit: 'doz', rawText: '1 doz' }
- * - "Eggs, 5 doz" → { quantity: 5, unit: 'doz', rawText: '5 doz' }
  * - "Butter (4 lb)" → { quantity: 4, unit: 'lb', rawText: '4 lb' }
  * - "Eggs" → { quantity: 0, unit: null, rawText: '' }
  */
 export function parseUnitInfo(itemName: string): UnitInfo {
-    // Match multi-pack patterns like (6/32 oz), (6x32 oz), (6*32 oz), (6-32 oz)
-    const multiPackPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(lb|oz)\)/i;
+    // Match multi-pack patterns like (6/32 oz), (6x32 oz), (12/33.8 fz), (24x16.9 floz)
+    const multiPackPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(lb|oz|fz|floz|fl\s*oz|qt|L|ml)\)/i;
     const multiPackMatch = itemName.match(multiPackPattern);
 
     if (multiPackMatch) {
         const count = parseFloat(multiPackMatch[1]);
         const size = parseFloat(multiPackMatch[2]);
-        const unit = multiPackMatch[3].toLowerCase() as 'lb' | 'oz';
-        const totalQuantity = count * size; // Multiply for multi-packs
+        let unit = multiPackMatch[3].toLowerCase();
+
+        // Normalize fluid oz variations
+        if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+
+        const totalQuantity = count * size;
 
         return {
             quantity: totalQuantity,
-            unit,
+            unit: unit as any,
             rawText: multiPackMatch[0].replace(/[()]/g, '').trim(),
         };
     }
 
     // Match multi-pack count patterns like (6x18 ct), (2*12 ct), (4x6 pk)
-    const multiPackCountPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(ct|doz|pk)\)/i;
+    const multiPackCountPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(ct|doz|pk|ea)\)/i;
     const multiPackCountMatch = itemName.match(multiPackCountPattern);
 
     if (multiPackCountMatch) {
         const count = parseFloat(multiPackCountMatch[1]);
         const size = parseFloat(multiPackCountMatch[2]);
-        const unit = multiPackCountMatch[3].toLowerCase() === 'pk' ? 'ct' : multiPackCountMatch[3].toLowerCase() as 'ct' | 'doz';
-        const totalQuantity = count * size; // Multiply for multi-packs
+        const unit = multiPackCountMatch[3].toLowerCase() === 'pk' ? 'ct' : multiPackCountMatch[3].toLowerCase() as 'ct' | 'doz' | 'ea';
+        const totalQuantity = count * size;
 
         return {
             quantity: totalQuantity,
@@ -59,70 +63,65 @@ export function parseUnitInfo(itemName: string): UnitInfo {
         };
     }
 
-    // Match simple patterns like (4 lb), (32 oz), (18 ct), (1.5 qt), (50 sq ft), (8 pk)
-    // Also matches comma-separated like ", 1 doz", ", 5 doz", or ", 5 doz."
-    const simplePattern = /[\(,]\s*(\d+(?:\.\d+)?)\s*(?:sq\s*)?(lb|oz|ct|doz|qt|gal|pt|L|ml|ft|in|pk)[\),.]/i;
+    // Match simple patterns like (4 lb), (32 oz), (33.8 fz), (18 ct), (1.5 qt), (50 sq ft)
+    const simplePattern = /[\(,]\s*(\d+(?:\.\d+)?)\s*(?:sq\s*)?(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|pt|L|ml|ft|in|pk|ea)[\),.]/i;
     const simpleMatch = itemName.match(simplePattern);
 
     if (simpleMatch) {
         const quantity = parseFloat(simpleMatch[1]);
         let unit = simpleMatch[2].toLowerCase();
 
+        // Normalize fluid oz variations
+        if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+
         // Check if it's an area measurement (preceded by 'sq')
         const isSquare = /sq\s*(ft|in)/i.test(simpleMatch[0]);
         if (isSquare && unit === 'ft') unit = 'sqft';
         if (isSquare && unit === 'in') unit = 'sqin';
 
-        // Normalize 'pk' to 'ct'
+        // Normalize unit aliases
         if (unit === 'pk') unit = 'ct';
+        if (unit === 'l') unit = 'L'; // Standard notation
 
-        // Preserve 'L' as uppercase for liters (standard notation)
-        if (unit === 'l') unit = 'L';
-
-        const finalUnit = unit as 'lb' | 'oz' | 'ct' | 'doz' | 'qt' | 'gal' | 'pt' | 'L' | 'ml' | 'sqft' | 'sqin';
         return {
             quantity,
-            unit: finalUnit,
+            unit: unit as any,
             rawText: simpleMatch[0].replace(/[(),]/g, '').trim(),
         };
     }
 
-    // Match compact formats like 5lb, 32oz, 1.5qt, 8pk (no spaces or parentheses)
-    const compactPattern = /(\d+(?:\.\d+)?)(lb|oz|ct|doz|qt|gal|pt|L|ml|pk)\b/i;
+    // Match compact formats like 5lb, 32oz, 33.8fz, 1.5qt, 8pk
+    const compactPattern = /(\d+(?:\.\d+)?)(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|pt|L|ml|pk|ea)\b/i;
     const compactMatch = itemName.match(compactPattern);
 
     if (compactMatch) {
         const quantity = parseFloat(compactMatch[1]);
         let unit = compactMatch[2].toLowerCase();
 
-        // Normalize 'pk' to 'ct'
+        // Normalize fluid oz variations
+        if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
         if (unit === 'pk') unit = 'ct';
-
-        // Preserve 'L' as uppercase for liters (standard notation)
         if (unit === 'l') unit = 'L';
 
-        const finalUnit = unit as 'lb' | 'oz' | 'ct' | 'doz' | 'qt' | 'gal' | 'pt' | 'L' | 'ml';
         return {
             quantity,
-            unit: finalUnit,
+            unit: unit as any,
             rawText: compactMatch[0].trim(),
         };
     }
 
-    // Match unit-only patterns like (lb), (oz), (qt) - defaults to quantity of 1
-    const unitOnlyPattern = /\((lb|oz|ct|doz|ea|qt|gal|pt|L|ml)\)/i;
+    // Match unit-only patterns like (lb), (fz), (qt)
+    const unitOnlyPattern = /\((lb|oz|fz|floz|fl\s*oz|ct|doz|ea|qt|gal|pt|L|ml)\)/i;
     const unitOnlyMatch = itemName.match(unitOnlyPattern);
 
     if (unitOnlyMatch) {
         let unit = unitOnlyMatch[1].toLowerCase();
-
-        // Preserve 'L' as uppercase for liters (standard notation)
+        if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
         if (unit === 'l') unit = 'L';
 
-        const finalUnit = unit as 'lb' | 'oz' | 'ct' | 'doz' | 'ea' | 'qt' | 'gal' | 'pt' | 'L' | 'ml';
         return {
             quantity: 1,
-            unit: finalUnit,
+            unit: unit as any,
             rawText: unitOnlyMatch[0].replace(/[()]/g, '').trim(),
         };
     }
@@ -148,14 +147,14 @@ export function lbToOz(lb: number): number {
  * Calculates the unit price for an item.
  * For weight-based items: returns price per pound
  * For count-based items: returns price per unit (ea)
- * For volume-based items: returns price per quart
+ * For volume-based items: returns price per fluid ounce (fl oz)
  * For area-based items: returns price per square foot
  * 
- * @param itemName - Full item name (e.g., "Apples, Honeycrisp (4 lb)", "Eggs (18 ct)", "Ice Cream (1.5 qt)", "Parchment Paper (50 sq ft)")
+ * @param itemName - Full item name
  * @param price - Price of the item
  * @returns Object with unitPrice and unitType, or null if not applicable
  */
-export function calculateUnitPrice(itemName: string, price: number): { unitPrice: number; unitType: 'lb' | 'ea' | 'qt' | 'sqft' } | null {
+export function calculateUnitPrice(itemName: string, price: number): { unitPrice: number; unitType: 'lb' | 'ea' | 'fl oz' | 'sqft' } | null {
     const unitInfo = parseUnitInfo(itemName);
 
     if (!unitInfo.unit || unitInfo.quantity === 0) {
@@ -174,24 +173,27 @@ export function calculateUnitPrice(itemName: string, price: number): { unitPrice
         };
     }
 
-    // Handle volume-based units (convert to price per qt)
-    if (unitInfo.unit === 'qt' || unitInfo.unit === 'gal' || unitInfo.unit === 'pt' || unitInfo.unit === 'L' || unitInfo.unit === 'ml') {
-        let quantityInQuarts = unitInfo.quantity;
+    // Handle volume-based units (convert to price per fl oz)
+    const volumeUnits = ['fz', 'qt', 'gal', 'pt', 'L', 'ml'];
+    if (volumeUnits.includes(unitInfo.unit)) {
+        let quantityInFloz = unitInfo.quantity;
 
-        // Convert to quarts
-        if (unitInfo.unit === 'gal') {
-            quantityInQuarts = unitInfo.quantity * 4; // 1 gal = 4 qt
+        // Convert to fluid ounces
+        if (unitInfo.unit === 'qt') {
+            quantityInFloz = unitInfo.quantity * 32; // 1 qt = 32 fl oz
+        } else if (unitInfo.unit === 'gal') {
+            quantityInFloz = unitInfo.quantity * 128; // 1 gal = 128 fl oz
         } else if (unitInfo.unit === 'pt') {
-            quantityInQuarts = unitInfo.quantity / 2; // 1 qt = 2 pt
+            quantityInFloz = unitInfo.quantity * 16; // 1 pt = 16 fl oz
         } else if (unitInfo.unit === 'L') {
-            quantityInQuarts = unitInfo.quantity * 1.057; // 1 L ≈ 1.057 qt
+            quantityInFloz = unitInfo.quantity * 33.814; // 1 L ≈ 33.814 fl oz
         } else if (unitInfo.unit === 'ml') {
-            quantityInQuarts = (unitInfo.quantity / 1000) * 1.057; // Convert mL to L, then to qt
+            quantityInFloz = unitInfo.quantity * 0.033814; // 1 ml ≈ 0.033814 fl oz
         }
 
         return {
-            unitPrice: price / quantityInQuarts,
-            unitType: 'qt'
+            unitPrice: price / quantityInFloz,
+            unitType: 'fl oz'
         };
     }
 
@@ -222,13 +224,14 @@ export function calculateUnitPrice(itemName: string, price: number): { unitPrice
     return null;
 }
 
+
 /**
  * Formats a unit price for display
  * 
  * @param result - Result from calculateUnitPrice containing unitPrice and unitType
- * @returns Formatted string (e.g., "$2.00/lb", "$0.15/ea", "$3.33/qt", "$0.10/sqft")
+ * @returns Formatted string (e.g., "$2.00/lb", "$0.15/ea", "$0.10/fl oz", "$0.10/sqft")
  */
-export function formatUnitPrice(result: { unitPrice: number; unitType: 'lb' | 'ea' | 'qt' | 'sqft' } | null): string | null {
+export function formatUnitPrice(result: { unitPrice: number; unitType: 'lb' | 'ea' | 'fl oz' | 'sqft' } | null): string | null {
     if (result === null) {
         return null;
     }
