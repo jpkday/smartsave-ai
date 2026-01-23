@@ -26,7 +26,7 @@ export interface UnitInfo {
  */
 export function parseUnitInfo(itemName: string): UnitInfo {
     // Match multi-pack patterns like (6/32 oz), (6x32 oz), (12/33.8 fz), (24x16.9 floz)
-    const multiPackPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(lb|oz|fz|floz|fl\s*oz|qt|L|ml)\)/i;
+    const multiPackPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(lb|oz|fz|floz|fl\s*oz|qt|gal|gallon|L|ml)\)/i;
     const multiPackMatch = itemName.match(multiPackPattern);
 
     if (multiPackMatch) {
@@ -36,6 +36,8 @@ export function parseUnitInfo(itemName: string): UnitInfo {
 
         // Normalize fluid oz variations
         if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+        // Normalize gallon
+        if (unit === 'gallon') unit = 'gal';
 
         const totalQuantity = count * size;
 
@@ -63,16 +65,17 @@ export function parseUnitInfo(itemName: string): UnitInfo {
         };
     }
 
-    // Match simple patterns like (4 lb), (32 oz), (33.8 fz), (18 ct), (1.5 qt), (50 sq ft)
-    const simplePattern = /[\(,]\s*(\d+(?:\.\d+)?)\s*(?:sq\s*)?(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|pt|L|ml|ft|in|pk|ea)[\),.]/i;
+    // Match simple patterns like (4 lb), (32 oz), (33.8 fz), (1 gallon), (18 ct), (1.5 qt)
+    const simplePattern = /[\(,]\s*(\d+(?:\.\d+)?)\s*(?:sq\s*)?(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|gallon|pt|L|ml|ft|in|pk|ea)[\),.]/i;
     const simpleMatch = itemName.match(simplePattern);
 
     if (simpleMatch) {
         const quantity = parseFloat(simpleMatch[1]);
         let unit = simpleMatch[2].toLowerCase();
 
-        // Normalize fluid oz variations
+        // Normalize variations
         if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+        if (unit === 'gallon') unit = 'gal';
 
         // Check if it's an area measurement (preceded by 'sq')
         const isSquare = /sq\s*(ft|in)/i.test(simpleMatch[0]);
@@ -90,16 +93,17 @@ export function parseUnitInfo(itemName: string): UnitInfo {
         };
     }
 
-    // Match compact formats like 5lb, 32oz, 33.8fz, 1.5qt, 8pk
-    const compactPattern = /(\d+(?:\.\d+)?)(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|pt|L|ml|pk|ea)\b/i;
+    // Match compact formats like 5lb, 32oz, 1gal, 8pk
+    const compactPattern = /(\d+(?:\.\d+)?)(lb|oz|fz|floz|fl\s*oz|ct|doz|qt|gal|gallon|pt|L|ml|pk|ea)\b/i;
     const compactMatch = itemName.match(compactPattern);
 
     if (compactMatch) {
         const quantity = parseFloat(compactMatch[1]);
         let unit = compactMatch[2].toLowerCase();
 
-        // Normalize fluid oz variations
+        // Normalize variations
         if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+        if (unit === 'gallon') unit = 'gal';
         if (unit === 'pk') unit = 'ct';
         if (unit === 'l') unit = 'L';
 
@@ -110,13 +114,14 @@ export function parseUnitInfo(itemName: string): UnitInfo {
         };
     }
 
-    // Match unit-only patterns like (lb), (fz), (qt)
-    const unitOnlyPattern = /\((lb|oz|fz|floz|fl\s*oz|ct|doz|ea|qt|gal|pt|L|ml)\)/i;
+    // Match unit-only patterns like (lb), (fz), (gallon)
+    const unitOnlyPattern = /\((lb|oz|fz|floz|fl\s*oz|ct|doz|ea|qt|gal|gallon|pt|L|ml)\)/i;
     const unitOnlyMatch = itemName.match(unitOnlyPattern);
 
     if (unitOnlyMatch) {
         let unit = unitOnlyMatch[1].toLowerCase();
         if (unit === 'floz' || unit.includes('fl')) unit = 'fz';
+        if (unit === 'gallon') unit = 'gal';
         if (unit === 'l') unit = 'L';
 
         return {
