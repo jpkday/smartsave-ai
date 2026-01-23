@@ -4,6 +4,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import StatusModal from '../components/StatusModal';
+import { formatLocalDate } from '../utils/date';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -60,6 +62,23 @@ function FlyersContent() {
 
   const [validFrom, setValidFrom] = useState('');
   const [validUntil, setValidUntil] = useState('');
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setStatusModal({ isOpen: true, title, message, type });
+  };
 
   // Fetch SKUs when store changes
   useEffect(() => {
@@ -296,24 +315,24 @@ function FlyersContent() {
 
   const saveReceipt = async () => {
     if (!selectedStoreId) {
-      alert('Please select a store');
+      showStatus('Missing Store', 'Please select a store before saving flyer prices.', 'warning');
       return;
     }
 
     // Validate Flyer Mode (Always)
     if (!validFrom || !validUntil) {
-      alert('Please specify when these prices are valid');
+      showStatus('Missing Dates', 'Please specify when these prices are valid.', 'warning');
       return;
     }
     if (validFrom > validUntil) {
-      alert('Valid From date must be before Valid Until date');
+      showStatus('Invalid Dates', 'The "Valid From" date must be before the "Valid Until" date.', 'warning');
       return;
     }
 
     // Find store details from ID
     const selectedStore = stores.find(s => s.id === selectedStoreId);
     if (!selectedStore) {
-      alert('Selected store not found in list');
+      showStatus('Error', 'Selected store not found in list.', 'error');
       return;
     }
     const storeName = selectedStore.name;
@@ -328,7 +347,7 @@ function FlyersContent() {
     });
 
     if (validItems.length === 0) {
-      alert('Please add at least one item with a price');
+      showStatus('Empty Flyer', 'Please add at least one item with a valid price.', 'warning');
       return;
     }
 
@@ -339,7 +358,7 @@ function FlyersContent() {
       .single();
 
     if (storeErr || !storeData?.id) {
-      alert('Store not found');
+      showStatus('Error', 'Store not found in the database.', 'error');
       return;
     }
 
@@ -353,7 +372,7 @@ function FlyersContent() {
 
     if (existingItemsErr) {
       console.error(existingItemsErr);
-      alert('Failed to load items. Check your connection and try again.');
+      showStatus('Error', 'Failed to load items. Check your connection and try again.', 'error');
       return;
     }
 
@@ -371,7 +390,7 @@ function FlyersContent() {
 
       if (insertItemsErr) {
         console.error('Error inserting items:', insertItemsErr);
-        alert('Failed to add new items. Check your connection and try again.');
+        showStatus('Error', 'Failed to add new items. Check your connection and try again.', 'error');
         return;
       }
 
@@ -386,7 +405,7 @@ function FlyersContent() {
 
     if (allItemsErr) {
       console.error(allItemsErr);
-      alert('Failed to load item ids. Check your connection and try again.');
+      showStatus('Error', 'Failed to load item ids. Check your connection and try again.', 'error');
       return;
     }
 
@@ -424,14 +443,14 @@ function FlyersContent() {
 
     if (priceInsertErr) {
       console.error(priceInsertErr);
-      alert('Failed to save prices. Check your connection and try again.');
+      showStatus('Error', 'Failed to save prices. Check your connection and try again.', 'error');
       return;
     }
 
-    alert(
-      `Flyer prices saved! Updated ${validItems.length} prices for ${storeName} (valid ${new Date(
-        validFrom
-      ).toLocaleDateString()} - ${new Date(validUntil).toLocaleDateString()})`
+    showStatus(
+      'Flyer Prices Saved! 🎉',
+      `Updated ${validItems.length} prices for ${storeName} (valid ${formatLocalDate(validFrom)} - ${formatLocalDate(validUntil)})`,
+      'success'
     );
 
     setSelectedStoreId('');
@@ -600,6 +619,13 @@ function FlyersContent() {
           </div>
         </div>
       </div>
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div>
   );
 }

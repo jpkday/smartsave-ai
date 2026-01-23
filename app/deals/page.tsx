@@ -4,6 +4,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
+import { formatLocalDate, parseLocalDate } from '../utils/date';
+import StatusModal from '../components/StatusModal';
 
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -35,6 +37,23 @@ export default function Deals() {
   const { getCategoryName, getCategoryColorById } = useCategories();
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [hasFavorites, setHasFavorites] = useState(true);
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setStatusModal({ isOpen: true, title, message, type });
+  };
 
   useEffect(() => {
     loadDeals();
@@ -231,7 +250,7 @@ export default function Deals() {
 
   const addToList = async (itemName: string, itemId: string) => {
     if (!householdCode) {
-      alert('Please enter your household code on the home page');
+      showStatus('Missing Household Code', 'Please enter your household code on the home page to add items to your list.', 'warning');
       return;
     }
 
@@ -248,7 +267,7 @@ export default function Deals() {
     }
 
     if (existing) {
-      alert('Already in your list!');
+      showStatus('Already on List', `"${itemName}" is already in your shopping list!`, 'info');
       return;
     }
 
@@ -265,7 +284,7 @@ export default function Deals() {
 
     if (insertError) {
       console.error('Error adding to list:', insertError);
-      alert('Failed to add to list');
+      showStatus('Add Failed', 'Failed to add the item to your list. Please try again.', 'error');
       return;
     }
 
@@ -278,7 +297,7 @@ export default function Deals() {
       )
     );
 
-    alert('Added to your list!');
+    showStatus('Added to List! 🎉', `"${itemName}" has been added to your shopping list.`, 'success');
   };
 
   const filteredDeals = selectedStore === 'all'
@@ -435,11 +454,11 @@ export default function Deals() {
                           <div>
                             {deal.valid_from && deal.valid_until ? (
                               <span className="text-green-600 font-semibold">
-                                Valid: {new Date(deal.valid_from).toLocaleDateString()} - {new Date(deal.valid_until).toLocaleDateString()}
+                                Valid: {formatLocalDate(deal.valid_from)} - {formatLocalDate(deal.valid_until)}
                               </span>
                             ) : (
                               <span>
-                                Added: {new Date(deal.recorded_date).toLocaleDateString()}
+                                Added: {formatLocalDate(deal.recorded_date)}
                               </span>
                             )}
                           </div>
@@ -488,6 +507,14 @@ export default function Deals() {
           </div>
         )}
       </div>
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div>
   );
 }

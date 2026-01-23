@@ -2716,11 +2716,11 @@ export default function ShoppingList() {
 
                                                     <button
                                                       onClick={() => removeItem(item.id)}
-                                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                      className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
                                                       title="Remove from list"
                                                       aria-label="Remove from list"
                                                     >
-                                                      ✖️
+                                                      ✕
                                                     </button>
                                                   </div>
                                                 </div>
@@ -3015,11 +3015,11 @@ export default function ShoppingList() {
                                                         e.stopPropagation();
                                                         removeItem(item.id);
                                                       }}
-                                                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                      className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
                                                       title="Remove from list"
                                                       aria-label="Remove from list"
                                                     >
-                                                      ✖️
+                                                      ✕
                                                     </button>
                                                   </div>
                                                 </div>
@@ -3232,11 +3232,11 @@ export default function ShoppingList() {
                                                     e.stopPropagation();
                                                     removeItem(item.id);
                                                   }}
-                                                  className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl ml-1"
+                                                  className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
                                                   title="Remove from list"
                                                   aria-label="Remove from list"
                                                 >
-                                                  ✖️
+                                                  ✕
                                                 </button>
                                               </div>
                                             </div>
@@ -3431,7 +3431,7 @@ export default function ShoppingList() {
                     title="Close"
                     aria-label="Close"
                   >
-                    ✖️
+                    ✕
                   </button>
                 </div>
 
@@ -3557,7 +3557,7 @@ export default function ShoppingList() {
                     className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
                     aria-label="Close"
                   >
-                    ✖️
+                    ✕
                   </button>
                 </div>
 
@@ -3806,7 +3806,7 @@ export default function ShoppingList() {
                         aria-label="Close"
                         type="button"
                       >
-                        ✖️
+                        ✕
                       </button>
                     </div>
 

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { parseLocalDate, getLocalDateString } from '../utils/date';
+import StatusModal from '../components/StatusModal';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -24,20 +26,7 @@ interface Store {
   location: string | null;
 }
 
-// Helper function to get local date in YYYY-MM-DD format
-const getLocalDateString = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
-// Helper function to parse date string as local date (not UTC)
-const parseLocalDate = (dateString: string) => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day); // month is 0-indexed
-};
 
 function HistoryContent() {
   const searchParams = useSearchParams();
@@ -53,6 +42,23 @@ function HistoryContent() {
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setStatusModal({ isOpen: true, title, message, type });
+  };
 
   // Search/autocomplete state
   const [searchQuery, setSearchQuery] = useState('');
@@ -261,7 +267,7 @@ function HistoryContent() {
       setShowCopied(true);
       setTimeout(() => setShowCopied(false), 2000);
     } catch (err) {
-      alert('Failed to copy link');
+      showStatus('Copy Failed', 'Failed to copy the link to your clipboard.', 'error');
     }
   };
 
@@ -313,12 +319,12 @@ function HistoryContent() {
 
   const addPriceEntry = async () => {
     if (!newPrice || parseFloat(newPrice) === 0) {
-      alert('Please enter a valid price');
+      showStatus('Invalid Price', 'Please enter a valid price greater than $0.', 'warning');
       return;
     }
 
     if (!newDate) {
-      alert('Please select a date');
+      showStatus('Missing Date', 'Please select a date for this price entry.', 'warning');
       return;
     }
 
@@ -331,14 +337,14 @@ function HistoryContent() {
       .single();
 
     if (!itemData) {
-      alert('Item not found');
+      showStatus('Item Not Found', 'Could not find the selected item in the database.', 'error');
       return;
     }
 
     // Get store name for display/redundancy (and because DB might still want it)
     const storeObj = stores.find(s => s.id === selectedStoreId);
     if (!storeObj) {
-      alert('Store not found');
+      showStatus('Store Not Found', 'Could not find the selected store in the database.', 'error');
       return;
     }
 
@@ -358,7 +364,7 @@ function HistoryContent() {
 
     if (error) {
       console.error('Error adding price:', error);
-      alert('Failed to add price entry');
+      showStatus('Save Failed', 'Failed to add the price entry. Please try again.', 'error');
       return;
     }
 
@@ -382,7 +388,7 @@ function HistoryContent() {
 
     if (error) {
       console.error('Error deleting price:', error);
-      alert('Failed to delete price entry');
+      showStatus('Delete Failed', 'Failed to delete the price entry. Please try again.', 'error');
       return;
     }
 
@@ -458,7 +464,7 @@ function HistoryContent() {
       loadPriceHistory();
     } catch (error) {
       console.error('Error confirming price:', error);
-      alert('Failed to confirm price. Check your connection and try again.');
+      showStatus('Confirmation Failed', 'Failed to confirm the price. Please check your connection and try again.', 'error');
     }
   };
 
@@ -913,6 +919,14 @@ function HistoryContent() {
           </div>
         )}
       </div>
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div>
   );
 }

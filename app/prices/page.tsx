@@ -3,6 +3,8 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { formatLocalDate } from '../utils/date';
+import StatusModal from '../components/StatusModal';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -163,6 +165,23 @@ function PricesContent() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
 
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setStatusModal({ isOpen: true, title, message, type });
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -305,7 +324,7 @@ function PricesContent() {
         const latest = pricesData.reduce((a, b) =>
           new Date(a.recorded_date) > new Date(b.recorded_date) ? a : b
         );
-        setLastSaved(new Date(latest.recorded_date).toLocaleDateString());
+        setLastSaved(formatLocalDate(latest.recorded_date));
       }
     }
   };
@@ -326,7 +345,7 @@ function PricesContent() {
       setShowCopied(true);
       setTimeout(() => setShowCopied(false), 2000);
     } catch (err) {
-      alert('Failed to copy link');
+      showStatus('Copy Failed', 'Failed to copy the link to your clipboard.', 'error');
     }
   };
 
@@ -374,7 +393,7 @@ function PricesContent() {
 
     const today = new Date().toISOString().split('T')[0];
     setPricesDates({ ...pricesDates, [`${storeId}-${item}`]: today });
-    setLastSaved(new Date().toLocaleDateString());
+    setLastSaved(formatLocalDate(today));
   };
 
   const getPriceColor = (storeId: string, item: string) => {
@@ -420,7 +439,7 @@ function PricesContent() {
     }
 
     if (items.includes(editingValue.trim()) && editingValue.trim() !== oldItem) {
-      alert('An item with this name already exists');
+      showStatus('Item Exists', `An item with the name "${editingValue.trim()}" already exists.`, 'warning');
       return;
     }
 
@@ -431,7 +450,7 @@ function PricesContent() {
 
     if (itemError) {
       console.error('Error updating item:', itemError);
-      alert('Failed to update item');
+      showStatus('Update Failed', 'Failed to update the item name. Please try again.', 'error');
       return;
     }
 
@@ -495,7 +514,7 @@ function PricesContent() {
 
     if (itemError) {
       console.error('Error deleting item:', itemError);
-      alert('Failed to delete item');
+      showStatus('Delete Failed', 'Failed to delete the item. Please try again.', 'error');
       return;
     }
 
@@ -555,7 +574,7 @@ function PricesContent() {
       handleItemSelect(name);
     } catch (e) {
       console.error('Error adding item', e);
-      alert('Failed to add item');
+      showStatus('Add Failed', 'Failed to add the new item. Please try again.', 'error');
     }
   };
 
@@ -896,6 +915,14 @@ function PricesContent() {
           </table>
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div>
   );
 }
