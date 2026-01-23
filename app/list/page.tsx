@@ -7,6 +7,9 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useCategories } from '../hooks/useCategories';
 import Link from 'next/link';
 import { getFormattedUnitPrice } from '../utils/unitPrice';
+import PricePhotoCapture from '../components/PricePhotoCapture';
+import PriceReviewModal from '../components/PriceReviewModal';
+import StatusModal from '../components/StatusModal';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 
@@ -89,6 +92,31 @@ export default function ShoppingList() {
   type SelectItemsFilter = 'FAVORITES' | 'RECENT' | 'FREQUENT' | null;
   const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>(null);
   const [frequentItemCounts, setFrequentItemCounts] = useState<Record<string, number>>({});
+
+  // Price Photo Capture State
+  const [showPricePhotoCapture, setShowPricePhotoCapture] = useState(false);
+  const [showPriceReviewModal, setShowPriceReviewModal] = useState(false);
+  const [extractedPriceData, setExtractedPriceData] = useState<any>(null);
+  const [priceSubmissionId, setPriceSubmissionId] = useState<number | null>(null);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setStatusModal({ isOpen: true, title, message, type });
+  };
+  const [currentScanStore, setCurrentScanStore] = useState<{ id: string; name: string } | null>(null);
 
   // =========================
   // Mobile Mode Toggle (Store vs Build)
@@ -197,7 +225,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (e) {
       console.error('Error undoing add:', e);
-      alert('Failed to undo. Check your connection and try again.');
+      showStatus('Undo Failed', 'Failed to undo. Check your connection and try again.', 'error');
     } finally {
       setUndoAddItem(null);
     }
@@ -244,7 +272,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (e) {
       console.error('Error undoing check:', e);
-      alert('Failed to undo. Check your connection and try again.');
+      showStatus('Undo Failed', 'Failed to undo. Check your connection and try again.', 'error');
     } finally {
       setUndoCheckItem(null);
     }
@@ -335,7 +363,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (e) {
       console.error('Error undoing trip start:', e);
-      alert('Failed to undo. Check your connection and try again.');
+      showStatus('Undo Failed', 'Failed to undo. Check your connection and try again.', 'error');
     } finally {
       setTripStartedToastStore(null);
       setTripStartedToastTripId(null);
@@ -358,13 +386,13 @@ export default function ShoppingList() {
         showTripStartedToast(storeName, data.trip.id, null); // Explicit start, no implicit item
       } else {
         console.error('Start trip failed:', data);
-        alert(data.error || 'Failed to start trip. Please try again.');
+        showStatus('Start Trip Failed', data.error || 'Failed to start trip. Please try again.', 'error');
         // If it failed, unpin just in case? No, we haven't pinned yet.
       }
 
     } catch (error) {
       console.error('Error starting trip:', error);
-      alert('Failed to start trip. Please try again.');
+      showStatus('Start Trip Failed', 'Failed to start trip. Please try again.', 'error');
     }
   };
 
@@ -386,7 +414,7 @@ export default function ShoppingList() {
       }
     } catch (error) {
       console.error('Error ending trip:', error);
-      alert('Failed to end trip. Please try again.');
+      showStatus('End Trip Failed', 'Failed to end trip. Please try again.', 'error');
     }
   };
 
@@ -646,7 +674,7 @@ export default function ShoppingList() {
         if (existingErr) throw existingErr;
 
         if (existingItem && existingItem.id !== editModalItem.item_id) {
-          alert('An item with this name already exists.');
+          showStatus('Duplicate Item', 'An item with this name already exists.', 'warning');
           setSavingEdit(false);
           return;
         }
@@ -800,7 +828,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (error) {
       console.error('Error saving edit:', error);
-      alert('Failed to save changes. Check your connection and try again.');
+      showStatus('Save Failed', 'Failed to save changes. Check your connection and try again.', 'error');
       setSavingEdit(false);
     }
   };
@@ -835,7 +863,7 @@ export default function ShoppingList() {
         // Rollback on error
         setFavorites(prev => [...prev, itemName]);
         setFavoritesIds(prev => [...prev, item.id]);
-        alert('Failed to update favorite. Check your connection and try again.');
+        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
       }
     } else {
       const { error } = await supabase
@@ -849,7 +877,7 @@ export default function ShoppingList() {
         // Rollback
         setFavorites(prev => prev.filter(n => n !== itemName));
         setFavoritesIds(prev => prev.filter(id => id !== item.id));
-        alert('Failed to update favorite. Check your connection and try again.');
+        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
       }
     }
   };
@@ -1290,7 +1318,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (error) {
       console.error('Error toggling item:', error);
-      alert('Failed to update list. Check your connection and try again.');
+      showStatus('Update Failed', 'Failed to update list. Check your connection and try again.', 'error');
     }
   };
 
@@ -1397,7 +1425,7 @@ export default function ShoppingList() {
       await loadData();
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to add item. Check your connection and try again.');
+      showStatus('Add Failed', 'Failed to add item. Check your connection and try again.', 'error');
     }
   };
 
@@ -1463,7 +1491,92 @@ export default function ShoppingList() {
       await loadData();
     } catch (error) {
       console.error('Error adding item:', error);
-      alert('Failed to add item. Check your connection and try again.');
+      showStatus('Add Failed', 'Failed to add item. Check your connection and try again.', 'error');
+    }
+  };
+
+  // Price Photo Capture Handlers
+  const handleImageCaptured = async (imageData: string) => {
+    setIsAnalyzingPhoto(true);
+    setShowPricePhotoCapture(false);
+
+    try {
+      // Get list of all available items for AI matching
+      const candidateItems = allItems.map(item => item.name);
+
+      const response = await fetch('/api/prices/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-household-code': householdCode || '',
+        },
+        body: JSON.stringify({
+          image: imageData,
+          candidateItems: candidateItems
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze price tag');
+      }
+
+      if (data.success && data.extracted) {
+        setExtractedPriceData(data.extracted);
+        setPriceSubmissionId(data.submission_id);
+        setShowPriceReviewModal(true);
+      }
+    } catch (error: any) {
+      console.error('Error analyzing price tag:', error);
+      setStatusModal({
+        isOpen: true,
+        title: 'Analysis Failed',
+        message: error.message || 'We couldn\'t read the price tag. Please try a clearer photo.',
+        type: 'error'
+      });
+    } finally {
+      setIsAnalyzingPhoto(false);
+    }
+  };
+
+  const handlePriceConfirm = async (confirmData: any) => {
+    try {
+      const response = await fetch('/api/prices/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-household-code': householdCode || '',
+        },
+        body: JSON.stringify(confirmData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save price');
+      }
+
+      // Success!
+      setShowPriceReviewModal(false);
+      setExtractedPriceData(null);
+      setPriceSubmissionId(null);
+
+      // Reload data to show new price
+      await loadData();
+
+      showStatus('Success', `Price added for ${confirmData.item_name}! 🎉`, 'success');
+    } catch (error: any) {
+      console.error('Error confirming price:', error);
+      // Let the PriceReviewModal handle its own display, but we can set 
+      // a generic error here if it bubbles up unexpectedly.
+      setStatusModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: error.message || 'Something went wrong while saving the price.',
+        type: 'error'
+      });
+      throw error;
     }
   };
 
@@ -1511,7 +1624,7 @@ export default function ShoppingList() {
       loadData();
     } catch (error) {
       console.error('Error adding favorites:', error);
-      alert('Failed to add favorites. Check your connection and try again.');
+      showStatus('Add Favorites Failed', 'Failed to add favorites. Check your connection and try again.', 'error');
     }
   };
 
@@ -1536,7 +1649,7 @@ export default function ShoppingList() {
       setListItems(listItems.map((item) => (item.id === id ? { ...item, quantity } : item)));
     } catch (error) {
       console.error('Error updating quantity:', error);
-      alert('Failed to update quantity. Check your connection and try again.');
+      showStatus('Update Failed', 'Failed to update quantity. Check your connection and try again.', 'error');
     }
   };
 
@@ -1558,7 +1671,7 @@ export default function ShoppingList() {
       setListItems(listItems.map((li) => (li.id === id ? { ...li, is_priority: newPriority } : li)));
     } catch (error) {
       console.error('Error toggling priority:', error);
-      alert('Failed to update priority. Check your connection and try again.');
+      showStatus('Update Failed', 'Failed to update priority. Check your connection and try again.', 'error');
     }
   };
 
@@ -1649,7 +1762,7 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('Error toggling item:', error);
       setListItems(listItems.map((li) => (li.id === id ? { ...li, checked: !newCheckedState } : li)));
-      alert('Failed to check item. Check your connection and try again.');
+      showStatus('Check Failed', 'Failed to check item. Check your connection and try again.', 'error');
     }
   };
 
@@ -1674,7 +1787,7 @@ export default function ShoppingList() {
       } catch (error) {
         console.error('Error removing item:', error);
         setListItems((prev) => [...prev, item]);
-        alert('Failed to remove item. Check your connection and try again.');
+        showStatus('Remove Failed', 'Failed to remove item. Check your connection and try again.', 'error');
       } finally {
         setUndoRemoveItem(null);
         setUndoRemoveTimeout(null);
@@ -1705,7 +1818,7 @@ export default function ShoppingList() {
       setListItems([]);
     } catch (error) {
       console.error('Error clearing list:', error);
-      alert('Failed to clear list. Check your connection and try again.');
+      showStatus('Clear List Failed', 'Failed to clear list. Check your connection and try again.', 'error');
     }
   };
 
@@ -1941,7 +2054,7 @@ export default function ShoppingList() {
                         // Rollback on error
                         setFavorites(prev => [...prev, itemName]);
                         setFavoritesIds(prev => [...prev, item.id]);
-                        alert('Failed to update favorite. Check your connection and try again.');
+                        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
                       }
                     } else {
                       const { error } = await supabase
@@ -1955,7 +2068,7 @@ export default function ShoppingList() {
                         // Rollback on error
                         setFavorites(prev => prev.filter(n => n !== itemName));
                         setFavoritesIds(prev => prev.filter(id => id !== item.id));
-                        alert('Failed to update favorite. Check your connection and try again.');
+                        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
                       }
                     }
                   };
@@ -2262,15 +2375,41 @@ export default function ShoppingList() {
                       Shopping List <span className="text-xl text-gray-500 font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
                     </h2>
                     <div className="flex gap-2 items-center">
+                      {/* Camera Scan button */}
+                      {isMobile && mobileMode === 'store' && (
+                        <button
+                          onClick={() => {
+                            // If there's an active store, use it; otherwise no default
+                            const activeStoreEntry = Object.entries(activeTrips).find(([_, tripId]) => tripId);
+                            if (activeStoreEntry) {
+                              const [storeId, _] = activeStoreEntry;
+                              const storeName = Object.keys(storesByName).find(name => storesByName[name] === storeId);
+                              setCurrentScanStore({ id: storeId, name: storeName || '' });
+                            } else {
+                              setCurrentScanStore(null);
+                            }
+                            setShowPricePhotoCapture(true);
+                          }}
+                          className="bg-teal-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-teal-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
+                          title="Scan price tag"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                          </svg>
+                          <span className="hidden md:inline">Scan</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => setShowPriorityOnly(!showPriorityOnly)}
-                        className={`text-sm px-3 py-1 rounded-full font-bold transition flex items-center gap-1.5 cursor-pointer ${showPriorityOnly
+                        className={`text-sm px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
                           ? 'bg-red-100 text-red-700 border border-red-200'
                           : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
                           }`}
                         title="Show Urgent Items Only"
                       >
-                        <svg className="w-6 h-6" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                         </svg>
                         {/* {showPriorityOnly ? 'Flagged Only' : 'Flagged'} */}
@@ -2627,30 +2766,33 @@ export default function ShoppingList() {
                             return (
                               <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                                 <h3 className="text-lg font-bold text-gray-700 bg-gray-50 p-3.5 border-b border-gray-200">
-                                  {/* Two-column layout */}
-                                  <div className="flex items-start justify-between">
-                                    {/* Left column: Store name + Shop button */}
-                                    <div className="flex flex-col gap-2">
-                                      <span className="text-lg font-bold text-gray-800">{store}</span>
-
+                                  {/* Simple layout: Start Button + Store Name | Total */}
+                                  <div className="flex items-center justify-between gap-3">
+                                    {/* Left: Start Trip button + Store name */}
+                                    <div className="flex items-center gap-3">
+                                      {/* Start Trip button (mobile only) */}
                                       {isMobile && mobileMode === 'store' && (
                                         <button
                                           onClick={() => {
                                             const id = storesByName[store];
                                             if (id) startTrip(id, store);
                                           }}
-                                          className="bg-white border border-indigo-200 hover:bg-indigo-200 text-indigo-700 text-sm font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer flex items-center gap-1.5 w-fit"
+                                          className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
+                                          title="Start Trip"
                                         >
                                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                                           </svg>
-                                          Start Trip
+                                          <span className="hidden md:inline">Start</span>
                                         </button>
                                       )}
+
+                                      {/* Store name */}
+                                      <span className="text-lg font-bold text-gray-800">{store}</span>
                                     </div>
 
-                                    {/* Right column: Total + Item count */}
-                                    <div className="flex flex-col gap-2 items-end">
+                                    {/* Right: Total and item count */}
+                                    <div className="flex flex-col items-end">
                                       <span className="text-xl font-bold text-teal-700">
                                         ${storeTotal.toFixed(2)}
                                       </span>
@@ -3866,6 +4008,50 @@ export default function ShoppingList() {
         }
 
       </div>
+
+      {/* Price Photo Capture Modal */}
+      {showPricePhotoCapture && (
+        <PricePhotoCapture
+          onImageCaptured={handleImageCaptured}
+          onClose={() => setShowPricePhotoCapture(false)}
+        />
+      )}
+
+      {/* Price Review Modal */}
+      {showPriceReviewModal && extractedPriceData && priceSubmissionId && householdCode && (
+        <PriceReviewModal
+          extractedData={extractedPriceData}
+          submissionId={priceSubmissionId}
+          onConfirm={handlePriceConfirm}
+          onCancel={() => {
+            setShowPriceReviewModal(false);
+            setExtractedPriceData(null);
+            setPriceSubmissionId(null);
+          }}
+          householdCode={householdCode}
+          defaultStore={currentScanStore}
+          showStatus={showStatus}
+        />
+      )}
+
+      {/* Analyzing Loading Indicator */}
+      {isAnalyzingPhoto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-teal-600"></div>
+            <p className="text-lg font-semibold text-gray-900">Analyzing price tag...</p>
+            <p className="text-sm text-gray-600">This may take a few seconds</p>
+          </div>
+        </div>
+      )}
+
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+        title={statusModal.title}
+        message={statusModal.message}
+        type={statusModal.type}
+      />
     </div >
   );
 }
