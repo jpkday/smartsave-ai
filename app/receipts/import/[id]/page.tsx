@@ -265,31 +265,37 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     const finalizeImport = async () => {
         setImporting(true);
         const householdCode = localStorage.getItem('household_code');
+        const shouldAddTrip = receipt?.ocr_data?.should_add_trip !== false; // Default to true if missing
 
         try {
             if (!storeId) throw new Error("Please select a store.");
 
-            // 1. Create Trip (Default to 20min duration ending at receipt time)
+            let tripId = null;
             const dateStr = receipt?.ocr_data?.date || new Date().toISOString().split('T')[0];
             const timeStr = receipt?.ocr_data?.time || '12:00';
             const isoDate = `${dateStr}T${timeStr}:00`;
 
             const tripEndDate = new Date(isoDate);
-            const tripStartDate = new Date(tripEndDate.getTime() - 20 * 60 * 1000); // 20 mins earlier
 
-            const { data: trip, error: tripError } = await supabase
-                .from('trips')
-                .insert({
-                    household_code: householdCode,
-                    store_id: storeId,
-                    store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
-                    started_at: tripStartDate.toISOString(),
-                    ended_at: tripEndDate.toISOString()
-                })
-                .select()
-                .single();
+            // 1. Create Trip (if enabled)
+            if (shouldAddTrip) {
+                const tripStartDate = new Date(tripEndDate.getTime() - 20 * 60 * 1000); // 20 mins earlier
 
-            if (tripError) throw tripError;
+                const { data: trip, error: tripError } = await supabase
+                    .from('trips')
+                    .insert({
+                        household_code: householdCode,
+                        store_id: storeId,
+                        store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
+                        started_at: tripStartDate.toISOString(),
+                        ended_at: tripEndDate.toISOString()
+                    })
+                    .select()
+                    .single();
+
+                if (tripError) throw tripError;
+                tripId = trip.id;
+            }
 
             // 2. Process Items
             for (const row of rows.filter(r => r.isConfirmed)) {
@@ -297,9 +303,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
                 // A. Create New Item if needed
                 if (row.status === 'new') {
-                    if (!row.newItemName) continue; // Skip if empty?
+                    if (!row.newItemName) continue;
 
-                    // Check exist again just in case
                     const { data: existing } = await supabase.from('items').select('id').eq('name', row.newItemName).single();
 
                     if (existing) {
@@ -319,19 +324,12 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     }
                 }
 
-                // B. Learn Alias (The Core Feature)
-                // If the scanned name is significantly different from the final item name, learn it.
-                // AND if it wasn't already an exact match in our alias DB.
+                // B. Learn Alias
                 const finalItemName = row.status === 'matched' ? row.selectedItemName : row.newItemName;
 
                 if (finalItemId && row.ocrName && finalItemName && storeId) {
                     const isExactName = row.ocrName.toLowerCase() === finalItemName.toLowerCase();
-                    // We should check if we ALREADY had this alias to avoid constraint errors
-                    // But upsert / ignore might be easier.
-                    // Let's rely on the unique constraint and ignore error or check first.
-
                     if (!isExactName) {
-                        // Attempt to insert alias - ignore error if exists
                         const { error: aliasError } = await supabase.from('item_aliases').insert({
                             item_id: finalItemId,
                             store_id: storeId,
@@ -344,26 +342,28 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     }
                 }
 
-                // C. Create Shopping List Event (The Trip Item)
-                if (finalItemId) {
+                // C. Create Shopping List Event (if trip exists)
+                if (finalItemId && tripId) {
                     await supabase.from('shopping_list_events').insert({
-                        trip_id: trip.id,
+                        trip_id: tripId,
                         household_code: householdCode,
                         store_id: storeId,
-                        store: trip.store,
+                        store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
                         item_id: finalItemId,
                         item_name: finalItemName,
                         price: row.ocrPrice || 0,
                         quantity: row.ocrQuantity || 1,
                         checked_at: tripEndDate.toISOString()
                     });
+                }
 
-                    // D. Log Price History
+                // D. Log Price History (Always do this)
+                if (finalItemId) {
                     await supabase.from('price_history').insert({
                         item_id: finalItemId,
                         item_name: finalItemName,
                         store_id: storeId,
-                        store: trip.store,
+                        store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
                         price: row.ocrPrice || 0,
                         recorded_date: dateStr,
                         household_code: householdCode,
@@ -378,7 +378,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             setStatusModal({
                 isOpen: true,
                 title: 'Import Success',
-                message: "Receipt imported successfully!",
+                message: shouldAddTrip ? "Receipt imported and trip recorded!" : "Receipt items and prices imported!",
                 type: 'success',
                 onCloseOverride: () => router.push('/receipts')
             });
@@ -570,8 +570,6 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                                 if (row.status === 'matched') {
                                                                     handleRowChange(idx, { status: 'new', newItemName: row.ocrName, selectedItemId: undefined, selectedItemName: undefined });
                                                                 } else {
-                                                                    // For new items, maybe reset to AI suggestion if it existed?
-                                                                    // For now, toggle back to matched with placeholder
                                                                     handleRowChange(idx, { status: 'matched', selectedItemId: undefined, selectedItemName: 'Select Item...' });
                                                                 }
                                                             }}

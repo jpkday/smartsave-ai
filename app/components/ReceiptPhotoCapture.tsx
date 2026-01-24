@@ -4,12 +4,13 @@ import { useState, useRef } from 'react';
 import { CameraIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ReceiptPhotoCaptureProps {
-    onImageCaptured: (imageData: string) => void;
+    onImageCaptured: (imageData: string, addToTrips: boolean) => void;
     onClose: () => void;
 }
 
 export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: ReceiptPhotoCaptureProps) {
     const [preview, setPreview] = useState<string | null>(null);
+    const [addToTrips, setAddToTrips] = useState(true);
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -27,7 +28,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
 
     const handleAnalyze = () => {
         if (preview) {
-            onImageCaptured(preview);
+            onImageCaptured(preview, addToTrips);
             onClose();
         }
     };
@@ -76,6 +77,23 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                             className="hidden"
                             id="receipt-gallery-input"
                         />
+
+                        {/* Trip Data Checkbox - Positioned ABOVE buttons, right-aligned, no container */}
+                        <div className="flex justify-end pt-1">
+                            <label className="flex items-center gap-2 cursor-pointer select-none group">
+
+                                <input
+                                    id="add-to-trips"
+                                    type="checkbox"
+                                    checked={addToTrips}
+                                    onChange={(e) => setAddToTrips(e.target.checked)}
+                                    className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span className="text-xs font-bold text-blue-900/60 group-hover:text-blue-600 transition-colors">
+                                    Add to Recent Trips
+                                </span>
+                            </label>
+                        </div>
 
                         {/* Main Camera Option */}
                         <button
@@ -126,6 +144,22 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                         {/* Image Preview */}
                         <div className="rounded-2xl overflow-hidden border-2 border-gray-100 shadow-md max-h-[50vh] flex items-center justify-center bg-gray-50">
                             <img src={preview} alt="Receipt preview" className="max-w-full h-auto object-contain" />
+                        </div>
+
+                        {/* Trip Data Checkbox - Also right-aligned and no container here */}
+                        <div className="flex justify-end">
+                            <label className="flex items-center gap-2 cursor-pointer select-none group">
+                                <span className="text-xs font-bold text-blue-900/60 group-hover:text-blue-600 transition-colors">
+                                    Add to Recent Trips
+                                </span>
+                                <input
+                                    id="add-to-trips-preview"
+                                    type="checkbox"
+                                    checked={addToTrips}
+                                    onChange={(e) => setAddToTrips(e.target.checked)}
+                                    className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                            </label>
                         </div>
 
                         {/* Action Buttons */}

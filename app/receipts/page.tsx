@@ -421,7 +421,6 @@ function ReceiptsContent() {
 
         // Compress to JPEG 0.7 quality
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // Slightly better quality
-        console.log(`Resized data size: ${dataUrl.length}`);
         resolve(dataUrl);
       };
       img.onerror = (err) => {
@@ -442,23 +441,18 @@ function ReceiptsContent() {
     });
   };
 
-  const processReceiptImage = async (rawBase64: string) => {
+  const processReceiptImage = async (rawBase64: string, shouldAddTrip: boolean = true) => {
     setScanning(true);
     let finalBase64 = rawBase64;
 
     try {
-      // Try to resize (safari/chrome handle standard formats)
-      // IF HEIC, this might fail or browser might not render it to canvas
-      console.log("Original Base64 length:", rawBase64.length);
+      // Try to resize
       finalBase64 = await resizeImage(rawBase64);
-      console.log("Resized Base64 length:", finalBase64.length);
     } catch (resizeErr) {
       console.error("Image resize failed:", resizeErr);
-      // Fallback to original
       finalBase64 = rawBase64;
     }
 
-    // Always try to set preview. Mobile browsers (iOS) can typically render HEIC.
     setScanPreview(finalBase64);
 
     try {
@@ -470,7 +464,8 @@ function ReceiptsContent() {
         },
         body: JSON.stringify({
           image: finalBase64,
-          candidateItems: items // Inject known items for AI matching
+          candidateItems: items, // Inject known items for AI matching
+          shouldAddTrip
         }),
       });
 
@@ -484,13 +479,10 @@ function ReceiptsContent() {
       }
 
       if (!response.ok) {
-        console.error("API Error Status:", response.status);
-        console.error("API Error Body:", text);
         throw new Error(data?.error || `Server error (${response.status}): ${text.slice(0, 100)}`);
       }
 
       if (data.success && data.importId) {
-        // Redirect to reconciliation page
         router.push(`/receipts/import/${data.importId}`);
       } else {
         setStatusModal({
@@ -971,16 +963,9 @@ function ReceiptsContent() {
                         value={ri.item}
                         onChange={(e) => updateItem(idx, 'item', e.target.value)}
                         onBlur={(e) => {
-                          // Trigger alias prompt on blur if value matches a canonical item
                           if (items.includes(e.target.value) &&
                             ri.originalName &&
                             ri.originalName !== e.target.value) {
-                            // Optional: handleItemSelect(idx, e.target.value);
-                            // Only prompt if they explicitly selected/typed a known item
-                            // Using blur might be annoying, maybe relying on datalist selection is better?
-                            // Let's stick to a manual "Learn" button or just simple onChange logic? 
-                            // Actually, `handleItemSelect` usage in `onChange` is hard because it triggers on every keystroke.
-                            // Let's rely on the user finishing the entry.
                             handleItemSelect(idx, e.target.value);
                           }
                         }}

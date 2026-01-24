@@ -5,7 +5,7 @@ export const maxDuration = 60; // Increase timeout to 60 seconds
 
 export async function POST(req: NextRequest) {
     try {
-        const { image, candidateItems = [] } = await req.json();
+        const { image, candidateItems = [], shouldAddTrip = true } = await req.json();
 
         console.log("Analyze Request Received");
         if (image) {
@@ -150,9 +150,6 @@ export async function POST(req: NextRequest) {
             const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
             // 1. Determine Household (Use a header or default for now - context is scarce in simple API)
-            // Ideally passed via header. For now, we'll try to find a store to infer context or just save.
-            // Wait, this is a public API route. We need the user context.
-            // The frontend should pass `household_code`.
             const householdCode = req.headers.get('x-household-code');
 
             if (!householdCode) {
@@ -180,12 +177,8 @@ export async function POST(req: NextRequest) {
                 .insert({
                     household_code: householdCode,
                     store_id: storeId,
-                    image_url: base64Data.slice(0, 100) + "...", // Don't save huge base64 to text col if not needed, or use Storage. 
-                    // ideally we upload image to Storage. For now, let's just save the OCR data. 
-                    // If we need the image to review, we should probably upload it.
-                    // For this iteration, let's assume the frontend holds the image or we assume "ocr_data" is enough for the text-based review.
-                    // Actually, the user wants "Scanned Item vs Match". We need the OCR text implies we rely on "ocr_data".
-                    ocr_data: data,
+                    image_url: base64Data.slice(0, 100) + "...",
+                    ocr_data: { ...data, should_add_trip: shouldAddTrip },
                     status: 'pending'
                 })
                 .select('id')
@@ -214,3 +207,4 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+village

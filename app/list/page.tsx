@@ -2554,7 +2554,7 @@ export default function ShoppingList() {
                                       onClick={() => endTrip(activeTrips[storeId], storeId)}
                                       className="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
                                     >
-                                      Complete
+                                      End
                                     </button>
                                     <span className="text-sm text-gray-500 font-medium">
                                       {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
