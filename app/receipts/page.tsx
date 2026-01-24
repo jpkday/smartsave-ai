@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { getFuzzyMatch } from '../lib/utils';
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
 import StatusModal from '../components/StatusModal';
+import ReceiptPhotoCapture from '../components/ReceiptPhotoCapture';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -72,6 +73,8 @@ function ReceiptsContent() {
     message: '',
     type: 'info'
   });
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Alias Modal Removed
 
@@ -162,16 +165,15 @@ function ReceiptsContent() {
     }
   }, [searchParams, items]); // Add items to deps to ensure we have candidate list
 
-  // Handle triggered scan (opens camera/file picker on arrival)
+  // Handle triggered scan (opens modal on arrival)
   useEffect(() => {
     if (searchParams.get('scan') === 'true') {
-      // Small delay to ensure browser allows the click gesture context to carry over
-      const timer = setTimeout(() => {
-        fileInputRef.current?.click();
-      }, 300);
-      return () => clearTimeout(timer);
+      setIsCaptureModalOpen(true);
+      // Clean up the URL to avoid re-opening on refresh
+      const newUrl = window.location.pathname;
+      router.replace(newUrl, { scroll: false });
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   useEffect(() => {
     const draft: ReceiptDraft = {
@@ -367,9 +369,22 @@ function ReceiptsContent() {
     return dt.toISOString();
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [scanPreview, setScanPreview] = useState<string | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async (event) => {
+        const rawBase64 = event.target?.result as string;
+        await processReceiptImage(rawBase64);
+      };
+
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Helper to resize image
   const resizeImage = (input: File | string): Promise<string> => {
@@ -495,28 +510,9 @@ function ReceiptsContent() {
       });
     } finally {
       setScanning(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-
-      reader.onload = async (event) => {
-        const rawBase64 = event.target?.result as string;
-        await processReceiptImage(rawBase64);
-      };
-
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const clearScan = () => {
-    setScanPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   const saveReceipt = async () => {
     if (!selectedStoreId) {
@@ -833,46 +829,40 @@ function ReceiptsContent() {
             <div className="border border-slate-200 rounded-2xl shadow-sm p-4 bg-blue-50">
               <div className="flex flex-col items-center justify-center gap-4">
 
-                {scanPreview ? (
-                  <div className="relative w-full max-w-md">
-                    <img src={scanPreview} alt="Receipt Preview" className="w-full rounded-lg shadow-lg" />
+                <div className="w-full">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={clearScan}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md"
-                    >
-                      ✕
-                    </button>
-                    {scanning && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                        <div className="text-white font-bold animate-pulse text-xl">Analyzing... </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center w-full">
-                    <h3 className="font-bold text-blue-900 mb-2"></h3>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => setIsCaptureModalOpen(true)}
                       disabled={scanning}
-                      className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] transition flex items-center justify-center gap-2"
+                      className="aspect-square bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:scale-[1.02] transition flex flex-col items-center justify-center gap-2 p-2"
                     >
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                      Scan Receipt
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      <span className="text-sm">Scan Receipt</span>
                     </button>
-                    <p className="text-xs text-blue-700 mt-2">
-                      We'll extract item and price data automatically.
-                    </p>
-                  </div>
-                )}
 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                />
+                    <button
+                      onClick={() => galleryInputRef.current?.click()}
+                      disabled={scanning}
+                      className="aspect-square bg-white border-2 border-blue-100 text-blue-600 rounded-2xl font-bold shadow-sm hover:bg-blue-50 transition flex flex-col items-center justify-center gap-2 p-2"
+                    >
+                      <PhotoIcon className="w-10 h-10 text-blue-500" />
+                      <span className="text-sm">Upload from Gallery</span>
+                    </button>
+                  </div>
+
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+
+                  <p className="text-xs text-blue-700 mt-2 text-center w-full">
+                    We'll extract item and price data automatically.
+                  </p>
+                </div>
+
               </div>
             </div>
 
@@ -901,7 +891,7 @@ function ReceiptsContent() {
                     {/* Desktop Upload Button */}
                     <div className="hidden md:flex items-center gap-2">
                       <button
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => setIsCaptureModalOpen(true)}
                         disabled={scanning}
                         className="text-xs font-bold text-blue-600 hover:text-indigo-600 flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
                       >
@@ -1095,6 +1085,22 @@ function ReceiptsContent() {
         message={statusModal.message}
         type={statusModal.type}
       />
+      {/* Capture Modal */}
+      {isCaptureModalOpen && (
+        <ReceiptPhotoCapture
+          onImageCaptured={processReceiptImage}
+          onClose={() => setIsCaptureModalOpen(false)}
+        />
+      )}
+
+      {/* Analyzing Overlay (Visible when processing) */}
+      {scanning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex flex-col items-center justify-center text-white">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
+          <h2 className="text-2xl font-bold animate-pulse">Analyzing Receipt...</h2>
+          <p className="text-white/70 mt-2">Extracting your savings data</p>
+        </div>
+      )}
     </div>
   );
 }
