@@ -2316,26 +2316,39 @@ export default function ShoppingList() {
                                     {it.name}
                                   </button>
 
-                                  {priceData ? (
-                                    <p className="text-xs text-green-600 mt-0.5">
-                                      {formatMoney(price)}{' '}
-                                      <span className="text-gray-400 ml-1">
-                                        ({getDaysAgo(priceData.date)}, {effStore})
-                                      </span>
-                                      {(() => {
-                                        const unitPrice = getFormattedUnitPrice(it.name, price);
-                                        return unitPrice ? (
-                                          <span className="text-teal-600 ml-1">
-                                            • {unitPrice}
-                                          </span>
-                                        ) : null;
-                                      })()}
-                                    </p>
-                                  ) : (
-                                    <p className="text-xs text-gray-400 mt-0.5">
-                                      No price data available
-                                    </p>
-                                  )}
+                                  <div className="mt-1 flex items-center gap-2">
+                                    {(priceData && price > 0) ? (
+                                      <p className="text-xs text-green-600">
+                                        {formatMoney(price)}{' '}
+                                        <span className="text-gray-400 ml-1">
+                                          ({getDaysAgo(priceData.date)}, {effStore})
+                                        </span>
+                                      </p>
+                                    ) : (
+                                      <button
+                                        onClick={() => openEditModal({
+                                          id: '', // Virtual ID
+                                          item_id: it.id,
+                                          item_name: it.name,
+                                          quantity: 1,
+                                          checked: false,
+                                          is_priority: false,
+                                          category_id: it.category_id,
+                                          category: it.category
+                                        }, 'price')}
+                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                      >
+                                        Add Price
+                                      </button>
+                                    )}
+
+                                    {(priceData && price > 0) && (() => {
+                                      const unitPrice = getFormattedUnitPrice(it.name, price);
+                                      return unitPrice ? (
+                                        <span className="text-teal-600 text-xs font-medium">• {unitPrice}</span>
+                                      ) : null;
+                                    })()}
+                                  </div>
 
                                   {/* Active Note Preview */}
                                   {it.active_note && (
@@ -2636,23 +2649,31 @@ export default function ShoppingList() {
                                                       </button>
                                                     </div>
 
-                                                    <div className="mt-0.5 flex items-center gap-2">
-                                                      <p className="text-xs text-green-600 min-w-0">
-                                                        {formatMoney(price)}{' '}
-                                                        {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                        {priceData?.date ? (
-                                                          <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
-                                                        ) : null}
-                                                        {(() => {
-                                                          const unitPrice = getFormattedUnitPrice(item.item_name, price);
-                                                          return unitPrice ? (
-                                                            <span className="text-teal-600 ml-1">
-                                                              • {unitPrice}
-                                                            </span>
-                                                          ) : null;
-                                                        })()}
-                                                      </p>
-
+                                                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                                                      {price > 0 ? (
+                                                        <p className="text-xs text-green-600 min-w-0">
+                                                          {formatMoney(price)}{' '}
+                                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                          {priceData?.date ? (
+                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
+                                                          ) : null}
+                                                          {(() => {
+                                                            const unitPrice = getFormattedUnitPrice(item.item_name, price);
+                                                            return unitPrice ? (
+                                                              <span className="text-teal-600 ml-1">
+                                                                • {unitPrice}
+                                                              </span>
+                                                            ) : null;
+                                                          })()}
+                                                        </p>
+                                                      ) : (
+                                                        <button
+                                                          onClick={() => openEditModal(item, 'price')}
+                                                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                        >
+                                                          Add Price
+                                                        </button>
+                                                      )}
                                                       {missingCategory && (
                                                         <button
                                                           onClick={() => openEditModal(item, 'category')}
@@ -2926,25 +2947,33 @@ export default function ShoppingList() {
                                                       </button>
                                                     </div>
 
-                                                    <div className="mt-0.5 flex items-center gap-2">
-                                                      <div className="min-w-0">
-                                                        <p className="text-xs text-green-600">
-                                                          {formatMoney(price)}{' '}
-                                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                          {priceData?.date ? (
-                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
-                                                          ) : null}
-                                                          {(() => {
-                                                            const unitPrice = getFormattedUnitPrice(item.item_name, price);
-                                                            return unitPrice ? (
-                                                              <span className="text-teal-600 ml-1">
-                                                                • {unitPrice}
-                                                              </span>
-                                                            ) : null;
-                                                          })()}
-                                                        </p>
-                                                      </div>
-
+                                                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                                                      {price > 0 ? (
+                                                        <div className="min-w-0">
+                                                          <p className="text-xs text-green-600">
+                                                            {formatMoney(price)}{' '}
+                                                            {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
+                                                            {priceData?.date ? (
+                                                              <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
+                                                            ) : null}
+                                                            {(() => {
+                                                              const unitPrice = getFormattedUnitPrice(item.item_name, price);
+                                                              return unitPrice ? (
+                                                                <span className="text-teal-600 ml-1">
+                                                                  • {unitPrice}
+                                                                </span>
+                                                              ) : null;
+                                                            })()}
+                                                          </p>
+                                                        </div>
+                                                      ) : (
+                                                        <button
+                                                          onClick={() => openEditModal(item, 'price')}
+                                                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                                                        >
+                                                          Add Price
+                                                        </button>
+                                                      )}
                                                       {missingCategory && (
                                                         <button
                                                           onClick={() => openEditModal(item, 'category')}
@@ -3486,32 +3515,28 @@ export default function ShoppingList() {
                     (store) => !options.find((opt) => opt.store === store)
                   );
 
-                  if (options.length === 0) {
-                    return (
-                      <p className="text-gray-500 text-sm">No stores with price data available.</p>
-                    );
-                  }
-
                   return (
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        {/* Auto option */}
-                        <button
-                          onClick={() => {
-                            setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                            closeStoreModal();
-                          }}
-                          className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                            <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-                          </div>
-                          <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
-                        </button>
+                        {/* Auto option - only if there are options with prices */}
+                        {options.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setItemStorePreference(activeItemForStoreModal, 'AUTO');
+                              closeStoreModal();
+                            }}
+                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                              }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-800">Auto (cheapest)</span>
+                              <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
+                            </div>
+                            <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
+                          </button>
+                        )}
 
-                        {/* Store options - only stores with prices */}
+                        {/* Store options - stores with prices */}
                         {options.map(({ store, price }, idx) => {
                           const isSelected = pref === store;
                           const isBestPrice = idx === 0;
@@ -3540,35 +3565,70 @@ export default function ShoppingList() {
                         })}
                       </div>
 
-                      {/* Add Price For section */}
+                      {/* Stores without prices - now swappable! */}
                       {storesWithoutPrice.length > 0 && (
                         <div className="pt-3 border-t-2 border-dashed border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-600 mb-2">Add Price For:</h4>
+                          <h4 className="text-sm font-semibold text-gray-600 mb-2">
+                            {options.length === 0 ? "Select a Store:" : "Other Favorite Stores:"}
+                          </h4>
                           <div className="space-y-2">
-                            {storesWithoutPrice.map((store) => (
-                              <button
-                                key={store}
-                                onClick={() => {
-                                  // Find the item in the list
-                                  const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
-                                  if (item) {
-                                    // Close swap modal and open edit modal with this store pre-selected
-                                    closeStoreModal();
-                                    setEditModalItem(item);
-                                    setEditModalName(item.item_name);
-                                    setEditModalQuantity(String(item.quantity ?? 1));
-                                    setEditModalStore(store);
-                                    setEditModalPrice('');
-                                    setEditModalOriginalPrice('');
-                                    setEditModalOpen(true);
-                                  }
-                                }}
-                                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed border-gray-300 hover:bg-gray-50 transition text-left"
-                              >
-                                <span className="font-semibold text-gray-800">{store}</span>
-                                <span className="text-sm text-indigo-600 font-semibold">+ Add Price</span>
-                              </button>
-                            ))}
+                            {storesWithoutPrice.map((store) => {
+                              const isSelected = pref === store;
+                              return (
+                                <div
+                                  key={store}
+                                  className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50 font-bold' : 'border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                  <div
+                                    className="flex-1 cursor-pointer"
+                                    onClick={() => {
+                                      setItemStorePreference(activeItemForStoreModal, store);
+                                      closeStoreModal();
+                                    }}
+                                  >
+                                    <span className="text-gray-800">{store}</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => {
+                                        setItemStorePreference(activeItemForStoreModal, store);
+                                        closeStoreModal();
+                                      }}
+                                      className={`p-2 rounded-lg transition ${isSelected ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                      title={isSelected ? 'Currently Selected' : 'Swap to this store'}
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                      </svg>
+                                    </button>
+
+                                    <button
+                                      onClick={() => {
+                                        const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
+                                        if (item) {
+                                          closeStoreModal();
+                                          setEditModalItem(item);
+                                          setEditModalName(item.item_name);
+                                          setEditModalQuantity(String(item.quantity ?? 1));
+                                          setEditModalStore(store);
+                                          setEditModalPrice('');
+                                          setEditModalOriginalPrice('');
+                                          setEditModalOpen(true);
+                                        }
+                                      }}
+                                      className="text-indigo-600 hover:bg-indigo-100 p-2 rounded-full transition"
+                                      title="Add Price"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
