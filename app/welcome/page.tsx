@@ -28,13 +28,47 @@ export default function WelcomePage() {
 
     useEffect(() => {
         const code = localStorage.getItem('household_code');
+        const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding');
+
         if (!code) {
             router.push('/');
             return;
         }
+
+        if (hasSeenOnboarding === 'true') {
+            router.push('/list');
+            return;
+        }
+
         setHouseholdCode(code);
-        fetchBaseItems();
+
+        // Safeguard: Check if user already has items. 
+        // If they do, they don't need the onboarding "Welcome" experience.
+        checkExistingItems(code).then((hasItems) => {
+            if (!hasItems) {
+                fetchBaseItems();
+            }
+        });
     }, [router]);
+
+    async function checkExistingItems(code: string) {
+        try {
+            const { count, error } = await supabase
+                .from('shopping_list')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', SHARED_USER_ID)
+                .eq('household_code', code);
+
+            if (!error && count !== null && count > 0) {
+                localStorage.setItem('has_seen_onboarding', 'true');
+                router.push('/list');
+                return true;
+            }
+        } catch (err) {
+            console.error('Error checking existing items:', err);
+        }
+        return false;
+    }
 
     async function fetchBaseItems() {
         try {

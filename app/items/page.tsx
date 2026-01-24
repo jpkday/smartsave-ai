@@ -583,21 +583,28 @@ function ItemsContent() {
 
     if (itemError) throw new Error(itemError.message);
 
-    const { error: phError } = await supabase
-      .from('price_history')
-      .update({ item_name: nextName })
-      .eq('item_name', oldName)
-      .eq('user_id', SHARED_USER_ID);
-
-    if (phError) throw new Error(phError.message);
-
-    const { error: slError } = await supabase
-      .from('shopping_list')
-      .update({ item_name: nextName })
-      .eq('item_name', oldName)
-      .eq('user_id', SHARED_USER_ID);
-
-    if (slError) throw new Error(slError.message);
+    // Cascade rename to all historical or active references
+    try {
+      await Promise.all([
+        supabase
+          .from('price_history')
+          .update({ item_name: nextName })
+          .eq('item_name', oldName)
+          .eq('user_id', SHARED_USER_ID),
+        supabase
+          .from('shopping_list')
+          .update({ item_name: nextName })
+          .eq('item_name', oldName)
+          .eq('user_id', SHARED_USER_ID),
+        supabase
+          .from('shopping_list_events')
+          .update({ item_name: nextName })
+          .eq('item_name', oldName)
+      ]);
+    } catch (cascadeError) {
+      console.error('Error cascading item rename:', cascadeError);
+      // We don't throw here as the primary item update succeeded
+    }
 
     setItems((prev) => prev.map((i) => (i.name === oldName ? { ...i, name: nextName } : i)));
   };

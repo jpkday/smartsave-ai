@@ -32,10 +32,7 @@ type PriceTrend = {
   store_id: string;
   store_name: string;
   price_30_days_ago: string;
-  first_date: string;
   current_price: string;
-  last_date: string;
-  price_change: string;
   pct_change: string;
 };
 
@@ -98,10 +95,8 @@ export default function InsightsPage() {
       return;
     }
 
-    const { data: frequent } = await supabase.rpc('get_frequent_items', {
-      household: householdCode
-    });
 
+    // Use original name and no params to avoid 404 if SQL didn't run
     const { data: trends } = await supabase.rpc('get_price_trends');
 
     // Fetch User's Favorited Stores for Filtering
@@ -125,19 +120,12 @@ export default function InsightsPage() {
     if (itemsData) {
       itemsData.forEach((i: any) => {
         const catId = i.category_id !== null ? i.category_id : -1;
-        itemMap.set(i.name, catId);
+        itemMap.set(i.name.toLowerCase(), catId);
         itemIdMap.set(i.id, catId);
         itemIdToName.set(i.id, i.name);
       });
     }
 
-    if (frequent) {
-      const mappedFrequent: FrequentItem[] = frequent.slice(0, 10).map((i: any) => ({
-        ...i,
-        category_id: itemIdMap.get(i.item_id) ?? -1
-      }));
-      setFrequentItems(mappedFrequent);
-    }
 
     if (trends) {
       // Filter trends by favorite stores AND map categories
@@ -145,7 +133,10 @@ export default function InsightsPage() {
         .filter((t: any) => favStoreIds.has(t.store_id))
         .map((t: any) => ({
           ...t,
-          category_id: itemMap.get(t.item_name) ?? -1
+          category_id: itemMap.get(t.item_name.toLowerCase()) ?? -1,
+          price_30_days_ago: String(t.price_30_days_ago || t.start_price || '0'),
+          current_price: String(t.current_price || '0'),
+          pct_change: String(t.pct_change || '0')
         }));
       setPriceTrends(mappedTrends);
     }
@@ -176,39 +167,61 @@ export default function InsightsPage() {
         console.error('Error fetching events:', eventsError);
       } else if (eventsData) {
         const spendMap = new Map<string, number>();
-        const itemPrices = new Map<string, { store: string; price: number; date: string }[]>();
+        const itemPrices = new Map<number, { store: string; price: number; date: string }[]>();
+        const frequencyMap = new Map<number, { count: number; last_date: string; total_price: number; price_count: number }>();
 
         eventsData.forEach((event: any) => {
           const storeName = tripStoreMap.get(event.trip_id);
           const priceVal = parseFloat(String(event.price));
           const quantity = event.quantity || 1;
           const itemName = itemIdToName.get(event.item_id);
+          const tripDate = tripsData.find((t: any) => t.id === event.trip_id)?.started_at || '';
 
           if (storeName && !isNaN(priceVal)) {
             // Aggregate Spend
-            const current = spendMap.get(storeName) || 0;
-            spendMap.set(storeName, current + (priceVal * quantity));
+            const currentSpend = spendMap.get(storeName) || 0;
+            spendMap.set(storeName, currentSpend + (priceVal * quantity));
 
-            // Collect Item Prices for AI Analysis
-            if (itemName) {
-              const cleanName = itemName.trim().toLowerCase();
-              const existing = itemPrices.get(cleanName) || [];
-              const tripDate = tripsData.find((t: any) => t.id === event.trip_id)?.started_at || '';
-              existing.push({ store: storeName, price: priceVal / quantity, date: tripDate }); // Normalize price per unit if possible, but usually price is total? Assuming price is unit price based on previous code usually.
-              // Actually in `shopping_list_events`, `price` is often user entered. It might be total.
-              // But usually users enter unit price. Let's assume unit price for now or that quantity=1.
-              // If quantity > 1 and price is total, we should divide.
-              // Let's assume price is "Item Price" (unit).
-              itemPrices.set(cleanName, existing);
+            // Collect Item Prices for AI Analysis (using ID)
+            if (event.item_id) {
+              const itemId = event.item_id;
+              const existing = itemPrices.get(itemId) || [];
+              existing.push({ store: storeName, price: priceVal / quantity, date: tripDate });
+              itemPrices.set(itemId, existing);
             }
           }
+
+          // Track Frequency
+          if (event.item_id) {
+            const currentFreq = frequencyMap.get(event.item_id) || { count: 0, last_date: '', total_price: 0, price_count: 0 };
+            currentFreq.count += 1;
+            if (!currentFreq.last_date || tripDate > currentFreq.last_date) {
+              currentFreq.last_date = tripDate;
+            }
+            if (!isNaN(priceVal) && priceVal > 0) {
+              currentFreq.total_price += priceVal;
+              currentFreq.price_count += 1;
+            }
+            frequencyMap.set(event.item_id, currentFreq);
+          }
         });
+
+        // Set Frequent Items state
+        const mappedFrequent: FrequentItem[] = Array.from(frequencyMap.entries()).map(([itemId, stats]) => ({
+          item_id: itemId,
+          item_name: itemIdToName.get(itemId) || 'Unknown Item',
+          category_id: itemIdMap.get(itemId) ?? -1,
+          purchase_count: stats.count,
+          last_purchased: stats.last_date,
+          avg_price_paid: stats.price_count > 0 ? (stats.total_price / stats.price_count).toFixed(2) : '0.00'
+        }));
+        setFrequentItems(mappedFrequent);
 
         // Generate AI Recommendations
         const newRecs: Recommendation[] = [];
 
-        // 1. Store Switcher Logic
-        itemPrices.forEach((observations, itemName) => {
+        // 1. Store Switcher Logic (ID-driven)
+        itemPrices.forEach((observations, itemId) => {
           if (observations.length < 2) return;
 
           // Group by store to find average price per store
@@ -237,12 +250,12 @@ export default function InsightsPage() {
             if (minPrice > 0 && maxPrice > 0 && minStore !== maxStore) {
               const diffPct = ((maxPrice - minPrice) / maxPrice) * 100;
               if (diffPct > 20) {
-                const properItemName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
+                const itemName = itemIdToName.get(itemId) || 'Unknown Item';
                 newRecs.push({
-                  id: `switch-${itemName}`,
+                  id: `switch-${itemId}`,
                   type: 'switch_store',
                   title: 'Better Price Available',
-                  message: `You bought ${properItemName} at ${maxStore} ($${maxPrice.toFixed(2)}), but likely cheaper at ${minStore} (~$${minPrice.toFixed(2)}).`,
+                  message: `You bought ${itemName} at ${maxStore} ($${maxPrice.toFixed(2)}), but likely cheaper at ${minStore} (~$${minPrice.toFixed(2)}).`,
                   impact_score: diffPct
                 });
               }
@@ -257,13 +270,16 @@ export default function InsightsPage() {
             .filter((t: any) => favStoreIds.has(t.store_id))
             .map((t: any) => ({
               ...t,
-              category_id: itemMap.get(t.item_name) ?? -1
+              category_id: itemMap.get(t.item_name.toLowerCase()) ?? -1,
+              price_30_days_ago: String(t.price_30_days_ago || t.start_price || '0'),
+              current_price: String(t.current_price || '0'),
+              pct_change: String(t.pct_change || '0')
             }));
 
           mappedTrends.forEach(trend => {
             if (parseFloat(trend.pct_change) < -15) {
               newRecs.push({
-                id: `stock-${trend.item_name}`,
+                id: `stock-${trend.item_name}-${trend.store_id}`,
                 type: 'stock_up',
                 title: 'Stock Up Opportunity',
                 message: `${trend.item_name} at ${trend.store_name} is down ${Math.round(Math.abs(parseFloat(trend.pct_change)))}% (now $${parseFloat(trend.current_price).toFixed(2)}).`,
@@ -368,6 +384,25 @@ export default function InsightsPage() {
 
 
 
+            {/* Global Filters */}
+            <div className="flex bg-white/50 backdrop-blur-sm rounded-2xl p-2 mb-8 items-center justify-between shadow-sm border border-white/20">
+              <span className="text-sm font-bold text-gray-600 ml-3 uppercase tracking-wider">Analysis period</span>
+              <div className="flex bg-gray-100/80 p-1 rounded-xl">
+                {([7, 14, 30, 60] as const).map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => setTimeRange(days)}
+                    className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all ${timeRange === days
+                      ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                  >
+                    {days}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* AI Savings Coach */}
             {recommendations.length > 0 && (
               <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl shadow-xl p-6 mb-8 text-white">
@@ -389,27 +424,12 @@ export default function InsightsPage() {
             {/* Spend by Store Chart */}
             {spendByStore.length > 0 && (
               <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div className="mb-6">
                   <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                     <CurrencyDollarIcon className="h-6 w-6 text-purple-600" />
                     Spend by Store
                   </h2>
-
-                  {/* Date Filter Pills */}
-                  <div className="flex bg-gray-100 p-1 rounded-lg">
-                    {([7, 14, 30, 60] as const).map((days) => (
-                      <button
-                        key={days}
-                        onClick={() => setTimeRange(days)}
-                        className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${timeRange === days
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-900'
-                          } ${days === 60 ? 'hidden md:block' : ''}`}
-                      >
-                        {days}d
-                      </button>
-                    ))}
-                  </div>
+                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
                 </div>
                 <div className="flex flex-col md:flex-row items-center gap-8">
                   {/* Ranked List */}
@@ -430,8 +450,8 @@ export default function InsightsPage() {
                   </div>
 
                   {/* Chart */}
-                  <div className="h-72 w-full md:w-2/3">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="w-full md:w-2/3 min-w-0" style={{ height: '300px' }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
                       <PieChart>
                         <Pie
                           data={spendByStore}
@@ -458,10 +478,13 @@ export default function InsightsPage() {
 
             {/* Most Purchased Items */}
             <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <ShoppingCartIcon className="h-6 w-6 text-blue-600" />
-                Frequently Purchased
-              </h2>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <ShoppingCartIcon className="h-6 w-6 text-blue-600" />
+                  Frequently Purchased
+                </h2>
+                <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+              </div>
               {frequentItems.filter(item => item.purchase_count > 1).length > 0 ? (
                 <div className="max-h-64 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                   {frequentItems
@@ -496,17 +519,27 @@ export default function InsightsPage() {
                     })}
                 </div>
               ) : (
-                <p className="text-gray-600">No frequently purchased items yet. Shop with the app or enter your receipts to see patterns!</p>
+                <div className="bg-gray-50/50 rounded-2xl p-6 text-center border-2 border-dashed border-gray-100">
+                  <p className="text-gray-500 font-medium italic">
+                    {frequentItems.length === 0
+                      ? `No items purchased in the last ${timeRange} days.`
+                      : `No items were purchased more than once in the last ${timeRange} days.`
+                    }
+                  </p>
+                </div>
               )}
             </div>
 
             {/* Price Decreases */}
             {priceDecreases.length > 0 && (
               <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <ArrowTrendingDownIcon className="h-6 w-6 text-green-600" />
-                  Prices Going Down (Last <span className="font-bold">{timeRange}</span> Days)
-                </h2>
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <ArrowTrendingDownIcon className="h-6 w-6 text-green-600" />
+                    Prices Going Down
+                  </h2>
+                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                </div>
                 <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                   {priceDecreases.map((item, idx) => {
                     const categoryStyle = getCategoryColorById(item.category_id);
@@ -541,10 +574,13 @@ export default function InsightsPage() {
             {/* Price Increases */}
             {priceIncreases.length > 0 && (
               <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <ArrowTrendingUpIcon className="h-6 w-6 text-red-600" />
-                  Prices Going Up (Last <span className="font-bold">{timeRange}</span> Days)
-                </h2>
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <ArrowTrendingUpIcon className="h-6 w-6 text-red-600" />
+                    Prices Going Up
+                  </h2>
+                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                </div>
                 <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                   {priceIncreases.map((item, idx) => {
                     const categoryStyle = getCategoryColorById(item.category_id);

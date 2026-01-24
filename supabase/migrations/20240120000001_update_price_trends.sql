@@ -1,12 +1,14 @@
--- Drop the old function first to avoid return type conflicts if replacing
+-- Clean up ALL possible versions to avoid overloading confusion
 DROP FUNCTION IF EXISTS get_price_trends();
+DROP FUNCTION IF EXISTS get_price_trends(integer);
+DROP FUNCTION IF EXISTS get_price_analysis(integer);
 
-CREATE OR REPLACE FUNCTION get_price_trends()
+CREATE OR REPLACE FUNCTION get_price_analysis(days_back integer DEFAULT 30)
 RETURNS TABLE (
   item_name text,
   store_id uuid,
   store_name text,
-  price_30_days_ago numeric,
+  start_price numeric,
   current_price numeric,
   pct_change numeric
 ) 
@@ -22,13 +24,13 @@ AS $$
       ROW_NUMBER() OVER (PARTITION BY store_id, item_name ORDER BY recorded_date ASC) as rn_asc,
       ROW_NUMBER() OVER (PARTITION BY store_id, item_name ORDER BY recorded_date DESC) as rn_desc
     FROM price_history
-    WHERE recorded_date >= (CURRENT_DATE - INTERVAL '30 days')
+    WHERE recorded_date >= (CURRENT_DATE - (days_back || ' days')::interval)
   )
   SELECT 
     FirstP.item_name,
     FirstP.store_id,
     FirstP.store as store_name,
-    FirstP.price as price_30_days_ago,
+    FirstP.price as start_price,
     LastP.price as current_price,
     ((LastP.price - FirstP.price) / FirstP.price) * 100 as pct_change
   FROM range_prices FirstP

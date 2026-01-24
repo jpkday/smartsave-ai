@@ -173,11 +173,14 @@ export default function Stores() {
       return;
     }
 
+    const newName = editingValue.trim();
+    const newLoc = editingLocation.trim() || null;
+
     const { error } = await supabase
       .from('stores')
       .update({
-        name: editingValue.trim(),
-        location: editingLocation.trim() || null
+        name: newName,
+        location: newLoc
       })
       .eq('id', storeId);
 
@@ -185,6 +188,24 @@ export default function Stores() {
       console.error('Error updating store:', error);
       alert('Failed to update store');
       return;
+    }
+
+    // Cascade name change to price_history and trips
+    // We do this after the primary store update
+    try {
+      await Promise.all([
+        supabase
+          .from('price_history')
+          .update({ store: newName })
+          .eq('store_id', storeId),
+        supabase
+          .from('trips')
+          .update({ store: newName })
+          .eq('store_id', storeId)
+      ]);
+    } catch (cascadeError) {
+      console.error('Error cascading store rename:', cascadeError);
+      // We don't alert here as the primary update succeeded, but the history update failed silently
     }
 
     setEditingId(null);

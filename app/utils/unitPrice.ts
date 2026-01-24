@@ -48,6 +48,17 @@ export function parseUnitInfo(itemName: string): UnitInfo {
         };
     }
 
+    // Match "half gallon" or "1/2 gallon" specifically
+    const halfGallonPattern = /\((?:half|1\/2)\s*gallon\)/i;
+    const halfGallonMatch = itemName.match(halfGallonPattern);
+    if (halfGallonMatch) {
+        return {
+            quantity: 0.5,
+            unit: 'gal',
+            rawText: halfGallonMatch[0].replace(/[()]/g, '').trim(),
+        };
+    }
+
     // Match multi-pack count patterns like (6x18 ct), (2*12 ct), (4x6 pk)
     const multiPackCountPattern = /\((\d+(?:\.\d+)?)\s*[\/x*-]\s*(\d+(?:\.\d+)?)\s*(ct|doz|pk|ea)\)/i;
     const multiPackCountMatch = itemName.match(multiPackCountPattern);
