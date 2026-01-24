@@ -16,12 +16,20 @@ function HomeContent() {
   const [isLoadingCode, setIsLoadingCode] = useState(true);
   const searchParams = useSearchParams();
 
+  // Consolidate initialization and URL code checking into one effect
   useEffect(() => {
-    // ... existing household code logic ...
-    const code = localStorage.getItem('household_code');
-    setHouseholdCode(code);
-    setIsLoadingCode(false);
-  }, []);
+    const urlCode = searchParams.get('code');
+
+    if (urlCode) {
+      localStorage.setItem('household_code', urlCode);
+      // Redirect to welcome if code provided in URL
+      router.push('/welcome');
+    } else {
+      const code = localStorage.getItem('household_code');
+      setHouseholdCode(code);
+      setIsLoadingCode(false);
+    }
+  }, [searchParams, router]);
 
   // ... (existing searchParams effect) ...
 
@@ -59,25 +67,9 @@ function HomeContent() {
   // Wait, I should do imports first.
 
 
-  useEffect(() => {
-    const urlCode = searchParams.get('code');
-
-    if (urlCode) {
-      localStorage.setItem('household_code', urlCode);
-      setHouseholdCode(urlCode);
-      setIsLoadingCode(false);
-      window.history.replaceState({}, '', '/');
-    } else {
-      const code = localStorage.getItem('household_code');
-      setHouseholdCode(code);
-      setIsLoadingCode(false);
-    }
-  }, [searchParams]);
 
   const handleCodeSuccess = () => {
-    const code = localStorage.getItem('household_code');
-    setHouseholdCode(code);
-    setShowCodeModal(false);
+    router.push('/welcome');
   };
 
   const handleCopy = async () => {

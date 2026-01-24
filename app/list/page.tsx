@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -11,6 +12,16 @@ import PricePhotoCapture from '../components/PricePhotoCapture';
 import PriceReviewModal from '../components/PriceReviewModal';
 import StatusModal from '../components/StatusModal';
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
+const DEFAULT_ITEMS = [
+  'Eggs (dozen)',
+  'Milk (gallon)',
+  'Cheese (lb)',
+  'Apples (lb)',
+  'Chicken Breast (lb)',
+  'Ground Beef (lb)',
+  'Bread (loaf)',
+  'Butter (lb)',
+];
 
 
 interface ItemNote {
@@ -46,6 +57,7 @@ interface PriceData {
 type StoreChoice = 'AUTO' | string;
 
 export default function ShoppingList() {
+  const router = useRouter();
   const { request: requestWakeLock } = useWakeLock();
 
   useEffect(() => {
@@ -1146,6 +1158,10 @@ export default function ShoppingList() {
     if (listError) console.error('Error loading shopping list:', listError);
 
     if (listData) {
+      if (listData.length === 0 && !localStorage.getItem('has_seen_onboarding')) {
+        router.push('/welcome');
+        return;
+      }
       if (listData.length > 0) console.log('Raw listData[0]:', listData[0]);
       const transformed: ListItem[] = listData.map((row: any) => {
         // DEBUG LOG first item items join
@@ -2264,7 +2280,7 @@ export default function ShoppingList() {
                           )}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
                           {renderList.map((it: ItemRow) => {
                             const isFavorite = favorites.includes(it.name);
 
@@ -2470,7 +2486,7 @@ export default function ShoppingList() {
                     });
 
                     return (
-                      <div className="space-y-6">
+                      <div className="space-y-6 md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
 
                         {/* Show First: Active trip stores */}
                         {storeEntries
@@ -3340,58 +3356,84 @@ export default function ShoppingList() {
 
               </>
             ) : (
-              <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-                <p className="text-gray-500 text-lg mb-4">🛒 Your shopping list is empty.</p>
-                {favorites.length > 0 && (
-                  <button
-                    onClick={addFavorites}
-                    className="hidden md:inline-flex bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-2xl font-semibold transition cursor-pointer items-center gap-2"
-                  >
-                    <span className="text-xl">⭐</span>
-                    Add Favorites to Get Started
-                  </button>
-                )}
-
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4 mt-6 max-w-2xl mx-auto">
-                  <h2 className="text-xl font-bold mb-3 text-gray-800">Add to List</h2>
-                  <div className="relative autocomplete-container">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Select or add new item..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                        value={newItem}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addNewItem()}
-                        onFocus={() => {
-                          {
-                            const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
-                            const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
-                            setAutocompleteItems(available);
-                            setShowAutocomplete(available.length > 0);
-                          }
-                        }}
-                      />
-                      <button onClick={addNewItem} className="bg-blue-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-blue-700 cursor-pointer transition whitespace-nowrap">
-                        Add
-                      </button>
-                    </div>
-
-                    {showAutocomplete && autocompleteItems.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                        {autocompleteItems.slice(0, 10).map((item) => (
-                          <button
-                            key={item}
-                            onClick={() => selectItem(item)}
-                            className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                          >
-                            {item}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-teal-600 to-emerald-500 p-8 md:p-12 text-center text-white">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
+                    <span className="text-3xl">🛒</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">{newItem.trim() && !items.includes(newItem.trim()) ? `"${newItem}" will be added as a new item` : ''}</p>
+                  <h2 className="text-2xl md:text-3xl font-extrabold mb-2 leading-tight">
+                    Your shopping list is empty
+                  </h2>
+                  <p className="text-base text-teal-50 opacity-90 max-w-2xl mx-auto font-medium">
+                    Add items below to start comparing prices and saving money.
+                  </p>
+                </div>
+
+                <div className="p-6 md:p-10 space-y-10">
+                  {/* Hero Search Section */}
+                  <div className="max-w-2xl mx-auto">
+                    <div className="relative autocomplete-container">
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          placeholder="What do you need to buy?"
+                          className="flex-1 px-6 py-4 border-2 border-gray-100 rounded-2xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 text-gray-800 text-lg shadow-inner bg-gray-50 transition-all font-medium italic"
+                          value={newItem}
+                          onChange={(e) => handleInputChange(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
+                        />
+                        <button
+                          onClick={addNewItem}
+                          className="bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-700 cursor-pointer transition-all shadow-lg active:scale-95 text-lg"
+                        >
+                          Add
+                        </button>
+                      </div>
+
+                      {showAutocomplete && autocompleteItems.length > 0 && (
+                        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                          {autocompleteItems.map((item) => (
+                            <button
+                              key={item}
+                              onClick={() => selectItem(item)}
+                              className="w-full text-left px-6 py-4 hover:bg-teal-50 cursor-pointer border-b border-gray-50 last:border-b-0 text-gray-800 font-medium transition-colors"
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Suggestions Grid */}
+                  <div className="max-w-3xl mx-auto">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Common Items</h3>
+                      {favorites.length > 0 && (
+                        <button
+                          onClick={addFavorites}
+                          className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          ⭐ Add all Favorites
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {DEFAULT_ITEMS.map((name) => (
+                        <button
+                          key={name}
+                          onClick={() => selectItem(name)}
+                          className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all group shadow-sm hover:shadow-md cursor-pointer active:scale-95"
+                        >
+                          <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+                            {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
+                          </span>
+                          <span className="text-xs font-bold text-gray-700 text-center line-clamp-1">{name.split(' (')[0]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

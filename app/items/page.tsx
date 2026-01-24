@@ -51,8 +51,8 @@ function ItemsContent() {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
 
-  // View Filter: ALL, FAVORITES (default), or HIDDEN
-  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('FAVORITES');
+  // View Filter: ALL (default), FAVORITES, or HIDDEN
+  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('ALL');
 
   // Mobile bottom sheet edit
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -352,11 +352,49 @@ function ItemsContent() {
         category: newItem.category ?? 'Other',
         household_code: newItem.household_code,
       }]);
+
+      if (viewFilter === 'FAVORITES') {
+        toggleFavorite(newItem.id);
+      }
     }
 
     setInputValue('');
     setShowAutocomplete(false);
     inputRef.current?.focus();
+  };
+
+  const handleSuggestionClick = async (name: string) => {
+    let item = items.find(i => i.name.toLowerCase() === name.toLowerCase());
+
+    if (!item) {
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          name,
+          user_id: SHARED_USER_ID,
+          household_code: householdCode || 'ASDF',
+        })
+        .select('id, name, category, household_code')
+        .single();
+
+      if (error) {
+        console.error('Error adding suggestion:', error);
+        return;
+      }
+
+      item = {
+        id: data.id,
+        name: data.name,
+        category: data.category ?? 'Other',
+        household_code: data.household_code
+      };
+
+      setItems(prev => [...prev, item!]);
+    }
+
+    if (item && !favoritedIds.has(item.id)) {
+      toggleFavorite(item.id);
+    }
   };
 
   const toggleFavorite = async (itemId: number) => {
@@ -982,9 +1020,21 @@ function ItemsContent() {
             ) : (
               <>
                 {/* View Filters (Moved Here) - Styled like List Build Mode */}
-                <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="grid grid-cols-3 gap-2 mb-4">
                   <button
-                    onClick={() => setViewFilter(prev => prev === 'FAVORITES' ? 'ALL' : 'FAVORITES')}
+                    onClick={() => setViewFilter('ALL')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'ALL'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
+                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                      }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    All Items
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('FAVORITES')}
                     className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'FAVORITES'
                       ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
                       : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
@@ -993,10 +1043,10 @@ function ItemsContent() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
-                    Favorite Items
+                    Favorites
                   </button>
                   <button
-                    onClick={() => setViewFilter(prev => prev === 'HIDDEN' ? 'ALL' : 'HIDDEN')}
+                    onClick={() => setViewFilter('HIDDEN')}
                     className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'HIDDEN'
                       ? 'bg-gray-400 text-white border-gray-400 shadow-md transform scale-105'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
@@ -1007,16 +1057,8 @@ function ItemsContent() {
                     </svg>
                     Hidden
                   </button>
-                  <div />
                 </div>
 
-                {viewFilter !== 'ALL' && (
-                  <div className="mb-4 text-left animate-in fade-in slide-in-from-top-1 duration-200 px-1">
-                    <p className="text-xs text-gray-500 font-medium">
-                      Filter applied. Click the filter again to see all items.
-                    </p>
-                  </div>
-                )}
 
                 <div className="mb-4 border-b border-gray-100"></div>
 
@@ -1025,16 +1067,72 @@ function ItemsContent() {
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
                     {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorite Items' : 'All Items'}
                   </h2>
-                  <span className="text-xs text-gray-500">{filtered.length} shown</span>
+                  <div className="flex items-center gap-2">
+                    {(inputValue !== '' || filterLetter !== 'All') && (
+                      <button
+                        onClick={() => {
+                          setInputValue('');
+                          setFilterLetter('All');
+                        }}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer animate-in fade-in slide-in-from-right-2 duration-200"
+                      >
+                        Reset Search
+                      </button>
+                    )}
+                    <span className="text-xs text-gray-500">{filtered.length} shown</span>
+                  </div>
                 </div>
 
                 {/* No Items State */}
                 {filtered.length === 0 && (
-                  <div className="text-sm text-gray-500 italic py-4 text-center">
-                    {viewFilter === 'HIDDEN'
-                      ? "No hidden items."
-                      : "No items found."}
-                  </div>
+                  <>
+                    {viewFilter === 'FAVORITES' && !inputValue && filterLetter === 'All' ? (
+                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full text-amber-600">
+                          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">No Favorites Yet</h3>
+                        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                          Tap the star icon on any item to save it here for quick access later!
+                        </p>
+
+                        <div className="space-y-4">
+                          <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Popular Suggestions</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {DEFAULT_ITEMS.map((name) => (
+                              <button
+                                key={name}
+                                onClick={() => handleSuggestionClick(name)}
+                                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm cursor-pointer"
+                              >
+                                ⭐ {name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : viewFilter === 'HIDDEN' && !inputValue && filterLetter === 'All' ? (
+                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full text-gray-500">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">No Hidden Items</h3>
+                        <p className="text-gray-500 max-w-sm mx-auto">
+                          Not into soda? Don&apos;t have a dog? Hide it. Remove items from your list without deleting them.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic py-4 text-center">
+                        {viewFilter === 'HIDDEN'
+                          ? "No hidden items found matching your search."
+                          : "No items found."}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* List Content */}

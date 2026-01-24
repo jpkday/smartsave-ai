@@ -494,7 +494,7 @@ export default function Stores() {
 
           {stores.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No stores yet. Add your first store above!
+              Loading stores...
             </div>
           )}
         </div>
