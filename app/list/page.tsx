@@ -691,12 +691,18 @@ export default function ShoppingList() {
           return;
         }
 
+        const selectedCat = categories.find(c => c.name === editModalCategory);
+        const categoryId = selectedCat ? selectedCat.id : null;
+
         const { error: itemError } = await supabase
           .from('items')
-          .update({ name: newName, category: editModalCategory || 'Other' })
+          .update({
+            name: newName,
+            category: editModalCategory || 'Other',
+            category_id: categoryId
+          })
           .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-
         if (itemError) throw itemError;
 
         const { error: listError } = await supabase
@@ -716,12 +722,17 @@ export default function ShoppingList() {
         if (phError) throw phError;
       } else {
         // no rename — just update category
+        const selectedCat = categories.find(c => c.name === editModalCategory);
+        const categoryId = selectedCat ? selectedCat.id : null;
+
         const { error: catErr } = await supabase
           .from('items')
-          .update({ category: editModalCategory || 'Other' })
+          .update({
+            category: editModalCategory || 'Other',
+            category_id: categoryId
+          })
           .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
-
         if (catErr) throw catErr;
       }
 
@@ -811,28 +822,34 @@ export default function ShoppingList() {
         }
       }
 
-      // ✅ Optimistic Update (Fix "Name not sticking")
-      // Update local state immediately so UI reflects changes while we re-fetch in background
+      // ✅ Optimistic Update
+      const selectedCat = categories.find(c => c.name === editModalCategory);
+      const categoryId = selectedCat ? selectedCat.id : null;
+
       setListItems((prev) =>
         prev.map((li) => {
-          // Update all instances of this item (in case of duplicates or same item_id)
           if (li.item_id === editModalItem.item_id) {
-            return { ...li, item_name: newName, quantity: qtyNum };
+            return {
+              ...li,
+              item_name: newName,
+              quantity: qtyNum,
+              category: editModalCategory || 'Other',
+              category_id: categoryId
+            };
           }
           return li;
         })
       );
 
-      if (newName !== oldName) {
-        // Find category ID
-        const newCatName = editModalCategory || 'Other';
-        const newCat = categories.find(c => c.name === newCatName);
-        const newCatId = newCat ? newCat.id : -1;
+      setAllItems((prev) =>
+        prev.map((i) =>
+          i.id === editModalItem.item_id
+            ? { ...i, name: newName, category: editModalCategory || 'Other', category_id: categoryId || undefined }
+            : i
+        )
+      );
 
-        setAllItems((prev) =>
-          prev.map((i) => (i.id === editModalItem.item_id ? { ...i, name: newName, category: editModalCategory, category_id: newCatId } : i))
-        );
-        // items is just string array of names
+      if (newName !== oldName) {
         setItems((prev) => prev.map((n) => (n === oldName ? newName : n)));
       }
 
