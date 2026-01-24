@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+export const maxDuration = 60; // Increase timeout to 60 seconds
+
 export async function POST(req: NextRequest) {
     try {
         const { image, candidateItems = [] } = await req.json();
+
+        console.log("Analyze Request Received");
+        if (image) {
+            console.log("Image data length:", image.length);
+            console.log("Image start:", image.substring(0, 50));
+        }
 
         if (!image) {
             return NextResponse.json({ error: "No image provided" }, { status: 400 });

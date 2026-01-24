@@ -150,6 +150,29 @@ function ReceiptsContent() {
     }
   }, []);
 
+  // Handle auto-load from landing page scan (direct data)
+  useEffect(() => {
+    const autoLoad = searchParams.get('autoLoad');
+    if (autoLoad === 'true') {
+      const pendingImage = localStorage.getItem('pendingRxImage');
+      if (pendingImage) {
+        localStorage.removeItem('pendingRxImage');
+        processReceiptImage(pendingImage);
+      }
+    }
+  }, [searchParams, items]); // Add items to deps to ensure we have candidate list
+
+  // Handle triggered scan (opens camera/file picker on arrival)
+  useEffect(() => {
+    if (searchParams.get('scan') === 'true') {
+      // Small delay to ensure browser allows the click gesture context to carry over
+      const timer = setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const draft: ReceiptDraft = {
       store: selectedStoreId,
@@ -353,10 +376,11 @@ function ReceiptsContent() {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        console.log(`Image loaded: ${img.width}x${img.height}`);
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const MAX_SIZE = 1024;
+        const MAX_SIZE = 1200; // Increased slightly for better OCR
 
         if (width > height) {
           if (width > MAX_SIZE) {
@@ -370,16 +394,25 @@ function ReceiptsContent() {
           }
         }
 
+        console.log(`Resizing to: ${width}x${height}`);
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
 
         // Compress to JPEG 0.7 quality
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // Slightly better quality
+        console.log(`Resized data size: ${dataUrl.length}`);
         resolve(dataUrl);
       };
-      img.onerror = reject;
+      img.onerror = (err) => {
+        console.error("Image load error:", err);
+        reject(new Error("Failed to load image into Image object"));
+      };
 
       if (typeof input === 'string') {
         img.src = input;
@@ -401,9 +434,11 @@ function ReceiptsContent() {
     try {
       // Try to resize (safari/chrome handle standard formats)
       // IF HEIC, this might fail or browser might not render it to canvas
+      console.log("Original Base64 length:", rawBase64.length);
       finalBase64 = await resizeImage(rawBase64);
+      console.log("Resized Base64 length:", finalBase64.length);
     } catch (resizeErr) {
-      console.warn("Image resize failed (likely HEIC/unsupported format), sending original:", resizeErr);
+      console.error("Image resize failed:", resizeErr);
       // Fallback to original
       finalBase64 = rawBase64;
     }
@@ -434,7 +469,9 @@ function ReceiptsContent() {
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze receipt');
+        console.error("API Error Status:", response.status);
+        console.error("API Error Body:", text);
+        throw new Error(data?.error || `Server error (${response.status}): ${text.slice(0, 100)}`);
       }
 
       if (data.success && data.importId) {
