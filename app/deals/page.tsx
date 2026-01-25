@@ -321,6 +321,34 @@ export default function Deals() {
     showStatus('Added to List! 🎉', `"${itemName}" has been added to your shopping list.`, 'success');
   };
 
+  const removeFromList = async (itemName: string, itemId: string) => {
+    if (!householdCode) return;
+
+    // Remove from shopping_list
+    const { error: deleteError } = await supabase
+      .from('shopping_list')
+      .delete()
+      .eq('household_code', householdCode)
+      .eq('item_id', itemId);
+
+    if (deleteError) {
+      console.error('Error removing from list:', deleteError);
+      showStatus('Remove Failed', 'Failed to remove the item from your list. Please try again.', 'error');
+      return;
+    }
+
+    // Update the deals state
+    setDeals(prevDeals =>
+      prevDeals.map(deal =>
+        deal.item_id === itemId
+          ? { ...deal, isOnList: false }
+          : deal
+      )
+    );
+
+    showStatus('Removed', `"${itemName}" removed from your list.`, 'info');
+  };
+
   const filteredDeals = selectedStore === 'all'
     ? deals
     : deals.filter(d => d.store === selectedStore);
@@ -415,7 +443,7 @@ export default function Deals() {
 
 
   return (
-    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-32">
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
@@ -441,7 +469,7 @@ export default function Deals() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-white/80">
               <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin mb-4" />
-              <p className="font-medium tracking-widest uppercase text-[10px]">Scanning Markets...</p>
+              <p className="font-medium tracking-widest uppercase text-[10px]">Loading Deals...</p>
             </div>
           ) : !hasFavorites ? (
             <div className="relative overflow-hidden rounded-[2.5rem] p-12 text-center border border-white/20 shadow-2xl">
@@ -479,167 +507,144 @@ export default function Deals() {
                   <SparklesIcon className="w-8 h-8 text-white/50" />
                 </div>
                 <p className="text-2xl font-bold text-white/90">Curating new deals for you...</p>
-                <p className="text-white/60 text-base mt-3 font-medium">No exceptional savings found today at your favorited locations (under $2 total savings).</p>
+                <p className="text-white/60 text-base mt-3 font-medium">No big savings found yet at your favorited stores.</p>
               </div>
             </div>
           ) : (
-            <div className="space-y-8 pb-12">
-              <div className="py-8 md:py-12 md:flex md:items-end md:justify-between gap-8">
-                <div className="text-left">
-                  <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 drop-shadow-sm">
-                    Your Local Deals
-                  </h2>
-                  <p className="text-blue-50 text-lg font-medium max-w-xl leading-relaxed">
-                    We found <span className="text-white font-bold">{totalVisibleDeals} exceptional deals</span> at your favorite stores today.
-                  </p>
-                </div>
+            <div className="space-y-8 pb-0">
+              <div className="py-4">
 
-                {/* Quick Stats */}
-                <div className="flex gap-4 mt-6 md:mt-0">
-                  <div className="bg-white/20 rounded-2xl p-4 backdrop-blur-md text-center min-w-[110px] flex flex-col justify-center">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-blue-50 mb-0.5">Save Up To</div>
-                    <div className="text-3xl font-black text-white shadow-sm leading-none">
-                      {topDiscount}%
-                    </div>
-                  </div>
-                  <div className="bg-white/20 rounded-2xl p-4 backdrop-blur-md text-center min-w-[110px] flex flex-col justify-center">
-                    <div className="text-3xl font-black text-white mb-0.5 shadow-sm leading-none">
-                      {bestPriceCount}
-                    </div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-blue-50">New Low Prices</div>
-                  </div>
-                </div>
-              </div>
-
-              {visibleGroups
-                .map(({ storeName, storeDeals, totalSavings }) => (
-                  <div key={storeName} className="">
-                    {/* Store Header Container */}
-                    <div className="bg-white rounded-t-[2rem] p-6 pb-4 border-b border-gray-100 flex items-center justify-between shadow-sm relative z-10">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center border border-yellow-200 text-2xl shadow-sm text-yellow-500">
-                          <StarIcon className="w-6 h-6" />
+                {visibleGroups
+                  .map(({ storeName, storeDeals, totalSavings }) => (
+                    <div key={storeName} className="mb-6">
+                      {/* Store Header Container */}
+                      <div className="bg-white rounded-t-[2rem] p-6 pb-4 border-b border-gray-100 flex items-center justify-between shadow-sm relative z-10">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center border border-yellow-200 text-2xl shadow-sm text-yellow-500">
+                            <StarIcon className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                              {storeName}
+                            </h2>
+                            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                              {storeDeals.length} Deals Found
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                            {storeName}
-                          </h2>
-                          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                            {storeDeals.length} Deals Found
+                        <div className="bg-emerald-50 text-emerald-800 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-sm border border-emerald-100">
+                          <div className="bg-white p-2 text-emerald-600 rounded-full shadow-sm">
+                            <ShoppingCartIcon className="w-6 h-6" />
+                          </div>
+                          <div className="flex flex-col items-end text-right">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 leading-none mb-1">Basket Savings</span>
+                            <span className="text-2xl font-black leading-none">${totalSavings.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="bg-emerald-50 text-emerald-800 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-sm border border-emerald-100">
-                        <div className="bg-white p-2 text-emerald-600 rounded-full shadow-sm">
-                          <ShoppingCartIcon className="w-6 h-6" />
-                        </div>
-                        <div className="flex flex-col items-end text-right">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 leading-none mb-1">Basket Savings</span>
-                          <span className="text-2xl font-black leading-none">${totalSavings.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Deals List */}
-                    <div className="bg-white rounded-b-[2rem] p-4 pt-2 shadow-xl shadow-indigo-900/5 space-y-3">
-                      {storeDeals.map((deal, idx) => {
-                        const badge = getDealBadge(deal.dealQuality);
-                        const emoji = getItemEmoji(deal.item_name);
+                      {/* Deals List */}
+                      <div className="bg-white rounded-b-[2rem] p-4 pt-2 shadow-xl shadow-indigo-900/5 space-y-3">
+                        {storeDeals.map((deal, idx) => {
+                          const badge = getDealBadge(deal.dealQuality);
+                          const emoji = getItemEmoji(deal.item_name);
 
-                        return (
-                          <div key={`${storeName}-${idx}`} className="group relative">
-                            <Link
-                              href={`/history?item=${encodeURIComponent(JSON.stringify(deal.item_name))}&store=${encodeURIComponent(JSON.stringify(deal.store))}`}
-                              className="block"
-                            >
-                              <div className={`
-                                relative rounded-2xl p-4 transition-all duration-300 border flex flex-col sm:flex-row sm:items-center gap-4
+                          return (
+                            <div key={`${storeName}-${idx}`} className="group relative">
+                              <Link
+                                href={`/history?item=${encodeURIComponent(JSON.stringify(deal.item_name))}&store=${encodeURIComponent(JSON.stringify(deal.store))}`}
+                                className="block"
+                              >
+                                <div className={`
+                                relative rounded-2xl p-3 sm:p-4 transition-all duration-300 border flex flex-row items-center gap-2 sm:gap-4
                                 ${badge.glow
-                                  ? 'bg-gradient-to-r from-indigo-50/50 to-white border-indigo-100 shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_25px_rgba(99,102,241,0.25)] hover:border-indigo-200'
-                                  : 'bg-white border-gray-50 hover:border-gray-200 hover:bg-gray-50/50 hover:shadow-lg hover:shadow-gray-200/50'
-                                }
+                                    ? 'bg-gradient-to-r from-indigo-50/50 to-white border-indigo-100 shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_25px_rgba(99,102,241,0.25)] hover:border-indigo-200'
+                                    : 'bg-white border-gray-50 hover:border-gray-200 hover:bg-gray-50/50 hover:shadow-lg hover:shadow-gray-200/50'
+                                  }
                               `}>
-                                {/* Left: Name & Rating */}
-                                <div className="flex-1 flex items-center gap-4 min-w-0">
-                                  <div className="min-w-0 flex-1">
-                                    <h3 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">
-                                      {deal.item_name}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <div className="flex">
-                                        {[...Array(badge.flames)].map((_, i) => (
-                                          <FireIcon key={i} className={`w-5 h-5 ${badge.glow ? 'text-red-600 animate-pulse' : 'text-orange-500'} drop-shadow-sm`} />
-                                        ))}
+                                  {/* Left: Name & Rating */}
+                                  <div className="flex-1 flex items-center gap-4 min-w-0">
+                                    <div className="min-w-0 flex-1">
+                                      <h3 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">
+                                        {deal.item_name}
+                                      </h3>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <div className="flex">
+                                          {[...Array(badge.flames)].map((_, i) => (
+                                            <FireIcon key={i} className={`w-5 h-5 ${badge.glow ? 'text-red-600 animate-pulse' : 'text-orange-500'} drop-shadow-sm`} />
+                                          ))}
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                          {badge.label}
+                                        </span>
                                       </div>
-                                      <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-indigo-600' : 'text-gray-400'}`}>
-                                        {badge.label}
-                                      </span>
                                     </div>
                                   </div>
-                                </div>
 
-                                {/* Right: Price & Action */}
-                                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
-                                  <div className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span className="text-2xl font-black text-gray-900 tracking-tight">
-                                        ${deal.price.toFixed(2)}
-                                      </span>
-                                      <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-2 py-1 rounded-lg">
-                                        -{deal.discountPercent.toFixed(0)}%
-                                      </span>
-                                    </div>
-                                    {deal.typicalHighPrice && (
-                                      <div className="text-xs font-medium text-gray-400 line-through">
-                                        Was ${deal.typicalHighPrice.toFixed(2)}
+                                  {/* Right: Price & Action */}
+                                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-6 flex-none">
+                                    <div className="text-right block">
+                                      <div className="flex items-center justify-end gap-1 sm:gap-2">
+                                        <span className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
+                                          ${deal.price.toFixed(2)}
+                                        </span>
+                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg">
+                                          -{deal.discountPercent.toFixed(0)}%
+                                        </span>
                                       </div>
-                                    )}
-                                  </div>
+                                      {deal.typicalHighPrice && (
+                                        <div className="text-[10px] sm:text-xs font-medium text-gray-400 line-through hidden sm:block">
+                                          Was ${deal.typicalHighPrice.toFixed(2)}
+                                        </div>
+                                      )}
+                                    </div>
 
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (!deal.isOnList) {
-                                        addToList(deal.item_name, deal.item_id);
-                                      }
-                                    }}
-                                    disabled={deal.isOnList}
-                                    className={`
-                                       h-12 w-20 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (deal.isOnList) {
+                                          removeFromList(deal.item_name, deal.item_id);
+                                        } else {
+                                          addToList(deal.item_name, deal.item_id);
+                                        }
+                                      }}
+                                      className={`
+                                       w-24 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm cursor-pointer whitespace-nowrap
                                        ${deal.isOnList
-                                        ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'
-                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300 cursor-pointer'
-                                      }
+                                          ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'
+                                          : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300'
+                                        }
                                      `}
-                                  >
-                                    {deal.isOnList ? 'Added' : 'Add'}
-                                  </button>
+                                    >
+                                      {deal.isOnList ? 'Remove' : 'Add'}
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            </Link>
-                          </div>
-                        );
-                      })}
+                              </Link>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* Info Legend Card */}
         {!loading && Object.keys(groupedDeals).length > 0 && (
-          <div className="px-2 sm:px-4 md:px-0 mt-8 mb-12">
+          <div className="px-2 sm:px-4 md:px-0 mt-4 mb-24">
             <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <SparklesIcon className="w-5 h-5 text-indigo-500" />
                 Understanding Savvy Savings
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
                     <div className="flex text-red-600 animate-pulse">
                       <FireIcon className="w-4 h-4" />
                       <FireIcon className="w-4 h-4" />
@@ -651,7 +656,7 @@ export default function Deals() {
                 </div>
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
                     <div className="flex text-orange-500">
                       <FireIcon className="w-4 h-4" />
                       <FireIcon className="w-4 h-4" />
@@ -662,7 +667,7 @@ export default function Deals() {
                 </div>
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
                     <div className="flex text-orange-500">
                       <FireIcon className="w-4 h-4" />
                     </div>
