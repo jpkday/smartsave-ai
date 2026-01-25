@@ -33,6 +33,7 @@ function HistoryContent() {
   const router = useRouter();
 
   const [stores, setStores] = useState<Store[]>([]);
+  const [favoriteStoreIds, setFavoriteStoreIds] = useState<string[]>([]);
 
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('All');
@@ -180,7 +181,7 @@ function HistoryContent() {
     if (selectedItem) {
       loadPriceHistory();
     }
-  }, [selectedItem, selectedStoreId]);
+  }, [selectedItem, selectedStoreId, favoriteStoreIds.join(',')]);
 
   const loadStoresAndItems = async () => {
     // 1. Load all stores
@@ -193,6 +194,7 @@ function HistoryContent() {
 
     // 2. Filter by favorites if household code exists
     let filteredStores = storesData;
+    let favIds: string[] = [];
     const householdCode = localStorage.getItem('household_code');
 
     if (householdCode) {
@@ -202,10 +204,16 @@ function HistoryContent() {
         .eq('household_code', householdCode);
 
       if (favoritesData && favoritesData.length > 0) {
-        const favoriteIds = new Set(favoritesData.map(f => f.store_id));
-        filteredStores = storesData.filter(s => favoriteIds.has(s.id));
+        favIds = favoritesData.map(f => f.store_id);
+        const favoriteIdsSet = new Set(favIds);
+        filteredStores = storesData.filter(s => favoriteIdsSet.has(s.id));
+      } else {
+        // If household code exists but no favorites, show no stores
+        filteredStores = [];
       }
     }
+
+    setFavoriteStoreIds(favIds);
 
     // 3. Sort by Name then Location
     const sorted = filteredStores.sort((a, b) => {
@@ -292,8 +300,15 @@ function HistoryContent() {
         return;
       }
       query = query.eq('store_id', selectedStoreId);
+    } else if (favoriteStoreIds.length > 0) {
+      // If "All Stores" is selected, only show favorites
+      query = query.in('store_id', favoriteStoreIds);
+    } else if (localStorage.getItem('household_code')) {
+      // If household code exists but no favorites, return nothing
+      setPriceHistory([]);
+      setLoading(false);
+      return;
     }
-
     const { data } = await query;
 
     if (data) {
