@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { MagnifyingGlassIcon, PlusIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/solid';
 
 interface ItemSearchableDropdownProps {
@@ -9,6 +9,7 @@ interface ItemSearchableDropdownProps {
     onAddNew: (name: string) => void;
     placeholder?: string;
     className?: string;
+    favoritedIds?: Set<string>;
 }
 
 export default function ItemSearchableDropdown({
@@ -17,10 +18,12 @@ export default function ItemSearchableDropdown({
     onSelect,
     onAddNew,
     placeholder = "Search items...",
-    className = ""
+    className = "",
+    favoritedIds = new Set()
 }: ItemSearchableDropdownProps) {
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,6 +32,8 @@ export default function ItemSearchableDropdown({
         if (selectedItemId) {
             const item = items.find(i => i.id === selectedItemId);
             if (item) setQuery(item.name);
+        } else {
+            setQuery('');
         }
     }, [selectedItemId, items]);
 
@@ -37,7 +42,6 @@ export default function ItemSearchableDropdown({
         function handleClickOutside(event: MouseEvent) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
-                // Reset query to selected item if blurring without selection
                 const item = items.find(i => i.id === selectedItemId);
                 setQuery(item ? item.name : '');
             }
@@ -46,16 +50,61 @@ export default function ItemSearchableDropdown({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [selectedItemId, items]);
 
-    const filteredItems = query.trim() === ''
-        ? items.slice(0, 100) // Show top 100 when empty
-        : items.filter(item =>
-            item.name.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 200); // Show up to 200 filtered results
+    const filteredItems = useMemo(() => {
+        const q = query.toLowerCase().trim();
+        const results = q === ''
+            ? items.slice(0, 10) // Show top 10 when empty
+            : items.filter(item =>
+                item.name.toLowerCase().includes(q)
+            ).slice(0, 10); // Show up to 10 filtered results (like Items page)
+
+        // Sort: Favorites first
+        return results.sort((a, b) => {
+            const aFav = favoritedIds.has(a.id);
+            const bFav = favoritedIds.has(b.id);
+            if (aFav && !bFav) return -1;
+            if (!aFav && bFav) return 1;
+            return 0;
+        });
+    }, [items, query, favoritedIds]);
 
     const handleSelect = (itemId: string, name: string) => {
         onSelect(itemId, name);
         setQuery(name);
         setIsOpen(false);
+        setSelectedIndex(-1);
+    };
+
+    const isExisting = items.some(i => i.name.toLowerCase() === query.trim().toLowerCase());
+    const showCreateNew = query.trim() && !isExisting;
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setIsOpen(true);
+            setSelectedIndex(prev => (prev < filteredItems.length + (showCreateNew ? 0 : -1) ? prev + 1 : prev));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedIndex(prev => (prev > -1 ? prev - 1 : -1));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex === -1) {
+                const exactMatch = items.find(i => i.name.toLowerCase() === query.trim().toLowerCase());
+                if (exactMatch) {
+                    handleSelect(exactMatch.id, exactMatch.name);
+                } else if (showCreateNew) {
+                    onAddNew(query.trim());
+                    setIsOpen(false);
+                }
+            } else if (showCreateNew && selectedIndex === filteredItems.length) {
+                onAddNew(query.trim());
+                setIsOpen(false);
+            } else if (filteredItems[selectedIndex]) {
+                handleSelect(filteredItems[selectedIndex].id, filteredItems[selectedIndex].name);
+            }
+        } else if (e.key === 'Escape') {
+            setIsOpen(false);
+        }
     };
 
     const handleClear = () => {
@@ -65,25 +114,22 @@ export default function ItemSearchableDropdown({
         inputRef.current?.focus();
     };
 
-    const isExisting = items.some(i => i.name.toLowerCase() === query.trim().toLowerCase());
-
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
-            <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-                </div>
+            <div className="relative group">
                 <input
                     ref={inputRef}
                     type="text"
-                    className="block w-full pl-9 pr-8 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
                     placeholder={placeholder}
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value);
                         setIsOpen(true);
+                        setSelectedIndex(-1);
                     }}
                     onFocus={() => setIsOpen(true)}
+                    onKeyDown={handleKeyDown}
                 />
                 {query && (
                     <button
@@ -96,38 +142,46 @@ export default function ItemSearchableDropdown({
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto scrollbar-hide">
                     {filteredItems.length > 0 ? (
-                        <div className="py-1">
-                            {filteredItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleSelect(item.id, item.name)}
-                                    className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedItemId === item.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700'
-                                        }`}
-                                >
-                                    <span>{item.name}</span>
-                                    {selectedItemId === item.id && <CheckIcon className="h-4 w-4" />}
-                                </button>
-                            ))}
+                        <div>
+                            {filteredItems.map((item, index) => {
+                                const isFav = favoritedIds.has(item.id);
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onMouseEnter={() => setSelectedIndex(index)}
+                                        onClick={() => handleSelect(item.id, item.name)}
+                                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2 ${selectedIndex === index ? 'bg-blue-50' : ''
+                                            }`}
+                                    >
+                                        {isFav && <span className="text-yellow-500 text-lg">⭐</span>}
+                                        <span>{item.name}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    ) : query && !isExisting ? null : (
-                        <div className="px-4 py-3 text-xs text-center text-gray-500 italic">
+                    ) : !showCreateNew && (
+                        <div className="px-4 py-3 text-sm text-gray-500 italic text-center">
                             No matching items found...
                         </div>
                     )}
 
                     {/* Quick Add */}
-                    {query.trim() && !isExisting && (
+                    {showCreateNew && (
                         <button
+                            type="button"
+                            onMouseEnter={() => setSelectedIndex(filteredItems.length)}
                             onClick={() => {
                                 onAddNew(query.trim());
                                 setIsOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border-t border-blue-100 flex items-center gap-2"
+                            className={`w-full text-left px-4 py-3 font-semibold text-blue-600 border-t border-gray-100 flex items-center gap-2 ${selectedIndex === filteredItems.length ? 'bg-blue-50' : ''
+                                }`}
                         >
                             <PlusIcon className="h-4 w-4" />
-                            <span>Create "{query.trim()}"</span>
+                            <span>Add "{query.trim()}"</span>
                         </button>
                     )}
                 </div>

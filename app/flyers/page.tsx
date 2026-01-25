@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import StatusModal from '../components/StatusModal';
+import ItemSearchableDropdown from '../components/ItemSearchableDropdown';
 import { formatLocalDate } from '../utils/date';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -45,9 +46,10 @@ export default function Flyers() {
 function FlyersContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [items, setItems] = useState<string[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [favoritedItemIds, setFavoritedItemIds] = useState<Set<string>>(new Set());
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
     { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
   ]);
@@ -224,13 +226,18 @@ function FlyersContent() {
       setStores(sorted);
     }
 
-    const { data: itemsData } = await supabase
-      .from('items')
-      .select('name')
-      .order('name');
+    const [itemsRes, favsRes] = await Promise.all([
+      supabase.from('items').select('id, name').order('name'),
+      householdCode
+        ? supabase.from('household_item_favorites').select('item_id').eq('household_code', householdCode)
+        : Promise.resolve({ data: [] })
+    ]);
 
-    if (itemsData) {
-      setItems(itemsData.map(i => i.name));
+    if (itemsRes.data) {
+      setItems(itemsRes.data as any);
+    }
+    if (favsRes.data) {
+      setFavoritedItemIds(new Set(favsRes.data.map((f: any) => f.item_id.toString())));
     }
   };
 
@@ -394,7 +401,7 @@ function FlyersContent() {
         return;
       }
 
-      setItems((prev) => Array.from(new Set([...prev, ...missing])));
+      setItems((prev) => [...prev, ...missing.map(name => ({ id: 'new', name }))]);
     }
 
     const { data: allItemsData, error: allItemsErr } = await supabase
@@ -545,21 +552,15 @@ function FlyersContent() {
               <div className="space-y-3">
                 {receiptItems.map((ri, idx) => (
                   <div key={idx} className="flex gap-3 items-center">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        list={`items-${idx}`}
-                        value={ri.item}
-                        onChange={(e) => updateItem(idx, 'item', e.target.value)}
-                        placeholder="Type or select item..."
-                        ref={(el) => { if (el) itemRefs.current[idx] = el; }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    <div className="flex-1 min-w-[180px]">
+                      <ItemSearchableDropdown
+                        items={items}
+                        selectedItemId={items.find((i: any) => i.name === ri.item)?.id}
+                        onSelect={(id: string, name: string) => updateItem(idx, 'item', name)}
+                        onAddNew={(name: string) => updateItem(idx, 'item', name)}
+                        placeholder="Search or add item..."
+                        favoritedIds={favoritedItemIds}
                       />
-                      <datalist id={`items-${idx}`}>
-                        {items.sort().map(item => (
-                          <option key={item} value={item} />
-                        ))}
-                      </datalist>
                     </div>
 
                     {/* SKU Input */}
