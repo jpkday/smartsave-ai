@@ -128,7 +128,8 @@ export default function Deals() {
     const { data: allPrices, error: allError } = await supabase
       .from('price_history')
       .select('item_name, price')
-      .eq('user_id', SHARED_USER_ID);
+      .eq('user_id', SHARED_USER_ID)
+      .in('store_id', favStoreIds);
 
     if (allError) {
       console.error('Error loading historical prices:', allError);

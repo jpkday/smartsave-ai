@@ -248,12 +248,12 @@ export function calculateUnitPrice(itemName: string, price: number): { unitPrice
  * @returns Formatted string (e.g., "$2.00/lb", "$0.15/ea", "$0.10/fl oz", "$0.10/sqft")
  */
 export function formatUnitPrice(result: { unitPrice: number; unitType: 'lb' | 'ea' | 'fl oz' | 'sqft' } | null): string | null {
-    if (result === null) {
-        return null;
+    if (result === null) return null;
+    if (result.unitType === "fl oz") {
+        const cents = result.unitPrice * 100;
+        return `${cents.toFixed(1)}¢/fl oz`;
     }
-
-    return `$${result.unitPrice.toFixed(2)}/${result.unitType}`;
-}
+    return `$${result.unitPrice.toFixed(2)}/${result.unitType}`;}
 
 /**
  * Main function to get formatted unit price from item name and price

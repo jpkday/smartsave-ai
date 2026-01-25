@@ -83,12 +83,12 @@ function HomeContent() {
               {/* Tertiary Actions */}
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2 flex justify-around">
                 <button onClick={handleLockedClick} className="p-2 text-white/80 hover:text-white flex flex-col items-center text-xs gap-1">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                  <span>Insights</span>
-                </button>
-                <button onClick={handleLockedClick} className="p-2 text-white/80 hover:text-white flex flex-col items-center text-xs gap-1">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <span>Recent</span>
+                </button>
+                <button onClick={handleLockedClick} className="p-2 text-white/80 hover:text-white flex flex-col items-center text-xs gap-1">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  <span>Insights</span>
                 </button>
                 <button onClick={handleLockedClick} className="p-2 text-white/80 hover:text-white flex flex-col items-center text-xs gap-1">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
@@ -121,13 +121,13 @@ function HomeContent() {
 
               {/* Tertiary Actions - Text Links */}
               <div className="grid grid-cols-3 gap-2 mt-2">
-                <Link href="/insights" className="bg-white/20 backdrop-blur-md rounded-xl p-3 flex flex-col items-center justify-center text-white hover:bg-white/30 transition">
-                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                  <span className="text-xs font-medium">Insights</span>
-                </Link>
                 <Link href="/trips" className="bg-white/20 backdrop-blur-md rounded-xl p-3 flex flex-col items-center justify-center text-white hover:bg-white/30 transition">
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <span className="text-xs font-medium">Recent</span>
+                </Link>
+                <Link href="/insights" className="bg-white/20 backdrop-blur-md rounded-xl p-3 flex flex-col items-center justify-center text-white hover:bg-white/30 transition">
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  <span className="text-xs font-medium">Insights</span>
                 </Link>
                 <button
                   onClick={() => setShowMoreMenu(true)}
@@ -179,18 +179,18 @@ function HomeContent() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               {isLocked ? (
                 <>
-                  <button onClick={handleLockedClick} className="bg-violet-600/80 hover:bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold transition">Insights</button>
                   <button onClick={handleLockedClick} className="bg-lime-500/80 hover:bg-lime-500 text-white py-2 rounded-lg text-sm font-semibold transition">Recent</button>
+                  <button onClick={handleLockedClick} className="bg-violet-600/80 hover:bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold transition">Insights</button>
                 </>
               ) : (
                 <>
-                  <Link href="/insights" className="bg-violet-600/80 hover:bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
-                    <ChartBarIcon className="w-4 h-4" />
-                    Insights
-                  </Link>
                   <Link href="/trips" className="bg-lime-500/80 hover:bg-lime-500 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
                     <ClockIcon className="w-4 h-4" />
                     Recent
+                  </Link>
+                  <Link href="/insights" className="bg-violet-600/80 hover:bg-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold transition text-center flex items-center justify-center gap-2">
+                    <ChartBarIcon className="w-4 h-4" />
+                    Insights
                   </Link>
                 </>
               )}

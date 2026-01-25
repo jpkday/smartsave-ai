@@ -372,10 +372,12 @@ export default function InsightsPage() {
               </div>
 
               <Link
-                href="/list"
-                className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white text-lg font-bold px-8 py-4 rounded-2xl hover:bg-blue-700 hover:scale-105 transition shadow-lg w-full md:w-auto"
+                href="/receipts?scan=true"
+                className="inline-flex items-center justify-center gap-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-lg font-bold px-10 py-5 rounded-3xl hover:bg-blue-700 hover:scale-105 transition shadow-2xl w-full md:w-auto overflow-hidden group relative"
               >
-                Start Shopping
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <PhotoIcon className="h-8 w-8 text-blue-100" />
+                <span>{isMobile ? 'Snap a Receipt' : 'Upload a Receipt'}</span>
               </Link>
             </div>
           </div>

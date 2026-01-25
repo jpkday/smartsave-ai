@@ -640,7 +640,7 @@ export default function TripsPage() {
                 </div>
                 <button
                   onClick={closeCategoryModal}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-gray-600 text-2xl cursor-pointer"
                   aria-label="Close"
                 >
                   ✖
