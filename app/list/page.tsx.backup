@@ -8,7 +8,6 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useCategories } from '../hooks/useCategories';
 import Link from 'next/link';
 import { getFormattedUnitPrice } from '../utils/unitPrice';
-import { FireIcon } from '@heroicons/react/24/solid';
 import PricePhotoCapture from '../components/PricePhotoCapture';
 import PriceReviewModal from '../components/PriceReviewModal';
 import StatusModal from '../components/StatusModal';
@@ -2652,7 +2651,7 @@ export default function ShoppingList() {
                                                           }`}
                                                       >
                                                         {dealsItemNames.has(item.item_name) && (
-                                                          <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
+                                                          <span className="mr-1" title="On sale today!">🔥</span>
                                                         )}
                                                         {item.item_name}
                                                         {item.quantity > 1 && (
@@ -2950,7 +2949,7 @@ export default function ShoppingList() {
                                                           }`}
                                                       >
                                                         {dealsItemNames.has(item.item_name) && (
-                                                          <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
+                                                          <span className="mr-1" title="On sale today!">🔥</span>
                                                         )}
                                                         {item.item_name}
                                                         {item.quantity > 1 && (
@@ -3185,7 +3184,7 @@ export default function ShoppingList() {
                                                       }`}
                                                   >
                                                     {dealsItemNames.has(item.item_name) && (
-                                                      <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
+                                                      <span className="mr-1" title="On sale today!">🔥</span>
                                                     )}
                                                     {item.item_name}
                                                     {item.quantity > 1 && (
