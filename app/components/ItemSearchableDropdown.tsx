@@ -1,31 +1,41 @@
-'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MagnifyingGlassIcon, PlusIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/solid';
+
+export interface ItemSearchableDropdownHandle {
+    focus: () => void;
+}
 
 interface ItemSearchableDropdownProps {
     items: { id: string; name: string }[];
     selectedItemId?: string;
     onSelect: (itemId: string, name: string) => void;
-    onAddNew: (name: string) => void;
+    onInputChange?: (name: string) => void;
     placeholder?: string;
     className?: string;
     favoritedIds?: Set<string>;
 }
 
-export default function ItemSearchableDropdown({
-    items,
-    selectedItemId,
-    onSelect,
-    onAddNew,
-    placeholder = "Search items...",
-    className = "",
-    favoritedIds = new Set()
-}: ItemSearchableDropdownProps) {
+const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSearchableDropdownProps>((props, ref) => {
+    const {
+        items,
+        selectedItemId,
+        onSelect,
+        onInputChange,
+        placeholder = "Search items...",
+        className = "",
+        favoritedIds = new Set()
+    } = props;
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        }
+    }));
 
     // Initial state setup
     useEffect(() => {
@@ -43,12 +53,14 @@ export default function ItemSearchableDropdown({
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
                 const item = items.find(i => i.id === selectedItemId);
-                setQuery(item ? item.name : '');
+                const finalName = item ? item.name : query;
+                setQuery(finalName);
+                if (onInputChange) onInputChange(finalName);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [selectedItemId, items]);
+    }, [selectedItemId, items, query, onInputChange]);
 
     const filteredItems = useMemo(() => {
         const q = query.toLowerCase().trim();
@@ -71,34 +83,40 @@ export default function ItemSearchableDropdown({
     const handleSelect = (itemId: string, name: string) => {
         onSelect(itemId, name);
         setQuery(name);
+        if (onInputChange) onInputChange(name);
         setIsOpen(false);
         setSelectedIndex(-1);
     };
 
-    const isExisting = items.some(i => i.name.toLowerCase() === query.trim().toLowerCase());
-    const showCreateNew = query.trim() && !isExisting;
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setIsOpen(true);
-            setSelectedIndex(prev => (prev < filteredItems.length + (showCreateNew ? 0 : -1) ? prev + 1 : prev));
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setSelectedIndex(prev => (prev > -1 ? prev - 1 : -1));
+        if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey && isOpen && filteredItems.length > 0)) {
+            if (e.key === 'Tab') {
+                // If we are at the end, let tab perform default (move to next field)
+                // BUT user said "tab to advance through list then hit enter"
+                // So we'll prevent default until they reach the end? 
+                // Actually, standard behavior for this request is to cycle.
+                if (selectedIndex < filteredItems.length - 1) {
+                    e.preventDefault();
+                    setSelectedIndex(prev => prev + 1);
+                }
+            } else {
+                e.preventDefault();
+                setIsOpen(true);
+                setSelectedIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : prev));
+            }
+        } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey && isOpen && filteredItems.length > 0)) {
+            if (selectedIndex > -1) {
+                e.preventDefault();
+                setSelectedIndex(prev => prev - 1);
+            }
         } else if (e.key === 'Enter') {
-            e.preventDefault();
             if (selectedIndex === -1) {
                 const exactMatch = items.find(i => i.name.toLowerCase() === query.trim().toLowerCase());
                 if (exactMatch) {
                     handleSelect(exactMatch.id, exactMatch.name);
-                } else if (showCreateNew) {
-                    onAddNew(query.trim());
+                } else {
                     setIsOpen(false);
                 }
-            } else if (showCreateNew && selectedIndex === filteredItems.length) {
-                onAddNew(query.trim());
-                setIsOpen(false);
             } else if (filteredItems[selectedIndex]) {
                 handleSelect(filteredItems[selectedIndex].id, filteredItems[selectedIndex].name);
             }
@@ -110,7 +128,7 @@ export default function ItemSearchableDropdown({
     const handleClear = () => {
         onSelect('', '');
         setQuery('');
-        setIsOpen(true);
+        setIsOpen(false);
         inputRef.current?.focus();
     };
 
@@ -124,11 +142,13 @@ export default function ItemSearchableDropdown({
                     placeholder={placeholder}
                     value={query}
                     onChange={(e) => {
-                        setQuery(e.target.value);
+                        const val = e.target.value;
+                        setQuery(val);
+                        if (onInputChange) onInputChange(val);
                         setIsOpen(true);
                         setSelectedIndex(-1);
                     }}
-                    onFocus={() => setIsOpen(true)}
+                    onFocus={() => { }}
                     onKeyDown={handleKeyDown}
                 />
                 {query && (
@@ -141,51 +161,33 @@ export default function ItemSearchableDropdown({
                 )}
             </div>
 
-            {isOpen && (
+            {isOpen && filteredItems.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto scrollbar-hide">
-                    {filteredItems.length > 0 ? (
-                        <div>
-                            {filteredItems.map((item, index) => {
-                                const isFav = favoritedIds.has(item.id);
-                                return (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onMouseEnter={() => setSelectedIndex(index)}
-                                        onClick={() => handleSelect(item.id, item.name)}
-                                        className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2 ${selectedIndex === index ? 'bg-blue-50' : ''
-                                            }`}
-                                    >
-                                        {isFav && <span className="text-yellow-500 text-lg">⭐</span>}
-                                        <span>{item.name}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ) : !showCreateNew && (
-                        <div className="px-4 py-3 text-sm text-gray-500 italic text-center">
-                            No matching items found...
-                        </div>
-                    )}
-
-                    {/* Quick Add */}
-                    {showCreateNew && (
-                        <button
-                            type="button"
-                            onMouseEnter={() => setSelectedIndex(filteredItems.length)}
-                            onClick={() => {
-                                onAddNew(query.trim());
-                                setIsOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 font-semibold text-blue-600 border-t border-gray-100 flex items-center gap-2 ${selectedIndex === filteredItems.length ? 'bg-blue-50' : ''
-                                }`}
-                        >
-                            <PlusIcon className="h-4 w-4" />
-                            <span>Add "{query.trim()}"</span>
-                        </button>
-                    )}
+                    <div>
+                        {filteredItems.map((item, index) => {
+                            const isFav = favoritedIds.has(item.id);
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onMouseEnter={() => setSelectedIndex(index)}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault(); // Prevent blur
+                                        handleSelect(item.id, item.name);
+                                    }}
+                                    className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2 ${selectedIndex === index ? 'bg-blue-50' : ''
+                                        }`}
+                                >
+                                    {isFav && <span className="text-yellow-500 text-lg">⭐</span>}
+                                    <span>{item.name}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>
     );
-}
+});
+
+export default ItemSearchableDropdown;

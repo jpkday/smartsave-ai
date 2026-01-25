@@ -156,11 +156,11 @@ function PricesContent() {
   const [prices, setPrices] = useState<{ [key: string]: string }>({});
   const [pricesDates, setPricesDates] = useState<{ [key: string]: string }>({});
   const [lastSaved, setLastSaved] = useState<string>('');
-  const [items, setItems] = useState<string[]>([]);
-  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
+  const [editingItem, setEditingItem] = useState<{ id: string; name: string } | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const [selectedItemFilter, setSelectedItemFilter] = useState<string>(''); // Default to empty
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
@@ -261,11 +261,14 @@ function PricesContent() {
   const loadData = async () => {
     const { data: itemsData } = await supabase
       .from('items')
-      .select('name')
+      .select('id, name')
       .order('name');
 
     if (itemsData) {
       setItems(itemsData.map(i => i.name));
+      const map: { [name: string]: string } = {};
+      itemsData.forEach(i => { map[i.name] = i.id; });
+      setItemIdMap(map);
     }
 
     const { data: storesData } = await supabase
@@ -307,8 +310,8 @@ function PricesContent() {
       const latestPrices: { [key: string]: any } = {};
 
       pricesData.forEach(p => {
-        if (p.store_id) {
-          const key = `${p.store_id}-${p.item_name}`;
+        if (p.store_id && p.item_id) {
+          const key = `${p.store_id}-${p.item_id}`;
           if (!latestPrices[key] || new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date)) {
             latestPrices[key] = p;
             pricesObj[key] = parseFloat(p.price).toFixed(2);
@@ -396,8 +399,8 @@ function PricesContent() {
     setLastSaved(formatLocalDate(today));
   };
 
-  const getPriceColor = (storeId: string, item: string) => {
-    const price = prices[`${storeId}-${item}`];
+  const getPriceColor = (storeId: string, itemId: string) => {
+    const price = prices[`${storeId}-${itemId}`];
     const numPrice = parseFloat(price || '0');
     return numPrice > 0 ? 'text-gray-800' : 'text-gray-200';
   };
@@ -422,9 +425,9 @@ function PricesContent() {
     return `${months}mo ago`;
   };
 
-  const startEdit = (item: string) => {
+  const startEdit = (item: { id: string; name: string }) => {
     setEditingItem(item);
-    setEditingValue(item);
+    setEditingValue(item.name);
   };
 
   const cancelEdit = () => {
@@ -443,10 +446,13 @@ function PricesContent() {
       return;
     }
 
+    const itemId = itemIdMap[oldItem];
+    if (!itemId) return;
+
     const { error: itemError } = await supabase
       .from('items')
       .update({ name: editingValue.trim() })
-      .eq('name', oldItem);
+      .eq('id', itemId);
 
     if (itemError) {
       console.error('Error updating item:', itemError);
@@ -457,17 +463,23 @@ function PricesContent() {
     await supabase
       .from('price_history')
       .update({ item_name: editingValue.trim() })
-      .eq('item_name', oldItem)
-      .eq('user_id', SHARED_USER_ID);
+      .or(`item_id.eq.${itemId},item_name.eq."${oldItem}"`);
 
     await supabase
       .from('shopping_list')
       .update({ item_name: editingValue.trim() })
-      .eq('item_name', oldItem)
-      .eq('user_id', SHARED_USER_ID);
+      .or(`item_id.eq.${itemId},item_name.eq."${oldItem}"`);
 
     const updatedItems = items.map(i => i === oldItem ? editingValue.trim() : i);
     setItems(updatedItems);
+
+    // Update ID map
+    setItemIdMap(prev => {
+      const next = { ...prev };
+      delete next[oldItem];
+      next[editingValue.trim()] = itemId;
+      return next;
+    });
 
     const updatedPrices: { [key: string]: string } = {};
     Object.keys(prices).forEach(key => {
@@ -507,10 +519,13 @@ function PricesContent() {
       return;
     }
 
+    const itemId = itemIdMap[itemToDelete];
+    if (!itemId) return;
+
     const { error: itemError } = await supabase
       .from('items')
       .delete()
-      .eq('name', itemToDelete);
+      .eq('id', itemId);
 
     if (itemError) {
       console.error('Error deleting item:', itemError);
@@ -521,15 +536,20 @@ function PricesContent() {
     await supabase
       .from('price_history')
       .delete()
-      .eq('item_name', itemToDelete);
+      .eq('item_id', itemId);
 
     await supabase
       .from('shopping_list')
       .delete()
-      .eq('item_name', itemToDelete);
+      .eq('item_id', itemId);
 
     const updatedItems = items.filter(i => i !== itemToDelete);
     setItems(updatedItems);
+    setItemIdMap(prev => {
+      const next = { ...prev };
+      delete next[itemToDelete];
+      return next;
+    });
 
     // Filter cleanup if deleted item was selected
     if (selectedItemFilter === itemToDelete) {
@@ -567,10 +587,12 @@ function PricesContent() {
     if (!name) return;
     if (items.includes(name)) { handleItemSelect(name); return; }
     try {
-      const { error } = await supabase.from('items').insert({ name: name, user_id: SHARED_USER_ID, category: 'Other' }).select().single();
+      const { data, error } = await supabase.from('items').insert({ name: name, user_id: SHARED_USER_ID, category: 'Other' }).select().single();
       if (error) throw error;
-      const newItems = [...items, name].sort((a, b) => a.localeCompare(b));
-      setItems(newItems);
+      setItems([...items, name].sort((a, b) => a.localeCompare(b)));
+      if (data?.id) {
+        setItemIdMap(prev => ({ ...prev, [name]: data.id.toString() }));
+      }
       handleItemSelect(name);
     } catch (e) {
       console.error('Error adding item', e);

@@ -5,9 +5,10 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { getFuzzyMatch } from '../lib/utils';
-import { PlusIcon, PhotoIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import StatusModal from '../components/StatusModal';
 import ReceiptPhotoCapture from '../components/ReceiptPhotoCapture';
+import ItemSearchableDropdown, { ItemSearchableDropdownHandle } from '../components/ItemSearchableDropdown';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -20,6 +21,7 @@ type ReceiptDraft = {
 };
 
 interface ReceiptItem {
+  itemId: string;
   item: string;
   quantity: string;
   price: string;
@@ -47,15 +49,16 @@ function ReceiptsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
-  const [items, setItems] = useState<string[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
+  const [favoritedItemIds, setFavoritedItemIds] = useState<Set<string>>(new Set());
   const [itemAliases, setItemAliases] = useState<{ alias: string; itemName: string }[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [date, setDate] = useState('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
-    { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
+    { itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }
   ]);
   const [skuMappings, setSkuMappings] = useState<Record<string, string>>({}); // itemName -> sku
-  const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const itemRefs = useRef<(ItemSearchableDropdownHandle | null)[]>([]);
   const [createPastTrip, setCreatePastTrip] = useState(true);
   const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
@@ -195,7 +198,7 @@ function ReceiptsContent() {
 
       const { data, error } = await supabase
         .from('price_history')
-        .select('item_name, price, recorded_date')
+        .select('item_id, item_name, price, recorded_date')
         .eq('user_id', SHARED_USER_ID)
         .eq('store_id', selectedStoreId)
         .order('recorded_date', { ascending: false });
@@ -206,9 +209,15 @@ function ReceiptsContent() {
         return;
       }
 
+      const idToName: Record<string, string> = {};
+      items.forEach(it => { idToName[it.id] = it.name; });
+
       const lookup: Record<string, string> = {};
       for (const row of data || []) {
-        if (!lookup[row.item_name]) lookup[row.item_name] = String(row.price);
+        const currentName = row.item_id ? idToName[String(row.item_id)] : row.item_name;
+        if (currentName && !lookup[currentName]) {
+          lookup[currentName] = String(row.price);
+        }
       }
 
       setStorePriceLookup(lookup);
@@ -248,23 +257,23 @@ function ReceiptsContent() {
       });
       setStores(sorted);
     }
+    const [itemsRes, favsRes, aliasesRes] = await Promise.all([
+      supabase.from('items').select('id, name').order('name'),
+      householdCode
+        ? supabase.from('household_item_favorites').select('item_id').eq('household_code', householdCode)
+        : Promise.resolve({ data: [] }),
+      supabase.from('item_aliases').select('alias, items!inner(name)')
+    ]);
 
-    const { data: itemsData } = await supabase
-      .from('items')
-      .select('name')
-      .order('name');
-
-    if (itemsData) {
-      setItems(itemsData.map(i => i.name));
+    if (itemsRes.data) {
+      setItems(itemsRes.data as any);
+    }
+    if (favsRes.data) {
+      setFavoritedItemIds(new Set(favsRes.data.map((f: any) => f.item_id.toString())));
     }
 
-    // 4. Load Item Aliases
-    const { data: aliasesData } = await supabase
-      .from('item_aliases')
-      .select('alias, items!inner(name)');
-
-    if (aliasesData) {
-      const mappedAliases = aliasesData.map((a: any) => ({
+    if (aliasesRes.data) {
+      const mappedAliases = aliasesRes.data.map((a: any) => ({
         alias: a.alias,
         itemName: a.items.name
       }));
@@ -273,7 +282,7 @@ function ReceiptsContent() {
   };
 
   const addRow = () => {
-    setReceiptItems([...receiptItems, { item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setReceiptItems([...receiptItems, { itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setTimeout(() => {
       const newIndex = receiptItems.length;
       itemRefs.current[newIndex]?.focus();
@@ -283,7 +292,7 @@ function ReceiptsContent() {
   const removeRow = (index: number) => {
     setReceiptItems((prev) => {
       if (prev.length <= 1) {
-        return [{ item: '', price: '', quantity: '1' } as any];
+        return [{ itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }];
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -312,12 +321,42 @@ function ReceiptsContent() {
     );
   };
 
-  const updateItem = (index: number, field: 'item' | 'quantity' | 'price' | 'sku', value: string) => {
+  const updateItem = (index: number, field: 'itemId' | 'item' | 'quantity' | 'price' | 'sku', value: string) => {
     setReceiptItems((prev) => {
       const newItems = [...prev];
       const currentRow = { ...newItems[index] };
 
-      if (field === 'price') {
+      if (field === 'itemId') {
+        currentRow.itemId = value;
+        const match = items.find(it => it.id === value);
+        if (match) {
+          currentRow.item = match.name;
+          const suggestedPrice = storePriceLookup[match.name];
+          if (!currentRow.priceDirty && suggestedPrice) {
+            currentRow.price = suggestedPrice;
+          }
+          if (skuMappings[match.name]) {
+            currentRow.sku = skuMappings[match.name];
+          }
+        }
+      } else if (field === 'item') {
+        currentRow.item = value;
+        // If typing manual name, see if it matches
+        const match = items.find(it => it.name.toLowerCase() === value.trim().toLowerCase());
+        if (match) {
+          currentRow.itemId = match.id;
+          const suggestedPrice = storePriceLookup[match.name];
+          if (!currentRow.priceDirty && suggestedPrice) {
+            currentRow.price = suggestedPrice;
+          }
+          if (skuMappings[match.name]) {
+            currentRow.sku = skuMappings[match.name];
+          }
+        } else {
+          currentRow.itemId = '';
+          currentRow.sku = '';
+        }
+      } else if (field === 'price') {
         currentRow.priceDirty = true;
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
@@ -329,18 +368,6 @@ function ReceiptsContent() {
       } else if (field === 'quantity') {
         if (/^\d*\.?\d*$/.test(value)) {
           currentRow.quantity = value;
-        }
-      } else if (field === 'item') {
-        currentRow.item = value;
-        // Auto-populate price and SKU on item name match (if empty)
-        const suggestedPrice = storePriceLookup[value];
-        if (!currentRow.priceDirty && suggestedPrice) {
-          currentRow.price = suggestedPrice;
-        }
-        if (skuMappings[value]) {
-          currentRow.sku = skuMappings[value];
-        } else {
-          currentRow.sku = ''; // Clear SKU if no mapping found for new item
         }
       } else if (field === 'sku') {
         currentRow.sku = value;
@@ -557,7 +584,7 @@ function ReceiptsContent() {
     const validItems = receiptItems.filter((ri) => {
       const price = parseFloat(ri.price || '0');
       const qty = parseFloat(ri.quantity || '1');
-      return ri.item && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
+      return (ri.itemId || ri.item) && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
     });
 
     if (validItems.length === 0) {
@@ -630,7 +657,7 @@ function ReceiptsContent() {
         return;
       }
 
-      setItems((prev) => Array.from(new Set([...prev, ...missing])));
+      setItems((prev) => [...prev, ...missing.map(name => ({ id: 'new', name }))]);
     }
 
     const { data: allItemsData, error: allItemsErr } = await supabase
@@ -781,7 +808,8 @@ function ReceiptsContent() {
 
     setSelectedStoreId('');
     setDate(new Date().toISOString().split('T')[0]);
-    setReceiptItems([{ item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setReceiptItems([{ itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setTripEndLocal('');
     localStorage.removeItem(RECEIPT_DRAFT_KEY);
 
     loadData();
@@ -959,27 +987,15 @@ function ReceiptsContent() {
                 {receiptItems.map((ri, idx) => (
                   <div key={idx} className="flex gap-3 items-center">
                     <div className="flex-1">
-                      <input
-                        type="text"
-                        list={`items-${idx}`}
-                        value={ri.item}
-                        onChange={(e) => updateItem(idx, 'item', e.target.value)}
-                        onBlur={(e) => {
-                          if (items.includes(e.target.value) &&
-                            ri.originalName &&
-                            ri.originalName !== e.target.value) {
-                            handleItemSelect(idx, e.target.value);
-                          }
-                        }}
-                        placeholder="Type or select item..."
-                        ref={(el) => { if (el) itemRefs.current[idx] = el; }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                      <ItemSearchableDropdown
+                        ref={(el) => { itemRefs.current[idx] = el; }}
+                        items={items}
+                        selectedItemId={ri.itemId}
+                        onSelect={(id: string, name: string) => updateItem(idx, 'itemId', id)}
+                        onInputChange={(name: string) => updateItem(idx, 'item', name)}
+                        placeholder="Search or add item..."
+                        favoritedIds={favoritedItemIds}
                       />
-                      <datalist id={`items-${idx}`}>
-                        {items.sort().map(item => (
-                          <option key={item} value={item} />
-                        ))}
-                      </datalist>
                     </div>
 
                     {/* SKU Input */}
@@ -1026,11 +1042,11 @@ function ReceiptsContent() {
                     </div>
                     <button
                       onClick={() => removeRow(idx)}
-                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
                       aria-label="Close"
                       title="Remove"
                     >
-                      ✖️
+                      <XMarkIcon className="w-5 h-5" />
                     </button>
                   </div>
                 ))}

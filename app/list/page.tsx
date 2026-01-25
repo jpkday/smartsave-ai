@@ -708,16 +708,14 @@ export default function ShoppingList() {
         const { error: listError } = await supabase
           .from('shopping_list')
           .update({ item_name: newName })
-          .eq('item_id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
+          .or(`item_id.eq.${editModalItem.item_id},item_name.eq."${oldName}"`);
 
         if (listError) throw listError;
 
         const { error: phError } = await supabase
           .from('price_history')
           .update({ item_name: newName })
-          .eq('item_id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
+          .or(`item_id.eq.${editModalItem.item_id},item_name.eq."${oldName}"`);
 
         if (phError) throw phError;
       } else {

@@ -563,7 +563,7 @@ function ItemsContent() {
     }
   };
 
-  const renameItem = async (oldName: string, nextNameRaw: string) => {
+  const renameItem = async (itemId: number, oldName: string, nextNameRaw: string) => {
     const nextName = nextNameRaw.trim();
     if (!nextName || nextName === oldName) return;
 
@@ -578,35 +578,32 @@ function ItemsContent() {
     const { error: itemError } = await supabase
       .from('items')
       .update({ name: nextName })
-      .eq('name', oldName)
-      .eq('user_id', SHARED_USER_ID);
+      .eq('id', itemId);
 
     if (itemError) throw new Error(itemError.message);
 
-    // Cascade rename to all historical or active references
+    // Cascade rename to all historical or active references using BOTH ID and old Name for robustness
     try {
       await Promise.all([
         supabase
           .from('price_history')
           .update({ item_name: nextName })
-          .eq('item_name', oldName)
-          .eq('user_id', SHARED_USER_ID),
+          .or(`item_id.eq.${itemId},item_name.eq."${oldName}"`),
         supabase
           .from('shopping_list')
           .update({ item_name: nextName })
-          .eq('item_name', oldName)
-          .eq('user_id', SHARED_USER_ID),
+          .or(`item_id.eq.${itemId},item_name.eq."${oldName}"`),
         supabase
           .from('shopping_list_events')
           .update({ item_name: nextName })
-          .eq('item_name', oldName)
+          .or(`item_id.eq.${itemId},item_name.eq."${oldName}"`)
       ]);
     } catch (cascadeError) {
       console.error('Error cascading item rename:', cascadeError);
       // We don't throw here as the primary item update succeeded
     }
 
-    setItems((prev) => prev.map((i) => (i.name === oldName ? { ...i, name: nextName } : i)));
+    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, name: nextName } : i)));
   };
 
   const saveRename = async () => {
@@ -626,7 +623,7 @@ function ItemsContent() {
     try {
       // 1. Rename if needed
       if (nameChanged) {
-        await renameItem(selected.name, nextName);
+        await renameItem(selected.id, selected.name, nextName);
         // renameItem updates 'items' state with the new name
       }
 
@@ -705,7 +702,10 @@ function ItemsContent() {
     if (!editingName) return;
     setInlineSaving(true);
     try {
-      await renameItem(editingName, editingValue);
+      const itemToRename = items.find(i => i.name === editingName);
+      if (itemToRename) {
+        await renameItem(itemToRename.id, editingName, editingValue);
+      }
       cancelInlineEdit();
     } catch (e) {
       console.error('Inline rename failed:', e);

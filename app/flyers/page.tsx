@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import StatusModal from '../components/StatusModal';
-import ItemSearchableDropdown from '../components/ItemSearchableDropdown';
+import ItemSearchableDropdown, { ItemSearchableDropdownHandle } from '../components/ItemSearchableDropdown';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 import { formatLocalDate } from '../utils/date';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -21,6 +22,7 @@ type ReceiptDraft = {
 };
 
 interface ReceiptItem {
+  itemId: string;
   item: string;
   quantity: string;
   price: string;
@@ -51,10 +53,10 @@ function FlyersContent() {
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [favoritedItemIds, setFavoritedItemIds] = useState<Set<string>>(new Set());
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
-    { item: '', quantity: '1', price: '', sku: '', priceDirty: false }
+    { itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }
   ]);
   const [skuMappings, setSkuMappings] = useState<Record<string, string>>({}); // itemName -> sku
-  const itemRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const itemRefs = useRef<(ItemSearchableDropdownHandle | null)[]>([]);
   const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
@@ -172,7 +174,7 @@ function FlyersContent() {
 
       const { data, error } = await supabase
         .from('price_history')
-        .select('item_name, price, recorded_date')
+        .select('item_id, item_name, price, recorded_date')
         .eq('user_id', SHARED_USER_ID)
         .eq('store_id', selectedStoreId)
         .order('recorded_date', { ascending: false });
@@ -183,9 +185,15 @@ function FlyersContent() {
         return;
       }
 
+      const idToName: Record<string, string> = {};
+      items.forEach(it => { idToName[it.id] = it.name; });
+
       const lookup: Record<string, string> = {};
       for (const row of data || []) {
-        if (!lookup[row.item_name]) lookup[row.item_name] = String(row.price);
+        const currentName = row.item_id ? idToName[String(row.item_id)] : row.item_name;
+        if (currentName && !lookup[currentName]) {
+          lookup[currentName] = String(row.price);
+        }
       }
 
       setStorePriceLookup(lookup);
@@ -242,7 +250,7 @@ function FlyersContent() {
   };
 
   const addRow = () => {
-    setReceiptItems([...receiptItems, { item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setReceiptItems([...receiptItems, { itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setTimeout(() => {
       const newIndex = receiptItems.length;
       itemRefs.current[newIndex]?.focus();
@@ -252,7 +260,7 @@ function FlyersContent() {
   const removeRow = (index: number) => {
     setReceiptItems((prev) => {
       if (prev.length <= 1) {
-        return [{ item: '', price: '', quantity: '1' } as any];
+        return [{ itemId: '', item: '', price: '', quantity: '1', sku: '', priceDirty: false }];
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -281,12 +289,42 @@ function FlyersContent() {
     );
   };
 
-  const updateItem = (index: number, field: 'item' | 'quantity' | 'price' | 'sku', value: string) => {
+  const updateItem = (index: number, field: 'itemId' | 'item' | 'quantity' | 'price' | 'sku', value: string) => {
     setReceiptItems((prev) => {
       const newItems = [...prev];
       const currentRow = { ...newItems[index] };
 
-      if (field === 'price') {
+      if (field === 'itemId') {
+        currentRow.itemId = value;
+        const match = items.find(it => it.id === value);
+        if (match) {
+          currentRow.item = match.name;
+          const suggestedPrice = storePriceLookup[match.name];
+          if (!currentRow.priceDirty && suggestedPrice) {
+            currentRow.price = suggestedPrice;
+          }
+          if (skuMappings[match.name]) {
+            currentRow.sku = skuMappings[match.name];
+          }
+        }
+      } else if (field === 'item') {
+        currentRow.item = value;
+        // If typing manual name, see if it matches
+        const match = items.find(it => it.name.toLowerCase() === value.trim().toLowerCase());
+        if (match) {
+          currentRow.itemId = match.id;
+          const suggestedPrice = storePriceLookup[match.name];
+          if (!currentRow.priceDirty && suggestedPrice) {
+            currentRow.price = suggestedPrice;
+          }
+          if (skuMappings[match.name]) {
+            currentRow.sku = skuMappings[match.name];
+          }
+        } else {
+          currentRow.itemId = '';
+          currentRow.sku = '';
+        }
+      } else if (field === 'price') {
         currentRow.priceDirty = true;
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
@@ -298,18 +336,6 @@ function FlyersContent() {
       } else if (field === 'quantity') {
         if (/^\d*\.?\d*$/.test(value)) {
           currentRow.quantity = value;
-        }
-      } else if (field === 'item') {
-        currentRow.item = value;
-        // Auto-populate price and SKU on item name match (if empty)
-        const suggestedPrice = storePriceLookup[value];
-        if (!currentRow.priceDirty && suggestedPrice) {
-          currentRow.price = suggestedPrice;
-        }
-        if (skuMappings[value]) {
-          currentRow.sku = skuMappings[value];
-        } else {
-          currentRow.sku = ''; // Clear SKU if no mapping found for new item
         }
       } else if (field === 'sku') {
         currentRow.sku = value;
@@ -350,7 +376,7 @@ function FlyersContent() {
     const validItems = receiptItems.filter((ri) => {
       const price = parseFloat(ri.price || '0');
       const qty = parseFloat(ri.quantity || '1');
-      return ri.item && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
+      return (ri.itemId || ri.item) && !isNaN(price) && price > 0 && !isNaN(qty) && qty > 0;
     });
 
     if (validItems.length === 0) {
@@ -461,7 +487,7 @@ function FlyersContent() {
     );
 
     setSelectedStoreId('');
-    setReceiptItems([{ item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
+    setReceiptItems([{ itemId: '', item: '', quantity: '1', price: '', sku: '', priceDirty: false }]);
     setValidFrom('');
     setValidUntil('');
     localStorage.removeItem(RECEIPT_DRAFT_KEY);
@@ -554,10 +580,11 @@ function FlyersContent() {
                   <div key={idx} className="flex gap-3 items-center">
                     <div className="flex-1 min-w-[180px]">
                       <ItemSearchableDropdown
+                        ref={(el) => { itemRefs.current[idx] = el; }}
                         items={items}
-                        selectedItemId={items.find((i: any) => i.name === ri.item)?.id}
-                        onSelect={(id: string, name: string) => updateItem(idx, 'item', name)}
-                        onAddNew={(name: string) => updateItem(idx, 'item', name)}
+                        selectedItemId={ri.itemId}
+                        onSelect={(id: string, name: string) => updateItem(idx, 'itemId', id)}
+                        onInputChange={(name: string) => updateItem(idx, 'item', name)}
                         placeholder="Search or add item..."
                         favoritedIds={favoritedItemIds}
                       />
@@ -595,11 +622,11 @@ function FlyersContent() {
                     </div>
                     <button
                       onClick={() => removeRow(idx)}
-                      className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
                       aria-label="Close"
                       title="Remove"
                     >
-                      ✖️
+                      <XMarkIcon className="w-5 h-5" />
                     </button>
                   </div>
                 ))}

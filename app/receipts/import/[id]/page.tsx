@@ -604,12 +604,10 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                                 confidence: 'high'
                                                             });
                                                         }}
-                                                        onAddNew={(name) => {
-                                                            handleRowChange(idx, {
-                                                                status: 'new',
-                                                                newItemName: name,
-                                                                confidence: 'low'
-                                                            });
+                                                        onInputChange={(name) => {
+                                                            if (row.status === 'new') {
+                                                                handleRowChange(idx, { newItemName: name });
+                                                            }
                                                         }}
                                                         placeholder={`Match "${row.ocrName}"...`}
                                                     />
