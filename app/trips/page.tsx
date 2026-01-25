@@ -328,8 +328,7 @@ export default function TripsPage() {
               <button
                 key={days}
                 onClick={() => setDaysToShow(days)}
-                // Added min-w-[5.5rem] to make 7/14 days same visual width
-                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-md transform hover:scale-105 text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
+                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-lg transform hover:scale-105 active:scale-95 cursor-pointer text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
                   } ${daysToShow === days
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
                     : 'bg-white text-slate-600 hover:bg-indigo-50 border-slate-200'
@@ -474,9 +473,9 @@ export default function TripsPage() {
                   <>
                     <button
                       onClick={() => setSelectedStoreFilter('All')}
-                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 text-center ${selectedStoreFilter === 'All'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-md active:scale-95 cursor-pointer text-center ${selectedStoreFilter === 'All'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-200'
                         }`}
                     >
                       All Stores
@@ -485,9 +484,9 @@ export default function TripsPage() {
                       <button
                         key={store}
                         onClick={() => setSelectedStoreFilter(store)}
-                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-md active:scale-95 cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-200'
                           }`}
                       >
                         {store}
@@ -519,7 +518,7 @@ export default function TripsPage() {
                       {/* Trip header - clickable */}
                       <button
                         onClick={() => toggleTrip(trip.id)}
-                        className="w-full bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-5 hover:from-teal-600 hover:to-teal-700 transition"
+                        className="w-full bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-5 hover:from-teal-600 hover:to-teal-700 cursor-pointer transition"
                       >
                         <div className="flex justify-between items-start">
                           <div className="text-left">
