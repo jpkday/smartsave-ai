@@ -22,6 +22,8 @@ interface TripEvent {
   checked_at: string;
   category_id: number;
   price?: number;
+  unit?: string;
+  is_weighted?: boolean;
 }
 
 interface TripWithEvents extends Trip {
@@ -161,17 +163,27 @@ export default function TripsPage() {
     setExpandedTrips(new Set(tripsData.map(t => t.id)));
 
     const tripIds = tripsData.map(t => t.id);
-    const { data: eventsData, error: eventsError } = await supabase
+    let { data: eventsData, error: eventsError } = await supabase
       .from('shopping_list_events')
-      .select('trip_id, item_id, quantity, checked_at, price')
+      .select('trip_id, item_id, quantity, checked_at, price, unit, is_weighted')
       .in('trip_id', tripIds)
       .order('checked_at', { ascending: true });
 
     if (eventsError) {
       console.error('Error loading events:', eventsError);
+      // Fallback if migration hasn't been run yet (missing unit/is_weighted)
+      if (eventsError.message?.includes('unit') || eventsError.message?.includes('is_weighted')) {
+        const { data: fallbackData } = await supabase
+          .from('shopping_list_events')
+          .select('trip_id, item_id, quantity, checked_at, price')
+          .in('trip_id', tripIds)
+          .order('checked_at', { ascending: true });
+
+        eventsData = fallbackData as any;
+      }
     }
 
-    const itemIds = [...new Set(eventsData?.map(e => e.item_id) || [])];
+    const itemIds = [...new Set((eventsData || []).map(e => e.item_id))];
 
     const { data: itemsData } = await supabase
       .from('items')
@@ -201,6 +213,8 @@ export default function TripsPage() {
           checked_at: event.checked_at,
           category_id: itemInfo?.category_id ?? -1,
           price: event.price || undefined,
+          unit: event.unit,
+          is_weighted: event.is_weighted,
         };
       });
 
@@ -227,10 +241,18 @@ export default function TripsPage() {
         }
       }
 
+      const itemCount = eventsWithDetails.reduce((sum, event) => {
+        // If it's weighted (lb/oz), it counts as 1 package
+        if (event.is_weighted || event.unit === 'lb' || event.unit === 'oz') {
+          return sum + 1;
+        }
+        return sum + (event.quantity || 1);
+      }, 0);
+
       return {
         ...trip,
         events: eventsWithDetails,
-        itemCount: eventsWithDetails.length,
+        itemCount,
         duration,
         totalCost,
       };
@@ -555,8 +577,10 @@ export default function TripsPage() {
                                       <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
                                         <div className="flex-1">
                                           <span className="text-gray-800 font-medium">{event.item_name}</span>
-                                          {event.quantity > 1 && (
-                                            <span className="text-gray-500 text-sm ml-2">× {event.quantity}</span>
+                                          {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
+                                            <span className="text-gray-500 text-sm ml-2">
+                                              × {event.quantity}{event.unit && (event.unit === 'lb' || event.unit === 'oz') ? ` ${event.unit}` : ''}
+                                            </span>
                                           )}
                                         </div>
                                         <div className="text-right">
@@ -565,9 +589,9 @@ export default function TripsPage() {
                                               <p className="font-semibold text-gray-800">
                                                 {formatMoney(event.price * event.quantity)}
                                               </p>
-                                              {event.quantity > 1 && (
+                                              {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
                                                 <p className="text-xs text-gray-500">
-                                                  {formatMoney(event.price)} each
+                                                  {formatMoney(event.price)} {event.is_weighted || (event.unit && (event.unit === 'lb' || event.unit === 'oz')) ? `/${event.unit || 'lb'}` : 'each'}
                                                 </p>
                                               )}
                                             </>

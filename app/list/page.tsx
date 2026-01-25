@@ -1424,7 +1424,6 @@ export default function ShoppingList() {
             name: itemName,
             user_id: SHARED_USER_ID,
             household_code: householdCode,
-            is_favorite: false,
           })
           .select('id')
           .single();
@@ -1486,7 +1485,6 @@ export default function ShoppingList() {
             name: itemName,
             user_id: SHARED_USER_ID,
             household_code: householdCode,
-            is_favorite: false,
           })
           .select('id')
           .single();

@@ -665,6 +665,7 @@ function ReceiptsContent() {
         const priceRow: any = {
           item_id: itemId,
           item_name: ri.item,
+          raw_name: ri.originalName || ri.item,
           store_id: selectedStoreId,
           store: storeName,
           price: ri.price,
@@ -747,6 +748,7 @@ function ReceiptsContent() {
               store: storeName,
               item_id: itemId,
               item_name: ri.item,
+              raw_name: ri.originalName || ri.item,
               quantity: qtyNum,
               price: priceNum,
               checked_at: endedAtIso

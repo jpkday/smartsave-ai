@@ -22,8 +22,11 @@ interface ImportedReceipt {
 
 interface ReconciliationRow {
     ocrName: string;
+    ocrNormalizedName?: string;
     ocrPrice: number;
     ocrQuantity: number;
+    ocrUnit?: string;
+    isWeighted?: boolean;
 
     // Selection state
     status: 'matched' | 'new' | 'unresolved';
@@ -127,6 +130,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             const ocrItems = receiptData.ocr_data?.items || [];
             const processedRows: ReconciliationRow[] = ocrItems.map((item: any) => {
                 const ocrName = item.name;
+                const ocrNormalizedName = item.normalized_name;
+                const ocrUnit = item.unit;
+                const isWeighted = item.is_weighted;
 
                 // Strategy A: Exact Alias Match (Prefer Store Specific, Fallback to Global)
                 let exactAlias = aliases.find((a: any) =>
@@ -144,8 +150,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 if (exactAlias) {
                     return {
                         ocrName,
+                        ocrNormalizedName,
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
+                        ocrUnit,
+                        isWeighted,
                         status: 'matched',
                         selectedItemId: exactAlias.item_id,
                         selectedItemName: Array.isArray(exactAlias.items) ? exactAlias.items[0]?.name : (exactAlias.items as any)?.name,
@@ -155,12 +164,15 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 }
 
                 // Strategy B: Exact Name Match
-                const exactItem = itemsList.find(i => i.name.toLowerCase() === ocrName.toLowerCase());
+                const exactItem = itemsList.find(i => i.name.toLowerCase() === (ocrNormalizedName || ocrName).toLowerCase());
                 if (exactItem) {
                     return {
                         ocrName,
+                        ocrNormalizedName,
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
+                        ocrUnit,
+                        isWeighted,
                         status: 'matched',
                         selectedItemId: exactItem.id,
                         selectedItemName: exactItem.name,
@@ -181,8 +193,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     if (match) {
                         return {
                             ocrName,
+                            ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
+                            ocrUnit,
+                            isWeighted,
                             status: 'matched',
                             selectedItemId: match.item_id,
                             selectedItemName: Array.isArray(match.items) ? match.items[0]?.name : (match.items as any)?.name,
@@ -193,14 +208,17 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 }
 
                 // Fuzzy against Items 
-                const fuzzyItemName = getFuzzyMatch(ocrName, candidateNames);
+                const fuzzyItemName = getFuzzyMatch(ocrNormalizedName || ocrName, candidateNames);
                 if (fuzzyItemName) {
                     const match = itemsList.find(i => i.name === fuzzyItemName);
                     if (match) {
                         return {
                             ocrName,
+                            ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
+                            ocrUnit,
+                            isWeighted,
                             status: 'matched',
                             selectedItemId: match.id,
                             selectedItemName: match.name,
@@ -217,8 +235,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     if (matchedItem) {
                         return {
                             ocrName,
+                            ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
+                            ocrUnit,
+                            isWeighted,
                             status: 'matched',
                             selectedItemId: matchedItem.id,
                             selectedItemName: matchedItem.name,
@@ -231,10 +252,13 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 // Fallback: Default to "New Item" with cleaned name
                 return {
                     ocrName,
+                    ocrNormalizedName,
                     ocrPrice: item.price,
                     ocrQuantity: item.quantity,
+                    ocrUnit,
+                    isWeighted,
                     status: 'new',
-                    newItemName: toTitleCase(ocrName),
+                    newItemName: toTitleCase(ocrNormalizedName || ocrName),
                     confidence: 'low',
                     isConfirmed: false
                 };
@@ -351,6 +375,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
                         item_id: finalItemId,
                         item_name: finalItemName,
+                        raw_name: row.ocrName,
+                        unit: row.ocrUnit || 'count',
+                        is_weighted: row.isWeighted || false,
                         price: row.ocrPrice || 0,
                         quantity: row.ocrQuantity || 1,
                         checked_at: tripEndDate.toISOString()
@@ -362,6 +389,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     await supabase.from('price_history').insert({
                         item_id: finalItemId,
                         item_name: finalItemName,
+                        raw_name: row.ocrName,
+                        unit: row.ocrUnit || 'count',
+                        is_weighted: row.isWeighted || false,
                         store_id: storeId,
                         store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
                         price: row.ocrPrice || 0,
@@ -478,8 +508,13 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                         <div>
                                             <div className="text-xs text-gray-400 font-mono mb-0.5">SCANNED ITEM AS</div>
                                             <div className="font-bold text-gray-800 text-lg">"{row.ocrName}"</div>
+                                            {row.ocrNormalizedName && row.ocrNormalizedName !== row.ocrName && (
+                                                <div className="text-sm font-medium text-blue-600 italic">
+                                                    Expanded: {row.ocrNormalizedName}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div>
+                                        <div className="text-right">
                                             <div className="text-xs text-gray-400 font-mono mb-0.5 uppercase">Scanned Price</div>
                                             <div className="flex items-center">
                                                 <span className="text-gray-400 font-bold mr-1">$</span>
@@ -492,17 +527,39 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                     className="w-20 font-bold text-gray-800 bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 focus:outline-none disabled:border-none"
                                                 />
                                             </div>
-                                            <div className="flex items-center mt-2">
-                                                <div className="text-[10px] text-gray-400 font-mono uppercase mr-2.5">Qty:</div>
+                                            <div className="flex items-center mt-2 justify-end">
+                                                <div className="text-[10px] text-gray-400 font-mono uppercase mr-2.5">
+                                                    {row.isWeighted ? 'Weight (lb):' : 'Qty:'}
+                                                </div>
                                                 <input
                                                     type="number"
                                                     step="any"
                                                     value={row.ocrQuantity}
                                                     disabled={row.isConfirmed}
                                                     onChange={(e) => handleRowChange(idx, { ocrQuantity: parseFloat(e.target.value) || 1 })}
-                                                    className="w-12 text-xs text-gray-600 bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 focus:outline-none disabled:border-none"
+                                                    className="w-12 text-xs font-bold text-gray-600 bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 focus:outline-none disabled:border-none"
                                                 />
-                                            </div>
+                                                {row.ocrUnit && (
+                                                    <span className="text-[10px] ml-1 font-bold text-gray-400 uppercase">{row.ocrUnit}</span>
+                                                )}
+                                                {row.isWeighted ? (
+                                                    <button
+                                                        onClick={() => handleRowChange(idx, { isWeighted: false })}
+                                                        title="Click to remove weight flag"
+                                                        className="ml-2 px-1 text-[9px] font-bold bg-amber-100 text-amber-700 rounded border border-amber-200 uppercase hover:bg-amber-200 transition-colors"
+                                                    >
+                                                        Weight
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleRowChange(idx, { isWeighted: true })}
+                                                        title="Click to flag as weighted (lb/oz)"
+                                                        className="ml-2 px-1 text-[9px] font-bold bg-gray-100 text-gray-400 rounded border border-gray-200 uppercase hover:bg-gray-200 transition-colors"
+                                                    >
+                                                        Scale
+                                                    </button>
+                                                )}
+                                                village                                           </div>
                                         </div>
                                     </div>
 
