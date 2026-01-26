@@ -50,25 +50,74 @@ export async function POST(req: NextRequest) {
 
         console.log("Processing image type:", mimeType);
 
-        // Prepare candidate list string (cap at 200 for speed on Hobby plan)
-        const knownItemsList = (candidateItems as string[]).slice(0, 200).join(", ");
+        // Prepare candidate list string (cap at 500 to be safe)
+        const knownItemsList = (candidateItems as string[]).slice(0, 500).join(", ");
 
-        // SKU lookup disabled for Vercel Hobby 10s timeout - re-enable on Pro plan
-        const skuMappingsSection = "";
+        const prompt = `
+      Analyze this receipt image and extract information in strict JSON format. 
+      
+      SPECIAL INSTRUCTIONS FOR NAMING & CONSOLIDATION:
+      - **Naming Style**: Format names as 'Primary Category, Specific Type' (e.g., 'Bread, Italian' instead of 'Italian Bread', 'Broth, Unsalted' instead of 'Unsalted Broth').
+      - **Units**: If an item is sold per each, use '(ea)' suffix (e.g., 'Parsley (ea)').
+      - **Consolidation**: If multiple identical items appear as separate lines on the receipt (e.g., two entries for 'Filled Pasta' at $1.69 each), CONSOLIDATE them into a single JSON object with the combined quantity and the total price.
+      
+      SPECIAL INSTRUCTIONS FOR ABBREVIATIONS (e.g. Aldi, Lidl):
+      - Aggressively expand abbreviations to their full, human-readable names using the Naming Style above.
+      - **ALDI CATALOG INTELLIGENCE**: If the store is ALDI, use your internal knowledge of ALDI product lines. Assume the receipt price is approximately 10-15% lower than the 'online' or 'instacart' price. Use this price-point to disambiguate similar items and identify the correct size/weight.
+        - Example 1: If the receipt says 'MIXED NUTS' at $5.29, you should know the online price is ~$5.85 for the '14.75 oz' size. You should output the 'normalized_name' as 'Nuts, Mixed w/ Sea Salt, 14.75 oz'.
+        - Example 2: If the receipt says '100% APPLE JUICE' at $1.99, you should know the online price is ~$2.19 for the '64 fl oz' size. You should output the 'normalized_name' as 'Juice, Apple, 100%, 64 fl oz'.
+        - Example 3: If the receipt says 'GROUND SIRLOIN' at $16.43, you should know the online price is ~$6.99/lb. After applying the 10-15% discount, you calculate the likely real-world price is ~$6.29/lb. You should calculate the weight ($16.43 / $6.29 = 2.61 lb) and output: 'normalized_name': 'Beef, Ground, Sirloin, 90% Lean', 'quantity': 2.61, 'unit': 'lb', 'is_weighted': true.
+        - Example 4: If the receipt says 'FRESH ATL SALMON' at $10.15, you should know the online price is ~$11.29/lb. After applying the 10-15% discount, you calculate the likely real-world price is ~$10.16/lb. You should calculate the weight ($10.15 / $10.16 = 1.0 lb) and output: 'normalized_name': 'Fish, Salmon, Atlantic, Norwegian', 'quantity': 1.0, 'unit': 'lb', 'is_weighted': true.
+        - Example 5: If the receipt says 'ITALIAN BREAD' at $2.25, you should know the online price is ~$2.49. This matches the naming convention. You should output: 'normalized_name': 'Bread, Italian'.
+      - Look specifically for weights (lb, kg, oz) or quantity indicators (e.g. '2 @ 1.50' or '0.45 lb') which may be on the same line or nearby.
+      - If an item is sold by weight, capture the weight in the 'quantity' field, and set 'unit' to 'lb' or 'oz'.
+      - If a weight is NOT found but the item is clearly a bulk item (e.g. 'GROUND SIRLOIN'), set 'is_weighted' to true.
 
-        const prompt = `Extract receipt data as JSON. Naming: "Category, Type" (e.g., "Bread, Italian"). Expand abbreviations. For weighted items, calculate weight from price. Consolidate duplicate lines.
+      EXTRACT THESE FIELDS:
+      1. Store Name (store)
+      2. Date of purchase (date) in YYYY-MM-DD format
+      3. Time of purchase (time) in HH:MM format (24-hour).
+      4. A list of items (items), where each item has:
+         - name: The product name as seen on receipt (raw string)
+         - normalized_name: The expanded name following 'Primary Category, Specific Type' style.
+         - price: The UNIT price for one item (number). If multiple identical items are consolidated, this should be the price of a single item.
+         - quantity: The numerical quantity or weight (number)
+         - unit: The unit of measure, e.g., 'lb', 'oz', 'count', 'bunch', 'bag' (string, default to 'count')
+         - is_weighted: true if the item price is determined by weight (boolean)
+         - sku: The SKU or product code if visible (string, optional)
+         - ai_match: The exact string from the "Known Items" list below that best matches this item.
 
-KNOWN ITEMS (use for ai_match): [${knownItemsList}]
-${skuMappingsSection}
-Return JSON: {"store":"","date":"YYYY-MM-DD","time":"HH:MM","items":[{"name":"RAW","normalized_name":"Category, Type","price":0,"quantity":1,"unit":"count|lb|oz","is_weighted":false,"sku":"","ai_match":""}]}`;
+      KNOWN ITEMS LIST: [${knownItemsList}]
+
+      Ignore tax, subtotals, and savings. Focus on line items.
+      
+      Output JSON format:
+      {
+        "store": "Store Name",
+        "date": "YYYY-MM-DD",
+        "time": "HH:MM",
+        "items": [
+          { 
+            "name": "RAW NAME", 
+            "normalized_name": "Category, Modifier", 
+            "price": 2.99, 
+            "quantity": 1, 
+            "unit": "lb", 
+            "is_weighted": true,
+            "sku": "12345", 
+            "ai_match": "Milk" 
+          }
+        ]
+      }
+    `;
 
         // Candidate models to try in order (preferring faster/cheaper models first)
         const candidateModels = [
             "gemini-3-flash-preview",  // Newest Flash (2026)
             "gemini-2.5-flash",        // Stable Flash
-            "gemini-2.0-flash",        // Fast & stable
-            "gemini-3-pro-preview",    // Newest Pro (2026)
+            "gemini-3-pro-preview",    // Newest Pro
             "gemini-2.5-pro",          // Stable Pro
+            "gemini-1.5-flash",        // Legacy Fallback
         ];
 
         let result = null;
