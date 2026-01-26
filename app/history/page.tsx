@@ -228,10 +228,17 @@ function HistoryContent() {
 
     if (value.trim()) {
       // Server-side search
-      const { data: searchResults, error } = await supabase
+      let query = supabase
         .from('items')
         .select('name')
-        .ilike('name', `%${value}%`)
+        .ilike('name', `%${value}%`);
+
+      const householdCode = localStorage.getItem('household_code');
+      if (householdCode !== 'TEST') {
+        query = query.or('household_code.neq.TEST,household_code.is.null');
+      }
+
+      const { data: searchResults, error } = await query
         .limit(10);
 
       if (searchResults) {

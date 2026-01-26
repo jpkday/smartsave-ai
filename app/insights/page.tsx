@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { useCategories } from '../hooks/useCategories';
+import { useHouseholdCode } from '../hooks/useHouseholdCode';
+import { SHARED_USER_ID } from '../lib/constants';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import {
   CurrencyDollarIcon,
@@ -56,14 +58,13 @@ export default function InsightsPage() {
   const [priceTrends, setPriceTrends] = useState<PriceTrend[]>([]);
   const [spendByStore, setSpendByStore] = useState<SpendByStore[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  /* Refactored to use dynamic categories */
-  /* Refactored to use dynamic categories */
-  const { getCategoryName, getCategoryColorById } = useCategories();
   const [loading, setLoading] = useState(true);
-  const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<7 | 14 | 30 | 60>(30);
-  const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
   const [isMobile, setIsMobile] = useState(false);
+
+  /* Use custom hooks */
+  const { getCategoryName, getCategoryColorById } = useCategories();
+  const { householdCode } = useHouseholdCode();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -75,18 +76,10 @@ export default function InsightsPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const code = localStorage.getItem('household_code');
-      setHouseholdCode(code);
-      if (!code) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     if (householdCode) {
       loadInsights();
+    } else {
+      setLoading(false);
     }
   }, [householdCode, timeRange]);
 
@@ -97,8 +90,8 @@ export default function InsightsPage() {
     }
 
 
-    // Use original name and no params to avoid 404 if SQL didn't run
-    const { data: trends } = await supabase.rpc('get_price_trends');
+    // Use correct RPC name
+    const { data: trends } = await supabase.rpc('get_price_analysis');
 
     // Fetch User's Favorited Stores for Filtering
     const { data: favoritesData } = await supabase
@@ -109,10 +102,17 @@ export default function InsightsPage() {
     const favStoreIds = new Set(favoritesData?.map((f: any) => f.store_id) || []);
 
     // Fetch items to get dynamic category IDs
-    const { data: itemsData } = await supabase
+    // Fetch items to get dynamic category IDs
+    let itemsQuery = supabase
       .from('items')
       .select('id, name, category_id')
       .eq('user_id', SHARED_USER_ID);
+
+    if (householdCode !== 'TEST') {
+      itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');
+    }
+
+    const { data: itemsData } = await itemsQuery;
 
     const itemMap = new Map<string, number>();
     const itemIdMap = new Map<number, number>();
@@ -615,16 +615,32 @@ export default function InsightsPage() {
               </div>
             )}
 
-            {/* No Changes Message */}
+            {/* No Changes / No Favorites Message */}
             {priceDecreases.length === 0 && priceIncreases.length === 0 && (
               <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
                 <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
                   <ChartBarIcon className="h-6 w-6 text-gray-600" />
                   Price Trends
                 </h2>
-                <p className="text-gray-600">
-                  No significant price changes in the last 30 days. Keep checking back!
-                </p>
+
+                {/* 
+                   If user has NO favorite stores, explain that. 
+                   We check if favStoreIds was populated in loadInsights, 
+                   but we need access to that state here.
+                   Usually trends will be empty if strict filtering is on and list is empty.
+                   Let's assume if trends are empty but we have data in the system, it's a filter issue.
+                */}
+                <div className="bg-gray-50/50 rounded-2xl p-6 text-center border-2 border-dashed border-gray-100 mt-4">
+                  <p className="text-gray-500 mb-3">
+                    No significant price changes found in your <strong>Favorite Stores</strong> for the last {timeRange} days.
+                  </p>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Tip: Make sure you have selected your favorite stores on the home page.
+                  </p>
+                  <Link href="/" className="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-semibold text-sm">
+                    Manage Favorite Stores
+                  </Link>
+                </div>
               </div>
             )}
           </div>

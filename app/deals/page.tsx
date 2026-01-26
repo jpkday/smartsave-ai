@@ -4,6 +4,9 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
+import { useStatusModal } from '../hooks/useStatusModal';
+import { useHouseholdCode } from '../hooks/useHouseholdCode';
+import { SHARED_USER_ID } from '../lib/constants';
 import { formatLocalDate, parseLocalDate } from '../utils/date';
 import StatusModal from '../components/StatusModal';
 import {
@@ -19,9 +22,6 @@ import {
   StarIcon,
   ShoppingCartIcon
 } from '@heroicons/react/24/solid';
-
-
-const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Deal {
   item_name: string;
@@ -46,27 +46,14 @@ export default function Deals() {
   const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string>('all');
   const [stores, setStores] = useState<string[]>([]);
-  /* Refactored to use dynamic categories */
-  const { getCategoryName, getCategoryColorById } = useCategories();
-  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
   const [hasFavorites, setHasFavorites] = useState(true);
 
-  // Status Modal State
-  const [statusModal, setStatusModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
+  /* Refactored to use dynamic categories */
+  const { getCategoryName, getCategoryColorById } = useCategories();
 
-  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-    setStatusModal({ isOpen: true, title, message, type });
-  };
+  /* Use custom hooks */
+  const { householdCode } = useHouseholdCode();
+  const { modal: statusModal, show: showStatus, close: closeStatus } = useStatusModal();
 
   useEffect(() => {
     loadDeals();
@@ -151,10 +138,17 @@ export default function Deals() {
     }
 
     // Get item categories
-    const { data: itemsData, error: itemsError } = await supabase
+    // Get item categories
+    let itemsQuery = supabase
       .from('items')
       .select('id, name, category_id')
       .eq('user_id', SHARED_USER_ID);
+
+    if (currentHouseholdCode !== 'TEST') {
+      itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');
+    }
+
+    const { data: itemsData, error: itemsError } = await itemsQuery;
 
     if (itemsError) {
       console.error('Error loading items:', itemsError);
@@ -683,7 +677,7 @@ export default function Deals() {
 
       <StatusModal
         isOpen={statusModal.isOpen}
-        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={closeStatus}
         title={statusModal.title}
         message={statusModal.message}
         type={statusModal.type}

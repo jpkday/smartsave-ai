@@ -145,11 +145,17 @@ function ItemsContent() {
     if (!householdCode) return;
     setLoading(true);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('items')
       .select('id, name, category, category_id, household_code')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
+
+    if (householdCode !== 'TEST') {
+      query = query.or('household_code.neq.TEST,household_code.is.null');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error loading items:', error);

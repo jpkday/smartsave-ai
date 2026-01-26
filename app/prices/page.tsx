@@ -3,10 +3,11 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { useStatusModal } from '../hooks/useStatusModal';
+import { useHouseholdCode } from '../hooks/useHouseholdCode';
+import { SHARED_USER_ID } from '../lib/constants';
 import { formatLocalDate } from '../utils/date';
 import StatusModal from '../components/StatusModal';
-
-const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 interface Store {
   id: string;
@@ -163,24 +164,10 @@ function PricesContent() {
   const [selectedItemFilter, setSelectedItemFilter] = useState<string>('');
   const [showCopied, setShowCopied] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
 
-  // Status Modal State
-  const [statusModal, setStatusModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
-
-  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-    setStatusModal({ isOpen: true, title, message, type });
-  };
+  /* Use custom hooks */
+  const { householdCode } = useHouseholdCode();
+  const { modal: statusModal, show: showStatus, close: closeStatus } = useStatusModal();
 
   useEffect(() => {
     loadData();
@@ -863,7 +850,7 @@ function PricesContent() {
 
       <StatusModal
         isOpen={statusModal.isOpen}
-        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={closeStatus}
         title={statusModal.title}
         message={statusModal.message}
         type={statusModal.type}

@@ -32,12 +32,6 @@ export const useCategories = () => {
         fetchCategories();
     }, []);
 
-    const getCategoryColor = (categoryName: string) => {
-        if (!categoryName) return 'bg-slate-50 border-slate-200 text-slate-700';
-        const cat = categories.find(c => c.name === categoryName);
-        return cat ? cat.color : 'bg-slate-50 border-slate-200 text-slate-700';
-    };
-
     const getCategoryName = (id: number | null | undefined): string => {
         if (id === null || id === undefined) return 'Other';
         const cat = categories.find(c => c.id === id);
@@ -50,7 +44,5 @@ export const useCategories = () => {
         return cat ? cat.color : 'bg-slate-50 border-slate-200 text-slate-700';
     };
 
-    const categoryOptions = Array.from(new Set([...categories.map(c => c.name), 'Other']));
-
-    return { categories, categoryOptions, loading, getCategoryColor, getCategoryName, getCategoryColorById };
+    return { categories, loading, getCategoryName, getCategoryColorById };
 };

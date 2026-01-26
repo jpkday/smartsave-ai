@@ -6,23 +6,20 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useCategories } from '../hooks/useCategories';
+import { useStatusModal } from '../hooks/useStatusModal';
+import { useHouseholdCode } from '../hooks/useHouseholdCode';
+import { useStorePreferences } from '../hooks/useStorePreferences';
 import Link from 'next/link';
 import { getFormattedUnitPrice } from '../utils/unitPrice';
-import { FireIcon } from '@heroicons/react/24/solid';
 import PricePhotoCapture from '../components/PricePhotoCapture';
 import PriceReviewModal from '../components/PriceReviewModal';
 import StatusModal from '../components/StatusModal';
-const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
-const DEFAULT_ITEMS = [
-  'Eggs (dozen)',
-  'Milk (gallon)',
-  'Cheese (lb)',
-  'Apples (lb)',
-  'Chicken Breast (lb)',
-  'Ground Beef (lb)',
-  'Bread (loaf)',
-  'Butter (lb)',
-];
+import UndoToast from '../components/shopping-list/UndoToast';
+import ItemLibrary from '../components/shopping-list/ItemLibrary';
+import ShoppingListPanel from '../components/shopping-list/ShoppingListPanel';
+import StoreModal from '../components/shopping-list/StoreModal';
+import EditItemModal from '../components/shopping-list/EditItemModal';
+import { SHARED_USER_ID, DEFAULT_ITEMS } from '../lib/constants';
 
 
 interface ItemNote {
@@ -65,7 +62,12 @@ export default function ShoppingList() {
     requestWakeLock();
   }, [requestWakeLock]);
 
-  const { categoryOptions, categories, loading: categoriesLoading, getCategoryName, getCategoryColor, getCategoryColorById } = useCategories();
+  const { categories, loading: categoriesLoading, getCategoryName, getCategoryColorById } = useCategories();
+
+  // New custom hooks
+  const { modal: statusModal, show: showStatus, close: closeStatusModal } = useStatusModal();
+  const { householdCode, loading: householdCodeLoading } = useHouseholdCode();
+  const { storePrefs, setItemStorePreference } = useStorePreferences(householdCode);
 
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
@@ -76,28 +78,18 @@ export default function ShoppingList() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
-  const [storeFilter, setStoreFilter] = useState<string>('All');
   const [dealsItemNames, setDealsItemNames] = useState<Set<string>>(new Set());
 
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const [prices, setPrices] = useState<{ [key: string]: PriceData }>({});
   const [filterLetter, setFilterLetter] = useState<string>('All');
-  const [showFavorites, setShowFavorites] = useState(true);
-  const [showAddItems, setShowAddItems] = useState(true);
   const [newItem, setNewItem] = useState('');
   const [showCheckedItems, setShowCheckedItems] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [householdCode, setHouseholdCode] = useState<string | null>(null);
   const [showPriorityOnly, setShowPriorityOnly] = useState(false);
-
-  // const [itemCategoryByName, setItemCategoryByName] = useState<Record<string, string>>({}); // Removed as we use IDs
-  // const CATEGORY_OPTIONS = ['Produce', 'Pantry', 'Dairy', 'Beverage', 'Meat', 'Frozen', 'Refrigerated', 'Other']; // Removed
-  //const itemsWithoutCategory = listItems.filter(item => {const cat = itemCategoryByName[item.item_name];return !cat || cat === 'Other' || cat.trim() === '';});
-
-
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -112,23 +104,6 @@ export default function ShoppingList() {
   const [extractedPriceData, setExtractedPriceData] = useState<any>(null);
   const [priceSubmissionId, setPriceSubmissionId] = useState<number | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
-
-  // Status Modal State
-  const [statusModal, setStatusModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
-
-  const showStatus = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-    setStatusModal({ isOpen: true, title, message, type });
-  };
   const [currentScanStore, setCurrentScanStore] = useState<{ id: string; name: string } | null>(null);
 
   // =========================
@@ -136,12 +111,9 @@ export default function ShoppingList() {
   // =========================
   const [mobileMode, setMobileMode] = useState<'store' | 'build'>('store');
 
-  // Load household code from localStorage
+  // Load view settings from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const code = localStorage.getItem('household_code');
-      setHouseholdCode(code);
-
       // Load view settings
       const storedShowChecked = localStorage.getItem('view_showCheckedItems');
       if (storedShowChecked !== null) {
@@ -480,51 +452,59 @@ export default function ShoppingList() {
   // =========================
   // Store preference override
   // =========================
-  const [storePrefs, setStorePrefs] = useState<Record<string, StoreChoice>>({});
-  const STORE_PREF_KEY = 'store_prefs_by_item';
-
-  const loadStorePrefs = (currentHouseholdCode?: string | null) => {
-    try {
-      // If we have a household code, use that specific key
-      // Otherwise fallback to global key (legacy behavior or no-household)
-      const key = currentHouseholdCode
-        ? `${STORE_PREF_KEY}_${currentHouseholdCode}`
-        : STORE_PREF_KEY;
-
-      const raw = localStorage.getItem(key);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed as Record<string, StoreChoice>;
-      return {};
-    } catch {
-      return {};
-    }
-  };
-
-  const persistStorePrefs = (prefs: Record<string, StoreChoice>, currentHouseholdCode?: string | null) => {
-    try {
-      const key = currentHouseholdCode
-        ? `${STORE_PREF_KEY}_${currentHouseholdCode}`
-        : STORE_PREF_KEY;
-
-      localStorage.setItem(key, JSON.stringify(prefs));
-    } catch {
-      // ignore
-    }
-  };
-
-  const setItemStorePreference = (itemName: string, choice: StoreChoice) => {
-    setStorePrefs((prev) => {
-      const next = { ...prev, [itemName]: choice };
-      persistStorePrefs(next, householdCode);
-      return next;
-    });
-  };
+  // Store preferences are now managed by useStorePreferences hook
 
   const getPriceForStore = (store: string, itemName: string): number | null => {
-    const pd = prices[`${store}-${itemName}`];
-    if (!pd) return null;
-    const n = parseFloat(pd.price);
+    // Debug logging for salmon
+    const isSalmon = itemName?.toLowerCase().includes('salmon');
+
+    // Try ID-based lookup first (handles renamed items)
+    const storeId = storesByName[store];
+    const item = allItems.find(i => i.name === itemName);
+
+    if (isSalmon) {
+      console.log('🔍 Looking up salmon price:', {
+        store,
+        itemName,
+        storeId,
+        itemId: item?.id,
+        hasStoreId: !!storeId,
+        hasItem: !!item
+      });
+    }
+
+    if (storeId && item) {
+      const idKey = `id:${storeId}-${item.id}`;
+      const pdById = prices[idKey];
+
+      if (isSalmon) {
+        console.log('🔍 ID-based lookup:', {
+          idKey,
+          foundById: !!pdById,
+          price: pdById?.price
+        });
+      }
+
+      if (pdById) {
+        const n = parseFloat(pdById.price);
+        if (Number.isFinite(n)) return n;
+      }
+    }
+
+    // Fall back to name-based lookup (backwards compatibility)
+    const nameKey = `${store}-${itemName}`;
+    const pdByName = prices[nameKey];
+
+    if (isSalmon) {
+      console.log('🔍 Name-based lookup:', {
+        nameKey,
+        foundByName: !!pdByName,
+        price: pdByName?.price
+      });
+    }
+
+    if (!pdByName) return null;
+    const n = parseFloat(pdByName.price);
     return Number.isFinite(n) ? n : null;
   };
 
@@ -555,7 +535,7 @@ export default function ShoppingList() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalItem, setEditModalItem] = useState<ListItem | null>(null);
   const [editModalName, setEditModalName] = useState('');
-  const [editModalCategory, setEditModalCategory] = useState('');
+  const [editModalCategoryId, setEditModalCategoryId] = useState<number | null>(null);
   const [editModalQuantity, setEditModalQuantity] = useState<string>('1');
   const [editModalStore, setEditModalStore] = useState('');
   const [editModalPrice, setEditModalPrice] = useState('');
@@ -563,8 +543,6 @@ export default function ShoppingList() {
   const [savingEdit, setSavingEdit] = useState(false);
   const storeOptions = editModalItem ? getStoreOptionsForItem(editModalItem.item_name) : [];
   const [editModalFocusField, setEditModalFocusField] = useState<'name' | 'price' | 'category' | 'note'>('name');
-  const storeSelectRef = useRef<HTMLSelectElement | null>(null);
-  const alphabetScrollRef = useRef<HTMLDivElement | null>(null);
   const [needsStoreHint, setNeedsStoreHint] = useState(false);
   const [storeRequiredOpen, setStoreRequiredOpen] = useState(false);
   const [editModalPriceDirty, setEditModalPriceDirty] = useState(false);
@@ -597,20 +575,7 @@ export default function ShoppingList() {
   const openEditModal = (item: ListItem, focusField: 'name' | 'price' | 'category' | 'note' = 'name') => {
     setEditModalItem(item);
     setEditModalName(item.item_name);
-    let initialCategory = 'Other';
-    const catNameFromId = getCategoryName(item.category_id ?? -1);
-
-    // 1. Try ID-based name
-    if (catNameFromId && catNameFromId !== 'Other') {
-      initialCategory = catNameFromId;
-    }
-    // 2. Fallback to string name if ID gave 'Other' (or nothing) and we have a specific string
-    else if (item.category && item.category !== 'Other') {
-      initialCategory = item.category;
-    }
-
-    console.log('catName resolved:', initialCategory);
-    setEditModalCategory(initialCategory);
+    setEditModalCategoryId(item.category_id ?? null);
     setEditModalQuantity(String(item.quantity ?? 1));
     setEditModalFocusField(focusField);
     setEditModalPriceDirty(false);
@@ -655,7 +620,7 @@ export default function ShoppingList() {
     setEditModalOpen(false);
     setEditModalItem(null);
     setEditModalName('');
-    setEditModalCategory('');
+    setEditModalCategoryId(null);
     setEditModalQuantity('1');
     setEditModalStore('');
     setEditModalPrice('');
@@ -692,15 +657,14 @@ export default function ShoppingList() {
           return;
         }
 
-        const selectedCat = categories.find(c => c.name === editModalCategory);
-        const categoryId = selectedCat ? selectedCat.id : null;
+        const categoryName = getCategoryName(editModalCategoryId);
 
         const { error: itemError } = await supabase
           .from('items')
           .update({
             name: newName,
-            category: editModalCategory || 'Other',
-            category_id: categoryId
+            category: categoryName,
+            category_id: editModalCategoryId
           })
           .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
@@ -721,14 +685,13 @@ export default function ShoppingList() {
         if (phError) throw phError;
       } else {
         // no rename — just update category
-        const selectedCat = categories.find(c => c.name === editModalCategory);
-        const categoryId = selectedCat ? selectedCat.id : null;
+        const categoryName = getCategoryName(editModalCategoryId);
 
         const { error: catErr } = await supabase
           .from('items')
           .update({
-            category: editModalCategory || 'Other',
-            category_id: categoryId
+            category: categoryName,
+            category_id: editModalCategoryId
           })
           .eq('id', editModalItem.item_id)
           .eq('user_id', SHARED_USER_ID);
@@ -822,8 +785,7 @@ export default function ShoppingList() {
       }
 
       // ✅ Optimistic Update
-      const selectedCat = categories.find(c => c.name === editModalCategory);
-      const categoryId = selectedCat ? selectedCat.id : null;
+      const categoryName = getCategoryName(editModalCategoryId);
 
       setListItems((prev) =>
         prev.map((li) => {
@@ -832,8 +794,8 @@ export default function ShoppingList() {
               ...li,
               item_name: newName,
               quantity: qtyNum,
-              category: editModalCategory || 'Other',
-              category_id: categoryId
+              category: categoryName,
+              category_id: editModalCategoryId
             };
           }
           return li;
@@ -843,7 +805,7 @@ export default function ShoppingList() {
       setAllItems((prev) =>
         prev.map((i) =>
           i.id === editModalItem.item_id
-            ? { ...i, name: newName, category: editModalCategory || 'Other', category_id: categoryId || undefined }
+            ? { ...i, name: newName, category: categoryName, category_id: editModalCategoryId || undefined }
             : i
         )
       );
@@ -928,6 +890,20 @@ export default function ShoppingList() {
     setActiveItemForStoreModal(null);
   };
 
+  const handleOpenEditModalForPrice = (itemName: string, store: string) => {
+    const item = listItems.find((i) => i.item_name === itemName);
+    if (item) {
+      closeStoreModal();
+      setEditModalItem(item);
+      setEditModalName(item.item_name);
+      setEditModalQuantity(String(item.quantity ?? 1));
+      setEditModalStore(store);
+      setEditModalPrice('');
+      setEditModalOriginalPrice('');
+      setEditModalOpen(true);
+    }
+  };
+
   const toggleLetter = (letter: string) => {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
@@ -995,9 +971,7 @@ export default function ShoppingList() {
   }, [storeModalOpen, editModalOpen]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setStorePrefs(loadStorePrefs(householdCode));
-    }
+    // Store preferences are now loaded automatically by useStorePreferences hook
 
     if (householdCode) {
       loadData();
@@ -1122,11 +1096,18 @@ export default function ShoppingList() {
 
 
     // ✅ Load all items with IDs
-    const { data: itemsData, error: itemsError } = await supabase
+    let itemsQuery = supabase
       .from('items')
       .select('id, name, category, category_id')
       .eq('user_id', SHARED_USER_ID)
       .order('name');
+
+    // Filter out 'TEST' items for regular users
+    if (householdCode !== 'TEST') {
+      itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');
+    }
+
+    const { data: itemsData, error: itemsError } = await itemsQuery;
 
 
 
@@ -1220,13 +1201,41 @@ export default function ShoppingList() {
       const latestPrices: { [key: string]: any } = {};
 
       pricesData.forEach((p) => {
-        const key = `${p.store}-${p.item_name}`;
-        if (!latestPrices[key] ||
-          new Date(p.recorded_date) > new Date(latestPrices[key].recorded_date) ||
-          (p.recorded_date === latestPrices[key].recorded_date && new Date(p.created_at || 0) > new Date(latestPrices[key].created_at || 0))
+        // Create both ID-based and name-based keys for backwards compatibility
+        const nameKey = `${p.store}-${p.item_name}`;
+        const idKey = p.store_id && p.item_id ? `id:${p.store_id}-${p.item_id}` : null;
+
+        // Debug logging for salmon
+        if (p.item_name?.toLowerCase().includes('salmon')) {
+          console.log('🐟 Salmon price record:', {
+            item_name: p.item_name,
+            item_id: p.item_id,
+            store: p.store,
+            store_id: p.store_id,
+            price: p.price,
+            nameKey,
+            idKey
+          });
+        }
+
+        // Update name-based key
+        if (!latestPrices[nameKey] ||
+          new Date(p.recorded_date) > new Date(latestPrices[nameKey].recorded_date) ||
+          (p.recorded_date === latestPrices[nameKey].recorded_date && new Date(p.created_at || 0) > new Date(latestPrices[nameKey].created_at || 0))
         ) {
-          latestPrices[key] = p;
-          pricesObj[key] = { price: p.price, date: p.recorded_date };
+          latestPrices[nameKey] = p;
+          pricesObj[nameKey] = { price: p.price, date: p.recorded_date };
+        }
+
+        // Also store by ID key if available (for renamed items)
+        if (idKey) {
+          if (!latestPrices[idKey] ||
+            new Date(p.recorded_date) > new Date(latestPrices[idKey].recorded_date) ||
+            (p.recorded_date === latestPrices[idKey].recorded_date && new Date(p.created_at || 0) > new Date(latestPrices[idKey].created_at || 0))
+          ) {
+            latestPrices[idKey] = p;
+            pricesObj[idKey] = { price: p.price, date: p.recorded_date };
+          }
         }
       });
 
@@ -1371,6 +1380,14 @@ export default function ShoppingList() {
       setAutocompleteItems([]);
       setShowAutocomplete(false);
     }
+  };
+
+  const handleSearchFocus = () => {
+    const listIds = new Set(listItems.map((li) => li.item_id).filter((v) => typeof v === 'number'));
+    const available = allItems.filter((it) => !listIds.has(it.id)).map((it) => it.name);
+
+    setAutocompleteItems(available);
+    setShowAutocomplete(available.length > 0);
   };
 
   // Realtime Subscription
@@ -1559,12 +1576,11 @@ export default function ShoppingList() {
       }
     } catch (error: any) {
       console.error('Error analyzing price tag:', error);
-      setStatusModal({
-        isOpen: true,
-        title: 'Analysis Failed',
-        message: error.message || 'We couldn\'t read the price tag. Please try a clearer photo.',
-        type: 'error'
-      });
+      showStatus(
+        'Analysis Failed',
+        error.message || 'We couldn\'t read the price tag. Please try a clearer photo.',
+        'error'
+      );
     } finally {
       setIsAnalyzingPhoto(false);
     }
@@ -1598,14 +1614,13 @@ export default function ShoppingList() {
       showStatus('Success', `Price added for ${confirmData.item_name}! 🎉`, 'success');
     } catch (error: any) {
       console.error('Error confirming price:', error);
-      // Let the PriceReviewModal handle its own display, but we can set 
+      // Let the PriceReviewModal handle its own display, but we can set
       // a generic error here if it bubbles up unexpectedly.
-      setStatusModal({
-        isOpen: true,
-        title: 'Save Failed',
-        message: error.message || 'Something went wrong while saving the price.',
-        type: 'error'
-      });
+      showStatus(
+        'Save Failed',
+        error.message || 'Something went wrong while saving the price.',
+        'error'
+      );
       throw error;
     }
   };
@@ -1656,6 +1671,19 @@ export default function ShoppingList() {
       console.error('Error adding favorites:', error);
       showStatus('Add Favorites Failed', 'Failed to add favorites. Check your connection and try again.', 'error');
     }
+  };
+
+  const handleOpenPricePhotoCapture = () => {
+    // If there's an active store, use it; otherwise no default
+    const activeStoreEntry = Object.entries(activeTrips).find(([_, tripId]) => tripId);
+    if (activeStoreEntry) {
+      const [storeId, _] = activeStoreEntry;
+      const storeName = Object.keys(storesByName).find(name => storesByName[name] === storeId);
+      setCurrentScanStore({ id: storeId, name: storeName || '' });
+    } else {
+      setCurrentScanStore(null);
+    }
+    setShowPricePhotoCapture(true);
   };
 
   const PencilIcon = ({ className }: { className?: string }) => (
@@ -1839,6 +1867,38 @@ export default function ShoppingList() {
     setUndoRemoveItem(null);
   };
 
+  const dismissRemoveToast = () => {
+    if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
+    setUndoRemoveItem(null);
+    setUndoRemoveTimeout(null);
+  };
+
+  const dismissAddToast = () => {
+    if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
+    setUndoAddItem(null);
+    setUndoAddTimeout(null);
+  };
+
+  const dismissCheckToast = () => {
+    if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
+    setUndoCheckItem(null);
+    setUndoCheckTimeout(null);
+  };
+
+  const dismissTripCompleteToast = () => {
+    if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
+    setTripCompleteToastStore(null);
+    setTripCompleteToastTimeout(null);
+    tripCompleteToastLockRef.current = null;
+  };
+
+  const dismissTripStartedToast = () => {
+    if (tripStartedToastTimeout) clearTimeout(tripStartedToastTimeout);
+    setTripStartedToastStore(null);
+    setTripStartedToastTripId(null);
+    setTripStartedToastTimeout(null);
+  };
+
   const clearList = async () => {
     if (!confirm('Clear entire shopping list?')) return;
 
@@ -1850,6 +1910,12 @@ export default function ShoppingList() {
       console.error('Error clearing list:', error);
       showStatus('Clear List Failed', 'Failed to clear list. Check your connection and try again.', 'error');
     }
+  };
+
+  const clearItemNote = async (itemId: number, noteId: string) => {
+    // Optimistic clear
+    setListItems(prev => prev.map(li => li.item_id === itemId ? { ...li, active_note: undefined } : li));
+    await supabase.from('item_notes').update({ is_active: false }).eq('id', noteId);
   };
 
   const getDaysAgo = (dateString: string) => {
@@ -2023,2105 +2089,179 @@ export default function ShoppingList() {
 
             {/* UNIFIED ITEM LIBRARY - Desktop + Mobile (Build Mode only) */}
             {(!isMobile || mobileMode === 'build') && (
-              <div className="bg-white rounded-2xl shadow-lg p-4">
-                {(() => {
-                  // ------------------------------------------------------------
-                  // Make build mode respect the Alphabet Filter (filterLetter)
-                  // across ALL 3 filters: ALL / FAVORITES / RECENT
-                  // ------------------------------------------------------------
-
-                  let list: ItemRow[] = buildModeAvailableAll;
-
-                  if (selectItemsFilter === 'FAVORITES') {
-                    const favSet = new Set(favorites);
-                    list = list.filter((it) => favSet.has(it.name));
-                  } else if (selectItemsFilter === 'RECENT') {
-                    list = list
-                      .filter((it) => recentRank.has(it.id))
-                      .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
-                  } else if (selectItemsFilter === 'FREQUENT') {
-                    list = list
-                      .filter((it) => frequentItemCounts[it.name] !== undefined)
-                      .sort((a, b) => (frequentItemCounts[b.name] || 0) - (frequentItemCounts[a.name] || 0));
-                  } else {
-                    list = list.slice();
-                  }
-
-                  if (filterLetter !== 'All') {
-                    const L = filterLetter.toUpperCase();
-                    list = list.filter((it) => it.name.toUpperCase().startsWith(L));
-                  }
-
-                  const renderList = list.slice(0, 250);
-
-                  const toggleFavorite = async (itemName: string) => {
-                    if (!householdCode) return;
-
-                    // Find item ID
-                    const item = allItems.find(i => i.name === itemName);
-                    if (!item) return;
-
-                    const isFav = favorites.includes(itemName);
-
-                    // Optimistically update UI
-                    if (isFav) {
-                      setFavorites(prev => prev.filter(n => n !== itemName));
-                      setFavoritesIds(prev => prev.filter(id => id !== item.id));
-                    } else {
-                      setFavorites(prev => [...prev, itemName]);
-                      setFavoritesIds(prev => [...prev, item.id]);
-                    }
-
-                    // Update database
-                    if (isFav) {
-                      const { error } = await supabase
-                        .from('household_item_favorites')
-                        .delete()
-                        .eq('household_code', householdCode)
-                        .eq('item_id', item.id);
-
-                      if (error) {
-                        // Rollback on error
-                        setFavorites(prev => [...prev, itemName]);
-                        setFavoritesIds(prev => [...prev, item.id]);
-                        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
-                      }
-                    } else {
-                      const { error } = await supabase
-                        .from('household_item_favorites')
-                        .insert({
-                          household_code: householdCode,
-                          item_id: item.id,
-                        });
-
-                      if (error) {
-                        // Rollback on error
-                        setFavorites(prev => prev.filter(n => n !== itemName));
-                        setFavoritesIds(prev => prev.filter(id => id !== item.id));
-                        showStatus('Update Failed', 'Failed to update favorite. Check your connection and try again.', 'error');
-                      }
-                    }
-                  };
-
-                  // Toggle Logic
-                  const toggleFilter = (filter: SelectItemsFilter) => {
-                    if (selectItemsFilter === filter) {
-                      setSelectItemsFilter(null); // Toggle off -> All
-                    } else {
-                      setSelectItemsFilter(filter);
-                    }
-                  };
-
-                  return (
-                    <>
-                      {/* Header */}
-                      <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-xl font-semibold text-gray-800">
-                          Item Library <span className="text-sm text-gray-500 font-normal">({list.length})</span>
-                        </h2>
-                      </div>
-
-                      {/* Search Bar */}
-                      <div className="relative autocomplete-container mb-3">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Search items to add..."
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                            value={newItem}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-                            onFocus={() => {
-                              const listIds = new Set(
-                                listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
-                              );
-                              const available = allItems
-                                .filter((it) => !listIds.has(it.id))
-                                .map((it) => it.name);
-
-                              setAutocompleteItems(available);
-                              setShowAutocomplete(available.length > 0);
-                            }}
-                          />
-
-                          <button
-                            onClick={addNewItem}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                          >
-                            Add
-                          </button>
-                        </div>
-
-                        {showAutocomplete && autocompleteItems.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                            {autocompleteItems.slice(0, 10).map((item) => (
-                              <button
-                                key={item}
-                                onClick={() => selectItem(item)}
-                                className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                              >
-                                {item}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Alphabet Filter */}
-                      <div className="relative flex items-center gap-2 mb-3">
-                        {/* Left Arrow - Desktop Only */}
-                        <button
-                          onClick={() => {
-                            if (alphabetScrollRef.current) {
-                              const scrollAmount = alphabetScrollRef.current.clientWidth;
-                              alphabetScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-                            }
-                          }}
-                          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
-                          aria-label="Scroll left"
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                          </svg>
-                        </button>
-
-                        {/* Pinned "All" Button */}
-                        <button
-                          onClick={() => setFilterLetter('All')}
-                          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap flex-shrink-0 ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                        >
-                          All
-                        </button>
-
-                        {/* Scrollable Alphabet Buttons */}
-                        <div
-                          ref={alphabetScrollRef}
-                          className="flex gap-1.5 md:gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1"
-                        >
-                          {alphabet
-                            .filter((letter) => allItems.some((it) => it.name.toUpperCase().startsWith(letter)))
-                            .map((letter) => (
-                              <button
-                                key={letter}
-                                onClick={() => toggleLetter(letter)}
-                                className={`min-w-[2.25rem] md:min-w-[2.5rem] flex items-center justify-center px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                  }`}
-                              >
-                                {letter}
-                              </button>
-                            ))}
-                        </div>
-
-                        {/* Right Arrow - Desktop Only */}
-                        <button
-                          onClick={() => {
-                            if (alphabetScrollRef.current) {
-                              const scrollAmount = alphabetScrollRef.current.clientWidth;
-                              alphabetScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                            }
-                          }}
-                          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
-                          aria-label="Scroll right"
-                        >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                          </svg>
-                        </button>
-                      </div>
-
-                      {/* Filter Pills (Favorites/Frequent/Recent) */}
-                      <div className="grid grid-cols-3 gap-2 w-full mb-2">
-                        {/* 1. Favorites */}
-                        <button
-                          onClick={() => toggleFilter('FAVORITES')}
-                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
-                            ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
-                            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
-                            }`}
-                        >
-                          Favorites
-                        </button>
-
-                        {/* 2. Frequent */}
-                        <button
-                          onClick={() => toggleFilter('FREQUENT')}
-                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
-                            : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
-                            }`}
-                        >
-                          Frequent
-                        </button>
-
-                        {/* 3. Recent */}
-                        <button
-                          onClick={() => toggleFilter('RECENT')}
-                          className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
-                            ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
-                            : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
-                            }`}
-                        >
-                          Recent
-                        </button>
-                      </div>
-
-
-
-                      {/* Item List */}
-                      {list.length === 0 ? (
-                        <div className="text-gray-500 text-center py-8">
-                          {selectItemsFilter === 'FAVORITES' ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="text-4xl">⭐</span>
-                              <p className="font-semibold text-gray-700">No favorites yet</p>
-                              <p className="text-sm">Star items to easily find them here. Click the Favorites tab again to clear the filter.</p>
-                            </div>
-                          ) : selectItemsFilter === 'FREQUENT' ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="text-4xl">📈</span>
-                              <p className="font-semibold text-gray-700">No frequently bought items</p>
-                              <p className="text-sm">Items you buy often will appear here. Click the Frequent tab again to clear the filter.</p>
-                            </div>
-                          ) : selectItemsFilter === 'RECENT' ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="text-4xl">🕒</span>
-                              <p className="font-semibold text-gray-700">No recent items</p>
-                              <p className="text-sm">Items you've bought recently will appear here. Click the Recent tab again to clear the filter.</p>
-                            </div>
-                          ) : (
-                            <div className="text-sm">Loading items...</div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
-                          {renderList.map((it: ItemRow) => {
-                            const isFavorite = favorites.includes(it.name);
-
-                            // ✅ Price logic
-                            const effStore = getEffectiveStore(it.name);
-                            const priceData = effStore ? prices[`${effStore}-${it.name}`] : null;
-                            const price = priceData?.price ? parseFloat(priceData.price) : 0;
-
-                            return (
-                              <div
-                                key={it.id}
-                                className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
-                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                  : 'bg-white border-gray-300 hover:bg-gray-50'
-                                  }`}
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <button
-                                    onClick={() => {
-                                      openEditModal({
-                                        id: '', // Virtual ID
-                                        item_id: it.id,
-                                        item_name: it.name,
-                                        quantity: 1, // Default
-                                        checked: false,
-                                        is_priority: false,
-                                        category_id: it.category_id,
-                                        category: it.category
-                                      });
-                                    }}
-                                    className="font-medium text-gray-800 hover:text-teal-600 cursor-pointer text-left break-words"
-                                  >
-                                    {it.name}
-                                  </button>
-
-                                  <div className="mt-1 flex items-center gap-2">
-                                    {(priceData && price > 0) ? (
-                                      <p className="text-xs text-green-600">
-                                        {formatMoney(price)}{' '}
-                                        <span className="text-gray-400 ml-1">
-                                          ({getDaysAgo(priceData.date)}, {effStore})
-                                        </span>
-                                      </p>
-                                    ) : (
-                                      <button
-                                        onClick={() => openEditModal({
-                                          id: '', // Virtual ID
-                                          item_id: it.id,
-                                          item_name: it.name,
-                                          quantity: 1,
-                                          checked: false,
-                                          is_priority: false,
-                                          category_id: it.category_id,
-                                          category: it.category
-                                        }, 'price')}
-                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                      >
-                                        Add Price
-                                      </button>
-                                    )}
-
-                                    {(priceData && price > 0) && (() => {
-                                      const unitPrice = getFormattedUnitPrice(it.name, price);
-                                      return unitPrice ? (
-                                        <span className="text-teal-600 text-xs font-medium">• {unitPrice}</span>
-                                      ) : null;
-                                    })()}
-                                  </div>
-
-                                  {/* Active Note Preview */}
-                                  {it.active_note && (
-                                    <div className="mt-1 flex items-start gap-1 p-1 bg-orange-50 border border-orange-100 rounded text-xs text-orange-800 max-w-fit">
-                                      <span className="select-none text-xs">⚠️</span>
-                                      <div className="flex-1">
-                                        <span className="font-semibold line-clamp-1">{it.active_note.note}</span>
-                                        {it.active_note.store_id && (
-                                          <div className="text-[10px] text-orange-600">
-                                            at {Object.keys(storesByName).find(name => storesByName[name] === it.active_note?.store_id) || 'Unknown Store'}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <button
-                                  onClick={() => toggleItemById(it.id, it.name)}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
-                                >
-                                  Add
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
+              <ItemLibrary
+                allItems={allItems}
+                buildModeAvailableAll={buildModeAvailableAll}
+                favorites={favorites}
+                recentRank={recentRank}
+                frequentItemCounts={frequentItemCounts}
+                prices={prices}
+                storesByName={storesByName}
+                filterLetter={filterLetter}
+                selectItemsFilter={selectItemsFilter}
+                onFilterLetterChange={setFilterLetter}
+                onSelectItemsFilterChange={setSelectItemsFilter}
+                newItem={newItem}
+                showAutocomplete={showAutocomplete}
+                autocompleteItems={autocompleteItems}
+                onNewItemChange={handleInputChange}
+                onSearchFocus={handleSearchFocus}
+                onToggleFavorite={toggleFavorite}
+                onToggleItemById={toggleItemById}
+                onAddNewItem={addNewItem}
+                onSelectItem={selectItem}
+                onOpenEditModal={openEditModal}
+                getEffectiveStore={getEffectiveStore}
+                formatMoney={formatMoney}
+                getDaysAgo={getDaysAgo}
+                getFormattedUnitPrice={getFormattedUnitPrice}
+              />
             )}
 
           </div>
 
           {/* RIGHT COLUMN: Shopping List */}
           <div className="w-full md:w-3/5 mt-2 md:mt-0">
-
-            {/* SHOPPING LIST MODAL */}
-
-            {loading ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-                <p className="text-slate-500 mt-4">Loading Shopping List...</p>
-              </div>
-            ) : listItems.length > 0 ? (
-              <>
-                {/* SHOPPING LIST HEADER */}
-                <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                      Shopping List <span className="text-xl text-gray-500 font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
-                    </h2>
-                    <div className="flex gap-2 items-center">
-                      {/* Camera Scan button */}
-                      {isMobile && mobileMode === 'store' && (
-                        <button
-                          onClick={() => {
-                            // If there's an active store, use it; otherwise no default
-                            const activeStoreEntry = Object.entries(activeTrips).find(([_, tripId]) => tripId);
-                            if (activeStoreEntry) {
-                              const [storeId, _] = activeStoreEntry;
-                              const storeName = Object.keys(storesByName).find(name => storesByName[name] === storeId);
-                              setCurrentScanStore({ id: storeId, name: storeName || '' });
-                            } else {
-                              setCurrentScanStore(null);
-                            }
-                            setShowPricePhotoCapture(true);
-                          }}
-                          className="bg-teal-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-teal-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
-                          title="Scan price tag"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                          </svg>
-                          <span className="hidden md:inline">Scan</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setShowPriorityOnly(!showPriorityOnly)}
-                        className={`text-sm px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
-                          ? 'bg-red-100 text-red-700 border border-red-200'
-                          : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
-                          }`}
-                        title="Show Urgent Items Only"
-                      >
-                        <svg className="w-5 h-5" fill={showPriorityOnly ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                        </svg>
-                        {/* {showPriorityOnly ? 'Flagged Only' : 'Flagged'} */}
-                      </button>
-
-                      {listItems.some((i) => i.checked) && (
-                        <button
-                          onClick={() => setShowCheckedItems(!showCheckedItems)}
-                          className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
-                        >
-                          {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Group items by effective store (Auto or override) */}
-                  {(() => {
-                    const itemsByStore: { [store: string]: ListItem[] } = {};
-                    const itemsWithoutPrice: ListItem[] = [];
-
-                    let displayItems = !showCheckedItems ? listItems.filter((item) => !item.checked) : listItems;
-
-                    // ✅ Priority Filter
-                    if (showPriorityOnly) {
-                      displayItems = displayItems.filter((item) => item.is_priority);
-                    }
-
-                    displayItems
-                      .sort((a, b) => {
-                        const aIsFav = favorites.includes(a.item_name);
-                        const bIsFav = favorites.includes(b.item_name);
-                        if (aIsFav && !bIsFav) return -1;
-                        if (!aIsFav && bIsFav) return 1;
-                        return a.item_name.localeCompare(b.item_name);
-                      })
-                      .forEach((item) => {
-                        const effStore = getEffectiveStore(item.item_name);
-                        if (effStore) {
-                          if (!itemsByStore[effStore]) itemsByStore[effStore] = [];
-                          itemsByStore[effStore].push(item);
-                        } else {
-                          itemsWithoutPrice.push(item);
-                        }
-                      });
-
-                    const storeEntries = Object.entries(itemsByStore).sort(([storeA], [storeB]) => {
-                      const storeIdA = storesByName[storeA];
-                      const storeIdB = storesByName[storeB];
-
-                      const hasActiveTripA = storeIdA && activeTrips[storeIdA];
-                      const hasActiveTripB = storeIdB && activeTrips[storeIdB];
-
-                      if (hasActiveTripA && !hasActiveTripB) return -1;
-                      if (!hasActiveTripA && hasActiveTripB) return 1;
-
-                      return storeA.localeCompare(storeB);
-                    });
-
-                    return (
-                      <div className="space-y-6 md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
-
-                        {/* Show First: Active trip stores */}
-                        {storeEntries
-                          .filter(([store]) => {
-                            const storeId = storesByName[store];
-                            return storeId && activeTrips[storeId];
-                          })
-                          .sort(([storeA], [storeB]) => {
-                            const idA = storesByName[storeA];
-                            const idB = storesByName[storeB];
-                            const isPinnedA = idA === myActiveStoreId;
-                            const isPinnedB = idB === myActiveStoreId;
-
-                            if (isPinnedA && !isPinnedB) return -1;
-                            if (!isPinnedA && isPinnedB) return 1;
-
-                            return storeA.localeCompare(storeB);
-                          })
-                          .map(([store, storeItems]) => {
-                            const storeId = storesByName[store];
-                            const hasActiveTrip = !!(storeId && activeTrips[storeId]);
-                            const isPinned = storeId === myActiveStoreId;
-
-                            return (
-                              <div key={store} className="rounded-2xl border-2 border-indigo-300 bg-white shadow-sm overflow-hidden">
-                                <h3 className="text-lg font-bold text-gray-700 flex items-center gap-2 justify-between bg-indigo-50 p-3.5 border-b border-indigo-100">
-                                  <div className="flex items-center gap-3">
-                                    <span className="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-sm flex items-center shadow-sm">
-                                      {isPinned && <span className="mr-1.5" title="Pinned to top">📍</span>}
-                                      {store}
-                                      <span className="font-bold ml-1">(Active)</span>
-                                    </span>
-
-                                    <button
-                                      onClick={() => endTrip(activeTrips[storeId], storeId)}
-                                      className="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
-                                    >
-                                      End
-                                    </button>
-                                    <span className="text-sm text-gray-500 font-medium">
-                                      {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
-                                    </span>
-                                  </div>
-                                  <span className="text-xl font-bold text-teal-700">
-                                    $
-                                    {storeItems
-                                      .reduce((sum, item) => {
-                                        const priceData = prices[`${store}-${item.item_name}`];
-                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                        return sum + price * item.quantity;
-                                      }, 0)
-                                      .toFixed(2)}
-                                  </span>
-                                </h3>
-
-                                {/* ONE cohesive store panel, categories are sections inside */}
-                                <div className="p-3 space-y-4">
-                                  {Object.entries(
-                                    storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
-                                      const cat = getCategoryName(item.category_id ?? -1);
-                                      (acc[cat] ||= []).push(item);
-                                      return acc;
-                                    }, {})
-                                  )
-                                    // Sort categories by rank
-                                    .sort(([catA], [catB]) => {
-                                      const orderA = categoryOrder[catA || 'Other'] || 999;
-                                      const orderB = categoryOrder[catB || 'Other'] || 999;
-                                      if (orderA !== orderB) return orderA - orderB;
-                                      return catA.localeCompare(catB);
-                                    })
-                                    .map(([category, categoryItems]) => {
-                                      // Items within category: unchecked first, then alpha
-                                      categoryItems.sort((a, b) => {
-                                        if (a.checked !== b.checked) return a.checked ? 1 : -1;
-                                        return a.item_name.localeCompare(b.item_name);
-                                      });
-
-                                      const categoryTotal = categoryItems.reduce((sum, item) => {
-                                        const effStore = getEffectiveStore(item.item_name) || store;
-                                        const priceData = prices[`${effStore}-${item.item_name}`];
-                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                        return sum + price * item.quantity;
-                                      }, 0);
-
-                                      return (
-                                        <div key={category} className="space-y-2">
-                                          {/* Category header bar (tinted), NOT a separate card */}
-                                          <div
-                                            className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
-                                              category
-                                            )}`}
-                                          >
-                                            <div className="font-bold text-gray-700">{category}</div>
-                                            <div className="text-sm font-bold text-teal-600">${categoryTotal.toFixed(2)}</div>
-                                          </div>
-
-                                          {/* Items */}
-                                          <div className="space-y-2">
-                                            {categoryItems.map((item) => {
-                                              const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
-                                              const effStore = getEffectiveStore(item.item_name) || store;
-                                              const priceData = prices[`${effStore}-${item.item_name}`];
-                                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                              const cat = getCategoryName(item.category_id ?? -1);
-                                              const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
-
-                                              return (
-                                                <div
-                                                  key={item.id}
-                                                  className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
-                                                    ? 'bg-gray-100 border-gray-300'
-                                                    : isFavorite
-                                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                    }`}
-                                                >
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={item.checked}
-                                                    disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
-                                                    onChange={() => {
-                                                      if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
-                                                      toggleChecked(item.id);
-                                                    }}
-                                                    className={`w-6 h-6 rounded transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                      }`}
-                                                  />
-
-                                                  <div className="flex-1 min-w-[160px]">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                      <button
-                                                        type="button"
-                                                        onClick={() => openEditModal(item)}
-                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                          }`}
-                                                      >
-                                                        {dealsItemNames.has(item.item_name) && (
-                                                          <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
-                                                        )}
-                                                        {item.item_name}
-                                                        {item.quantity > 1 && (
-                                                          <span className="ml-1 font-bold text-indigo-600">
-                                                            (Qty: {item.quantity})
-                                                          </span>
-                                                        )}
-                                                      </button>
-                                                    </div>
-
-                                                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                                                      {price > 0 ? (
-                                                        <p className="text-xs text-green-600 min-w-0">
-                                                          {formatMoney(price)}{' '}
-                                                          {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                          {priceData?.date ? (
-                                                            <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
-                                                          ) : null}
-                                                          {(() => {
-                                                            const unitPrice = getFormattedUnitPrice(item.item_name, price);
-                                                            return unitPrice ? (
-                                                              <span className="text-teal-600 ml-1">
-                                                                • {unitPrice}
-                                                              </span>
-                                                            ) : null;
-                                                          })()}
-                                                        </p>
-                                                      ) : (
-                                                        <button
-                                                          onClick={() => openEditModal(item, 'price')}
-                                                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                        >
-                                                          Add Price
-                                                        </button>
-                                                      )}
-                                                      {missingCategory && (
-                                                        <button
-                                                          onClick={() => openEditModal(item, 'category')}
-                                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                        >
-                                                          Add Category
-                                                        </button>
-                                                      )}
-                                                    </div>
-
-                                                    {/* Active Note Display */}
-                                                    {item.active_note && (!item.active_note.store_id || item.active_note.store_id === storeId) && (
-                                                      <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
-                                                        <span className="text-base select-none">⚠️</span>
-                                                        <div className="flex-1">
-                                                          <span className="font-semibold">{item.active_note.note}</span>
-                                                          <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
-                                                            {item.active_note.store_id && (
-                                                              <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
-                                                            )}
-                                                            <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                            <button
-                                                              onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (!item.active_note) return;
-                                                                // Optimistic clear
-                                                                setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
-                                                                await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
-                                                              }}
-                                                              className="text-orange-700 hover:text-orange-900 underline ml-auto"
-                                                            >
-                                                              Clear
-                                                            </button>
-                                                          </div>
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                  </div>
-
-                                                  <div className="flex items-center gap-3 ml-auto">
-
-
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        togglePriority(item.id);
-                                                      }}
-                                                      className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                        ? 'text-red-600 hover:text-red-700'
-                                                        : 'text-gray-300 hover:text-red-400'
-                                                        }`}
-                                                      title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                                    >
-                                                      <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                      </svg>
-                                                    </button>
-
-                                                    <button
-                                                      onClick={() => openStoreModal(item.item_name)}
-                                                      className={`cursor-pointer text-xl ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                        ? 'text-indigo-600 hover:text-indigo-700'
-                                                        : 'text-gray-300 hover:text-gray-500'
-                                                        }`}
-                                                      title="Swap store"
-                                                      aria-label="Swap store"
-                                                    >
-                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path
-                                                          strokeLinecap="round"
-                                                          strokeLinejoin="round"
-                                                          strokeWidth={2}
-                                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                        />
-                                                      </svg>
-                                                    </button>
-
-                                                    <button
-                                                      onClick={() => removeItem(item.id)}
-                                                      className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
-                                                      title="Remove from list"
-                                                      aria-label="Remove from list"
-                                                    >
-                                                      ✕
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                        {/* Second: All other stores alphabetically - WITH CATEGORY GROUPING */}
-                        {storeEntries
-                          .filter(([store]) => {
-                            const storeId = storesByName[store];
-                            return !(storeId && activeTrips[storeId]);
-                          })
-                          .sort(([storeA], [storeB]) => {
-                            if (storeA === 'No Price Data' || storeA === 'Other Stores') return 1;
-                            if (storeB === 'No Price Data' || storeB === 'Other Stores') return -1;
-                            return storeA.localeCompare(storeB);
-                          })
-
-                          .map(([store, storeItems]) => {
-                            // Calculate store total
-                            const storeTotal = storeItems.reduce((sum, item) => {
-                              const effStore = getEffectiveStore(item.item_name) || store;
-                              const priceData = prices[`${effStore}-${item.item_name}`];
-                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                              return sum + price * item.quantity;
-                            }, 0);
-
-                            // Group items by category
-                            const itemsByCategory = storeItems.reduce((acc: Record<string, typeof storeItems>, item) => {
-                              const cat = getCategoryName(item.category_id ?? -1);
-                              (acc[cat] ||= []).push(item);
-                              return acc;
-                            }, {});
-
-                            return (
-                              <div key={store} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                                <h3 className="text-lg font-bold text-gray-700 bg-gray-50 p-3.5 border-b border-gray-200">
-                                  {/* Simple layout: Start Button + Store Name | Total */}
-                                  <div className="flex items-center justify-between gap-3">
-                                    {/* Left: Start Trip button + Store name */}
-                                    <div className="flex items-center gap-3">
-                                      {/* Start Trip button (mobile only) */}
-                                      {isMobile && mobileMode === 'store' && (
-                                        <button
-                                          onClick={() => {
-                                            const id = storesByName[store];
-                                            if (id) startTrip(id, store);
-                                          }}
-                                          className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
-                                          title="Start Trip"
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                                          </svg>
-                                          <span className="hidden md:inline">Start</span>
-                                        </button>
-                                      )}
-
-                                      {/* Store name */}
-                                      <span className="text-lg font-bold text-gray-800">{store}</span>
-                                    </div>
-
-                                    {/* Right: Total and item count */}
-                                    <div className="flex flex-col items-end">
-                                      <span className="text-xl font-bold text-teal-700">
-                                        ${storeTotal.toFixed(2)}
-                                      </span>
-                                      <span className="text-sm text-gray-500 font-normal">
-                                        ({storeItems.length} {storeItems.length === 1 ? 'item' : 'items'})
-                                      </span>
-                                    </div>
-                                  </div>
-                                </h3>
-
-                                {/* ONE cohesive store panel with categories inside */}
-                                <div className="p-3 space-y-4">
-                                  {/* Group items by category ID */}
-                                  {Object.entries(
-                                    storeItems.reduce((acc, item) => {
-                                      // Use category_id for grouping, fallback to -1 (Other)
-                                      const catId = item.category_id !== null && item.category_id !== undefined ? item.category_id : -1;
-                                      if (!acc[catId]) acc[catId] = [];
-                                      acc[catId].push(item);
-                                      return acc;
-                                    }, {} as { [key: number]: ListItem[] })
-                                  )
-                                    .sort(([catIdA], [catIdB]) => {
-                                      // Sort by sort_order
-                                      const idA = parseInt(catIdA);
-                                      const idB = parseInt(catIdB);
-                                      const orderA = categories.find(c => c.id === idA)?.sort_order || 999;
-                                      const orderB = categories.find(c => c.id === idB)?.sort_order || 999;
-                                      return orderA - orderB;
-                                    })
-                                    .map(([catIdStr, categoryItems]) => {
-                                      const catId = parseInt(catIdStr);
-                                      const categoryName = getCategoryName(catId);
-
-                                      // Sort items: unchecked first, then alphabetical
-                                      categoryItems.sort((a, b) => {
-                                        if (a.checked !== b.checked) return a.checked ? 1 : -1;
-                                        return a.item_name.localeCompare(b.item_name);
-                                      });
-
-                                      // Calculate category subtotal
-                                      const categoryTotal = categoryItems.reduce((sum, item) => {
-                                        const effStore = getEffectiveStore(item.item_name) || store;
-                                        const priceData = prices[`${effStore}-${item.item_name}`];
-                                        const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                        return sum + price * item.quantity;
-                                      }, 0);
-
-                                      return (
-                                        <div key={catId} className="space-y-2">
-                                          {/* Category header */}
-                                          <div
-                                            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${getCategoryColorById(
-                                              catId
-                                            )}`}
-                                          >
-                                            <div className="font-bold text-gray-800 text-base">{categoryName}</div>
-                                            <div className="text-sm font-bold text-teal-700 opacity-90">${categoryTotal.toFixed(2)}</div>
-                                          </div>
-
-                                          {/* Category items */}
-                                          <div className="space-y-2">
-                                            {categoryItems.map((item) => {
-                                              const isFavorite = favorites.includes(item.item_name);
-                                              const effStore = getEffectiveStore(item.item_name) || store;
-                                              const priceData = prices[`${effStore}-${item.item_name}`];
-                                              const price = priceData?.price ? parseFloat(priceData.price) : 0;
-                                              const cat = getCategoryName(item.category_id ?? -1);
-                                              const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
-
-                                              return (
-                                                <div
-                                                  key={item.id}
-                                                  className={`flex flex-wrap items-center gap-3 p-3.5 rounded-2xl border transition ${item.checked
-                                                    ? 'bg-gray-100 border-gray-300'
-                                                    : isFavorite
-                                                      ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                                      : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                    } ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-default' : 'cursor-default' // Changed cursor to default since card is not clickable
-                                                    }`}
-                                                >
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={item.checked}
-                                                    disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
-                                                    onChange={() => {
-                                                      if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
-                                                      toggleChecked(item.id);
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className={`w-6 h-6 rounded-lg border-2 border-gray-300 text-teal-600 focus:ring-teal-500 transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                      }`}
-                                                  />
-
-                                                  <div className="flex-1 min-w-[160px]">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                      <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          openEditModal(item);
-                                                        }}
-                                                        className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                          }`}
-                                                      >
-                                                        {dealsItemNames.has(item.item_name) && (
-                                                          <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
-                                                        )}
-                                                        {item.item_name}
-                                                        {item.quantity > 1 && (
-                                                          <span className="ml-1 font-bold text-indigo-600">
-                                                            (Qty: {item.quantity})
-                                                          </span>
-                                                        )}
-                                                      </button>
-                                                    </div>
-
-                                                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                                                      {price > 0 ? (
-                                                        <div className="min-w-0">
-                                                          <p className="text-xs text-green-600">
-                                                            {formatMoney(price)}{' '}
-                                                            {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
-                                                            {priceData?.date ? (
-                                                              <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effStore})</span>
-                                                            ) : null}
-                                                            {(() => {
-                                                              const unitPrice = getFormattedUnitPrice(item.item_name, price);
-                                                              return unitPrice ? (
-                                                                <span className="text-teal-600 ml-1">
-                                                                  • {unitPrice}
-                                                                </span>
-                                                              ) : null;
-                                                            })()}
-                                                          </p>
-                                                        </div>
-                                                      ) : (
-                                                        <button
-                                                          onClick={() => openEditModal(item, 'price')}
-                                                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                        >
-                                                          Add Price
-                                                        </button>
-                                                      )}
-                                                      {missingCategory && (
-                                                        <button
-                                                          onClick={() => openEditModal(item, 'category')}
-                                                          className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                        >
-                                                          Add Category
-                                                        </button>
-                                                      )}
-                                                    </div>
-
-                                                    {/* Active Note Display */}
-                                                    {item.active_note && (!item.active_note.store_id || item.active_note.store_id === storesByName[store]) && (
-                                                      <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
-                                                        <span className="text-base select-none">⚠️</span>
-                                                        <div className="flex-1">
-                                                          <span className="font-semibold">{item.active_note.note}</span>
-                                                          <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
-                                                            {item.active_note.store_id && (
-                                                              <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
-                                                            )}
-                                                            <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                            <button
-                                                              onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (!item.active_note) return;
-                                                                // Optimistic clear
-                                                                setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
-                                                                await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
-                                                              }}
-                                                              className="text-orange-700 hover:text-orange-900 underline ml-auto"
-                                                            >
-                                                              Clear
-                                                            </button>
-                                                          </div>
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                  </div>
-
-                                                  <div className="flex items-center gap-3 ml-auto">
-
-
-
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        togglePriority(item.id);
-                                                      }}
-                                                      className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                        ? 'text-red-600 hover:text-red-700'
-                                                        : 'text-gray-300 hover:text-red-400'
-                                                        }`}
-                                                      title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                                    >
-                                                      <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                      </svg>
-                                                    </button>
-
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openStoreModal(item.item_name);
-                                                      }}
-                                                      className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                        ? 'text-indigo-600 hover:text-indigo-700'
-                                                        : 'text-gray-300 hover:text-gray-500'
-                                                        }`}
-                                                      title="Swap store"
-                                                      aria-label="Swap store"
-                                                    >
-                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path
-                                                          strokeLinecap="round"
-                                                          strokeLinejoin="round"
-                                                          strokeWidth={2}
-                                                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                        />
-                                                      </svg>
-                                                    </button>
-
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        removeItem(item.id);
-                                                      }}
-                                                      className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
-                                                      title="Remove from list"
-                                                      aria-label="Remove from list"
-                                                    >
-                                                      ✕
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              );
-                                            })}              </div>
-                                        </div>
-                                      );
-                                    })}
-
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                        {/* Third: Items without price data - WITH CATEGORY GROUPING */}
-                        {itemsWithoutPrice.length > 0 && (
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
-                                <span className="text-sm text-gray-500">
-                                  {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
-                                </span>
-                              </div>
-                            </h3>
-
-                            {/* Group items by category */}
-                            <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
-                              {Object.entries(
-                                itemsWithoutPrice.reduce((acc: Record<string, typeof itemsWithoutPrice>, item) => {
-                                  const cat = getCategoryName(item.category_id ?? -1);
-                                  (acc[cat] ||= []).push(item);
-                                  return acc;
-                                }, {})
-                              )
-                                .sort(([catA], [catB]) => {
-                                  // Otherwise sort by category
-                                  const orderA = categoryOrder[catA || 'Other'] || 999;
-                                  const orderB = categoryOrder[catB || 'Other'] || 999;
-                                  if (orderA !== orderB) return orderA - orderB;
-
-                                  return catA.localeCompare(catB);
-                                })
-                                .map(([category, categoryItems]) => {
-                                  // Sort items: unchecked first, then alphabetical
-                                  categoryItems.sort((a, b) => {
-                                    if (a.checked !== b.checked) return a.checked ? 1 : -1;
-                                    return a.item_name.localeCompare(b.item_name);
-                                  });
-
-                                  return (
-                                    <div key={category} className="space-y-2">
-                                      {/* Category header */}
-                                      <div
-                                        className={`flex items-center justify-between px-3 py-2 rounded-xl border ${getCategoryColor(
-                                          category
-                                        )}`}
-                                      >
-                                        <div className="font-bold text-gray-700">{category}</div>
-                                      </div>
-
-                                      {/* Category items */}
-                                      <div className="space-y-2">
-                                        {categoryItems.map((item) => {
-                                          const isFavorite = favorites.includes(item.item_name);
-                                          const cat = getCategoryName(item.category_id ?? -1);
-                                          const missingCategory = !cat || cat.trim() === '' || cat === 'Other';
-                                          const effStore = getEffectiveStore(item.item_name);
-                                          const priceData = effStore ? prices[`${effStore}-${item.item_name}`] : null;
-                                          const missingPrice = !priceData;
-
-                                          return (
-                                            <div
-                                              key={item.id}
-                                              className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${item.checked
-                                                ? 'bg-gray-100 border-gray-300'
-                                                : isFavorite
-                                                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                                                  : 'bg-white border-gray-300 hover:bg-gray-50'
-                                                }`}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                checked={item.checked}
-                                                disabled={mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onChange={() => {
-                                                  if (mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) return;
-                                                  toggleChecked(item.id);
-                                                }}
-                                                className={`w-6 h-6 rounded transition ${(mobileMode == 'build' || (mobileMode === 'store' && Object.keys(activeTrips).length === 0)) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
-                                                  }`}
-                                              />
-
-                                              <div className="flex-1 min-w-[160px]">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      openEditModal(item);
-                                                    }}
-                                                    className={`font-medium hover:text-teal-600 text-left cursor-pointer ${item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
-                                                      }`}
-                                                  >
-                                                    {dealsItemNames.has(item.item_name) && (
-                                                      <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
-                                                    )}
-                                                    {item.item_name}
-                                                    {item.quantity > 1 && (
-                                                      <span className="ml-1 font-bold text-indigo-600">
-                                                        (Qty: {item.quantity})
-                                                      </span>
-                                                    )}
-                                                  </button>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                                  {missingPrice && (
-                                                    <button
-                                                      onClick={() => openEditModal(item, 'price')}
-                                                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                    >
-                                                      Add Price
-                                                    </button>
-                                                  )}
-
-                                                  {missingCategory && (
-                                                    <button
-                                                      onClick={() => openEditModal(item, 'category')}
-                                                      className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
-                                                    >
-                                                      Add Category
-                                                    </button>
-                                                  )}
-                                                </div>
-
-                                                {/* Active Note Display */}
-                                                {item.active_note && (!item.active_note.store_id) && (!item.active_note.store_id) && (
-                                                  <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
-                                                    <span className="text-base select-none">⚠️</span>
-                                                    <div className="flex-1">
-                                                      <span className="font-semibold">{item.active_note.note}</span>
-                                                      <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
-                                                        {item.active_note.store_id && (
-                                                          <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
-                                                        )}
-                                                        <span>• {new Date(item.active_note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                        <button
-                                                          onClick={async (e) => {
-                                                            e.stopPropagation();
-                                                            if (!item.active_note) return;
-                                                            // Optimistic clear
-                                                            setListItems(prev => prev.map(li => li.id === item.id ? { ...li, active_note: undefined } : li));
-                                                            await supabase.from('item_notes').update({ is_active: false }).eq('id', item.active_note.id);
-                                                          }}
-                                                          className="text-orange-700 hover:text-orange-900 underline ml-auto"
-                                                        >
-                                                          Clear
-                                                        </button>
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
-
-                                              <div className="flex items-center gap-3 ml-auto">
-
-
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    togglePriority(item.id);
-                                                  }}
-                                                  className={`cursor-pointer ml-1 transition ${item.is_priority
-                                                    ? 'text-red-600 hover:text-red-700'
-                                                    : 'text-gray-300 hover:text-red-400'
-                                                    }`}
-                                                  title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
-                                                >
-                                                  <svg className="w-5 h-5" fill={item.is_priority ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                                                  </svg>
-                                                </button>
-
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openStoreModal(item.item_name);
-                                                  }}
-                                                  className={`cursor-pointer ml-1 transition ${storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-                                                    ? 'text-indigo-600 hover:text-indigo-700'
-                                                    : 'text-gray-300 hover:text-gray-500'
-                                                    }`}
-                                                  title="Swap store"
-                                                  aria-label="Swap store"
-                                                >
-                                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                      strokeWidth={2}
-                                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                                                    />
-                                                  </svg>
-                                                </button>
-
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeItem(item.id);
-                                                  }}
-                                                  className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
-                                                  title="Remove from list"
-                                                  aria-label="Remove from list"
-                                                >
-                                                  ✕
-                                                </button>
-                                              </div>
-                                            </div>
-                                          );
-                                        })}                             </div>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                        )
-                        }
-
-                        {showPriorityOnly && displayItems.length === 0 && (
-                          <div className="mt-1 pt-1">
-                            <div className="py-12 px-6 text-center rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200">
-                              <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
-                              </svg>
-                              <p className="text-xl font-bold text-gray-700 mb-2">No flagged items found</p>
-                              <p className="text-base text-gray-500 max-w-sm mx-auto">Flag important items so they don't get buried or forgotten.</p>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xl font-bold text-gray-800">Total</span>
-                            <span className="text-2xl font-bold text-teal-600">
-                              {formatMoney(
-                                listItems
-                                  .filter(item => !item.checked)
-                                  .filter(item => showPriorityOnly ? item.is_priority : true)
-                                  .reduce((sum, item) => {
-                                    const effStore = getEffectiveStore(item.item_name);
-                                    if (!effStore) return sum;
-                                    const pd = prices[`${effStore}-${item.item_name}`];
-                                    const p = pd ? parseFloat(pd.price) : 0;
-                                    return sum + p * item.quantity;
-                                  }, 0)
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Quick Add to List Widget (Mobile-Store mode only) */}
-                {(isMobile && mobileMode === 'store') && (
-                  <div className="bg-white rounded-2xl shadow-lg p-4">
-                    <h2 className="text-xl font-semibold mb-1 text-gray-800">Quick Add to List</h2>
-
-                    <div className="relative autocomplete-container">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Search items or add new"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                          value={newItem}
-                          onChange={(e) => handleInputChange(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-                          onFocus={() => {
-                            const listIds = new Set(
-                              listItems.map((li) => li.item_id).filter((v) => typeof v === 'number')
-                            );
-                            const available = allItems
-                              .filter((it) => !listIds.has(it.id))
-                              .map((it) => it.name);
-
-                            setAutocompleteItems(available);
-                            setShowAutocomplete(available.length > 0);
-                          }}
-                        />
-
-                        <button
-                          onClick={addNewItem}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap"
-                        >
-                          Add
-                        </button>
-                      </div>
-
-                      {showAutocomplete && autocompleteItems.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
-                          {autocompleteItems.slice(0, 10).map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => selectItem(item)}
-                              className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800"
-                            >
-                              {item}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              </>
-            ) : (
-              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-teal-600 to-emerald-500 p-8 md:p-12 text-center text-white">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-                    <span className="text-3xl">🛒</span>
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-extrabold mb-2 leading-tight">
-                    Your shopping list is empty
-                  </h2>
-                  <p className="text-base text-teal-50 opacity-90 max-w-2xl mx-auto font-medium">
-                    Add items below to start comparing prices and saving money.
-                  </p>
-                </div>
-
-                <div className="p-6 md:p-10 space-y-10">
-                  {/* Hero Search Section */}
-                  <div className="max-w-2xl mx-auto">
-                    <div className="relative autocomplete-container">
-                      <div className="flex gap-3">
-                        <input
-                          type="text"
-                          placeholder="What do you need to buy?"
-                          className="flex-1 px-6 py-4 border-2 border-gray-100 rounded-2xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 text-gray-800 text-lg shadow-inner bg-gray-50 transition-all font-medium italic"
-                          value={newItem}
-                          onChange={(e) => handleInputChange(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && addNewItem()}
-                        />
-                        <button
-                          onClick={addNewItem}
-                          className="bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-700 cursor-pointer transition-all shadow-lg active:scale-95 text-lg"
-                        >
-                          Add
-                        </button>
-                      </div>
-
-                      {showAutocomplete && autocompleteItems.length > 0 && (
-                        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                          {autocompleteItems.map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => selectItem(item)}
-                              className="w-full text-left px-6 py-4 hover:bg-teal-50 cursor-pointer border-b border-gray-50 last:border-b-0 text-gray-800 font-medium transition-colors"
-                            >
-                              {item}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Suggestions Grid */}
-                  <div className="max-w-3xl mx-auto">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Common Items</h3>
-                      {favorites.length > 0 && (
-                        <button
-                          onClick={addFavorites}
-                          className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          ⭐ Add all Favorites
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {DEFAULT_ITEMS.map((name) => (
-                        <button
-                          key={name}
-                          onClick={() => selectItem(name)}
-                          className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all group shadow-sm hover:shadow-md cursor-pointer active:scale-95"
-                        >
-                          <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
-                            {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
-                          </span>
-                          <span className="text-xs font-bold text-gray-700 text-center line-clamp-1">{name.split(' (')[0]}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            <ShoppingListPanel
+              loading={loading}
+              listItems={listItems}
+              showCheckedItems={showCheckedItems}
+              showPriorityOnly={showPriorityOnly}
+              isMobile={isMobile}
+              mobileMode={mobileMode}
+              favorites={favorites}
+              dealsItemNames={dealsItemNames}
+              prices={prices}
+              storesByName={storesByName}
+              storePrefs={storePrefs}
+              categories={categories}
+              categoryOrder={categoryOrder}
+              activeTrips={activeTrips}
+              myActiveStoreId={myActiveStoreId}
+              newItem={newItem}
+              showAutocomplete={showAutocomplete}
+              autocompleteItems={autocompleteItems}
+              onNewItemChange={handleInputChange}
+              onSearchFocus={handleSearchFocus}
+              onAddNewItem={addNewItem}
+              onSelectItem={selectItem}
+              onToggleShowChecked={() => setShowCheckedItems(!showCheckedItems)}
+              onToggleShowPriority={() => setShowPriorityOnly(!showPriorityOnly)}
+              onStartTrip={startTrip}
+              onEndTrip={endTrip}
+              onOpenPricePhotoCapture={handleOpenPricePhotoCapture}
+              onAddFavorites={addFavorites}
+              onToggleChecked={toggleChecked}
+              onTogglePriority={togglePriority}
+              onOpenEdit={openEditModal}
+              onOpenStoreModal={openStoreModal}
+              onRemove={removeItem}
+              onClearNote={clearItemNote}
+              getCategoryColorById={getCategoryColorById}
+              getCategoryName={getCategoryName}
+              getEffectiveStore={getEffectiveStore}
+              getDaysAgo={getDaysAgo}
+              formatMoney={formatMoney}
+            />
           </div> {/* End Right Column */}
         </div> {/* End Flex Container */}
 
-        {/* SWAP STORE MODAL      */}
-        {/* ===================== */}
-        {
-          storeModalOpen && activeItemForStoreModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                        />
-                      </svg>
-                      <span>Swap Store</span>
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">{activeItemForStoreModal}</p>
-                  </div>
-                  <button
-                    onClick={closeStoreModal}
-                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
-                    title="Close"
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
+        {/* SWAP STORE MODAL */}
+        <StoreModal
+          isOpen={storeModalOpen && !!activeItemForStoreModal}
+          onClose={closeStoreModal}
+          itemName={activeItemForStoreModal}
+          currentPreference={activeItemForStoreModal ? (storePrefs[activeItemForStoreModal] || 'AUTO') : 'AUTO'}
+          storeOptions={activeItemForStoreModal ? getStoreOptionsForItem(activeItemForStoreModal) : []}
+          allStores={stores}
+          onSelectStore={setItemStorePreference}
+          onOpenEditModalForPrice={handleOpenEditModalForPrice}
+          formatMoney={formatMoney}
+        />
 
-                {(() => {
-                  const options = getStoreOptionsForItem(activeItemForStoreModal);
-                  const pref = storePrefs[activeItemForStoreModal] || 'AUTO';
-
-                  // Find stores WITHOUT price data
-                  const storesWithoutPrice = stores.filter(
-                    (store) => !options.find((opt) => opt.store === store)
-                  );
-
-                  return (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        {/* Auto option - only if there are options with prices */}
-                        {options.length > 0 && (
-                          <button
-                            onClick={() => {
-                              setItemStorePreference(activeItemForStoreModal, 'AUTO');
-                              closeStoreModal();
-                            }}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${pref === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                              <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{options[0].store}</span>
-                            </div>
-                            <span className="font-bold text-gray-800">{formatMoney(options[0].price)}</span>
-                          </button>
-                        )}
-
-                        {/* Store options - stores with prices */}
-                        {options.map(({ store, price }, idx) => {
-                          const isSelected = pref === store;
-                          const isBestPrice = idx === 0;
-
-                          return (
-                            <button
-                              key={store}
-                              onClick={() => {
-                                setItemStorePreference(activeItemForStoreModal, store);
-                                closeStoreModal();
-                              }}
-                              className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
-                                }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-800">{store}</span>
-                                {isBestPrice && (
-                                  <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                    Best Price
-                                  </span>
-                                )}
-                              </div>
-                              <span className="font-bold text-gray-800">{formatMoney(price)}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Stores without prices - now swappable! */}
-                      {storesWithoutPrice.length > 0 && (
-                        <div className="pt-3 border-t-2 border-dashed border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-600 mb-2">
-                            {options.length === 0 ? "Select a Store:" : "Other Favorite Stores:"}
-                          </h4>
-                          <div className="space-y-2">
-                            {storesWithoutPrice.map((store) => {
-                              const isSelected = pref === store;
-                              return (
-                                <div
-                                  key={store}
-                                  className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed transition text-left ${isSelected ? 'border-indigo-400 bg-indigo-50 font-bold' : 'border-gray-200 hover:bg-gray-100'
-                                    }`}
-                                >
-                                  <div
-                                    className="flex-1 cursor-pointer"
-                                    onClick={() => {
-                                      setItemStorePreference(activeItemForStoreModal, store);
-                                      closeStoreModal();
-                                    }}
-                                  >
-                                    <span className="text-gray-800">{store}</span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => {
-                                        setItemStorePreference(activeItemForStoreModal, store);
-                                        closeStoreModal();
-                                      }}
-                                      className={`p-2 rounded-lg transition ${isSelected ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                                      title={isSelected ? 'Currently Selected' : 'Swap to this store'}
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                      </svg>
-                                    </button>
-
-                                    <button
-                                      onClick={() => {
-                                        const item = listItems.find((i) => i.item_name === activeItemForStoreModal);
-                                        if (item) {
-                                          closeStoreModal();
-                                          setEditModalItem(item);
-                                          setEditModalName(item.item_name);
-                                          setEditModalQuantity(String(item.quantity ?? 1));
-                                          setEditModalStore(store);
-                                          setEditModalPrice('');
-                                          setEditModalOriginalPrice('');
-                                          setEditModalOpen(true);
-                                        }
-                                      }}
-                                      className="text-indigo-600 hover:bg-indigo-100 p-2 rounded-full transition"
-                                      title="Add Price"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )
-        }
-
-        {/* ========================= */}
         {/* EDIT ITEM MODAL */}
-        {/* ========================= */}
-        {
-          editModalOpen && editModalItem && (
-            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-start mb-5">
-                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    Edit Item Details
-                  </h3>
-                  <button
-                    onClick={closeEditModal}
-                    className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Details Section */}
-                  <div
-                    className={`rounded-2xl p-4 border transition-colors ${getCategoryColor(editModalCategory)
-                      .split(' ')
-                      .filter(c => c.startsWith('bg-') || c.startsWith('border-'))
-                      .join(' ')
-                      }`}
-                  >
-
-                    <div className="space-y-3">
-                      {/* Name + Favorite Star */}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleFavorite(editModalItem?.item_name || editModalName)}
-                            className={
-                              favorites.includes(editModalItem?.item_name || editModalName)
-                                ? 'text-4xl leading-none cursor-pointer'
-                                : 'text-4xl leading-none text-gray-300 cursor-pointer'
-                            }
-                            aria-label={favorites.includes(editModalItem?.item_name || editModalName) ? 'Unfavorite item' : 'Favorite item'}
-                            title={favorites.includes(editModalItem?.item_name || editModalName) ? "Remove from Favorites" : "Add to Favorites"}
-                          >
-                            {favorites.includes(editModalItem?.item_name || editModalName) ? '⭐' : '☆'}
-                          </button>
-                          <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
-                        </div>
-                        <div className="mt-1">
-                          <input
-                            autoFocus={editModalFocusField === 'name'}
-                            type="text"
-                            value={editModalName}
-                            onChange={(e) => setEditModalName(e.target.value)}
-                            className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base bg-white"
-                            placeholder="e.g., Grapefruit (ct)"
-
-                          />
-                        </div>
-                      </div>
-
-                      {/* Category */}
-                      <div>
-                        <label className="text-sm font-semibold text-gray-700">Category</label>
-                        <select
-                          autoFocus={editModalFocusField === 'category'}
-                          value={editModalCategory}
-                          onChange={(e) => setEditModalCategory(e.target.value)}
-                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
-                        >
-                          {Array.from(new Set([...categoryOptions, editModalCategory])).filter(Boolean).map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Quantity */}
-                      <div>
-                        <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="1"
-                          value={editModalQuantity}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (/^\d*\.?\d*$/.test(val)) {
-                              setEditModalQuantity(val);
-                            }
-                          }}
-                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl bg-white
-                              font-semibold text-gray-800
-                              focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-                        />
-                      </div>
-
-                      {/* Note */}
-                      <div>
-                        <label className="text-sm font-semibold text-gray-700">Note (Optional)</label>
-                        <div className="flex gap-2">
-                          <select
-                            value={editModalNote}
-                            onChange={(e) => setEditModalNote(e.target.value)}
-                            className={`w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 ${editModalNote ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}
-                          >
-                            <option value="">No note</option>
-                            <option value="Poor quality item">Poor quality item</option>
-                            <option value="Out of stock!">Out of stock!</option>
-                            <option value="Wrong price at register!">Wrong price at register!</option>
-                          </select>
-                        </div>
-                        <div className="mt-1 w-full">
-                          <select
-                            value={editModalNoteStore}
-                            onChange={(e) => setEditModalNoteStore(e.target.value)}
-                            className="w-full text-s bg-white border border-gray-200 rounded-xl px-3 py-3"
-                          >
-                            <option value="Any">Any Store</option>
-                            {stores.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* Price Section */}
-                  <div className="rounded-2xl border border-blue-300 bg-blue-100 p-4 shadow-sm">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-semibold text-gray-700">Price</label>
-                        <div className="mt-1 flex items-center border border-gray-300 rounded-xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
-                          <span className="text-gray-600 font-semibold mr-1">$</span>
-
-                          <input
-                            autoFocus={editModalFocusField === 'price'}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            value={editModalPrice || ''}
-                            onChange={(e) => {
-                              setEditModalPriceDirty(true);
-                              const digits = e.target.value.replace(/\D/g, '');
-                              let priceValue = '';
-                              if (digits !== '') {
-                                const cents = parseInt(digits, 10);
-                                priceValue = (cents / 100).toFixed(2);
-                              }
-
-                              setEditModalPrice(priceValue);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                if (!editModalStore) {
-                                  e.preventDefault();
-
-                                  // show friendly guidance
-                                  setNeedsStoreHint(true);
-
-                                  // guide user to store selection
-                                  setTimeout(() => {
-                                    storeSelectRef.current?.focus();
-                                  }, 50);
-                                }
-                              }
-                            }}
-                            className="w-full text-right font-semibold text-gray-600 focus:outline-none"
-                            aria-label="Price"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Store Selection */}
-                      <div>
-                        <label className="text-sm font-semibold text-gray-700">Store</label>
-                        <select
-                          ref={storeSelectRef}
-                          value={editModalStore}
-                          onChange={(e) => {
-                            const newStore = e.target.value;
-                            setEditModalStore(newStore);
-
-                            // clear hint once resolved
-                            if (newStore) setNeedsStoreHint(false);
-
-                            if (editModalItem && newStore) {
-                              setItemStorePreference(editModalItem.item_name, newStore);
-                            }
-                          }}
-
-                          className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-200"
-                        >
-                          <option value="">Select a store</option>
-                          {stores.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {editModalOriginalPrice && editModalPrice !== editModalOriginalPrice && (
-                      <p className="text-xs text-gray-700 mt-2">
-                        Was <span className="font-semibold">${editModalOriginalPrice}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end gap-2 mt-6">
-                    <button
-                      onClick={closeEditModal}
-                      className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveEdit}
-                      disabled={savingEdit}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                      {savingEdit ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+        <EditItemModal
+          isOpen={editModalOpen}
+          onClose={closeEditModal}
+          item={editModalItem}
+          itemName={editModalName}
+          categoryId={editModalCategoryId}
+          quantity={editModalQuantity}
+          note={editModalNote}
+          noteStore={editModalNoteStore}
+          price={editModalPrice}
+          store={editModalStore}
+          originalPrice={editModalOriginalPrice}
+          priceDirty={editModalPriceDirty}
+          onItemNameChange={setEditModalName}
+          onCategoryChange={setEditModalCategoryId}
+          onQuantityChange={setEditModalQuantity}
+          onNoteChange={setEditModalNote}
+          onNoteStoreChange={setEditModalNoteStore}
+          onPriceChange={setEditModalPrice}
+          onPriceDirtyChange={setEditModalPriceDirty}
+          onStoreChange={(newStore) => {
+            setEditModalStore(newStore);
+            if (newStore) setNeedsStoreHint(false);
+            if (editModalItem && newStore) {
+              setItemStorePreference(editModalItem.item_name, newStore);
+            }
+          }}
+          onSave={saveEdit}
+          onToggleFavorite={toggleFavorite}
+          categories={categories}
+          stores={stores}
+          favorites={favorites}
+          saving={savingEdit}
+          focusField={editModalFocusField}
+          storeRequiredOpen={storeRequiredOpen}
+          onStoreRequiredClose={() => setStoreRequiredOpen(false)}
+          getCategoryColorById={getCategoryColorById}
+        />
 
 
-              {/* ========================= */}
-              {/* EDIT ITEM MODAL - SAVE PRICE WITHOUT STORE ERROR MESSAGE */}
-              {/* ========================= */}
-              {storeRequiredOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" aria-modal="true" role="dialog">
-                  {/* Backdrop */}
-                  <div
-                    className="absolute inset-0 bg-black/70"
-                    onClick={() => setStoreRequiredOpen(false)}
-                  />
+        {/* TOAST: Item removed from shopping list */}
+        <UndoToast
+          isVisible={mounted && !!removedFromListToastItem}
+          message={removedFromListToastItem ? `Removed "${removedFromListToastItem.item_name}" from your shopping list.` : ''}
+          onUndo={undoRemove}
+          onDismiss={dismissRemoveToast}
+        />
 
-                  {/* Card */}
-                  <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-extrabold text-gray-900">Store Required</h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          You found{' '}
-                          <span className="font-semibold text-gray-900">
-                            {editModalName}
-                          </span>
-                          {' for'}
-                          <span className="font-semibold text-gray-900">
-                            {' $'}{editModalPrice}
-                          </span>
-                          ? Awesome!
-                          Let me know what store that applies to.
-                        </p>
-                      </div>
+        {/* TOAST: Item added to shopping list */}
+        <UndoToast
+          isVisible={mounted && !!addedToListToastItem}
+          message={addedToListToastItem ? `Added "${addedToListToastItem.item_name}" to your shopping list.` : ''}
+          onUndo={undoAdd}
+          onDismiss={dismissAddToast}
+        />
 
-                      <button
-                        onClick={() => setStoreRequiredOpen(false)}
-                        className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
-                        aria-label="Close"
-                        type="button"
-                      >
-                        ✕
-                      </button>
-                    </div>
+        {/* TOAST: Item checked off shopping list */}
+        <UndoToast
+          isVisible={mounted && !!checkedOffListToastItem}
+          message={checkedOffListToastItem ? `Checked off "${checkedOffListToastItem.item_name}" from your shopping list!` : ''}
+          onUndo={undoCheck}
+          onDismiss={dismissCheckToast}
+        />
 
-                    <div className="flex justify-end gap-2 mt-6">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStoreRequiredOpen(false);
-                          setTimeout(() => storeSelectRef.current?.focus(), 50);
-                        }}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
-                      >
-                        Choose Store
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        }
+        {/* TOAST: Trip complete */}
+        <UndoToast
+          isVisible={mounted && !!tripCompleteToastStore}
+          message={tripCompleteToastStore ? `Your trip at ${tripCompleteToastStore} is complete!` : ''}
+          onDismiss={dismissTripCompleteToast}
+          variant="success"
+          emoji="🎉"
+        />
 
-
-        {/* =========================
-        TOAST NOTIFICATION
-
-        ITEM REMOVED FROM SHOPPING LIST
-        (WITH UNDO BUTTON)
-        ========================== */}
-        {
-          mounted && removedFromListToastItem && (
-            <div key={removedFromListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-                <span className="flex-1 font-medium">Removed "{removedFromListToastItem.item_name}" from your shopping list.</span>
-
-                <button
-                  onClick={undoRemove}
-                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-                >
-                  Undo
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (removedFromListToastTimeout) clearTimeout(removedFromListToastTimeout);
-                    setUndoRemoveItem(null);
-                    setUndoRemoveTimeout(null);
-                  }}
-                  className="text-gray-400 hover:text-white text-xl"
-                  aria-label="Dismiss"
-                >
-                  ✖
-                </button>
-              </div>
-            </div>
-          )
-        }
-
-        {/* =========================
-        TOAST NOTIFICATION
-        
-        ITEM ADDED TO SHOPPING LIST
-        (WITH UNDO BUTTON)
-        ========================= */}
-        {
-          mounted && addedToListToastItem && (
-            <div key={addedToListToastItem.id} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-                <span className="flex-1 font-medium">Added "{addedToListToastItem.item_name}" to your shopping list.</span>
-
-                <button
-                  onClick={undoAdd}
-                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-                >
-                  Undo
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (addedToListToastTimeout) clearTimeout(addedToListToastTimeout);
-                    setUndoAddItem(null);
-                    setUndoAddTimeout(null);
-                  }}
-                  className="text-gray-400 hover:text-white text-xl"
-                  aria-label="Dismiss"
-                >
-                  ✖
-                </button>
-              </div>
-            </div>
-          )
-        }
-
-        {/* =========================
-        TOAST NOTIFICATION
-        
-        CHECKED ITEM OFF SHOPPING LIST
-        (WITH UNDO BUTTON)
-        ========================= */}
-        {
-          mounted && checkedOffListToastItem && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-              <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-                <span className="flex-1 font-medium">
-                  Checked off "{checkedOffListToastItem.item_name}" from your shopping list!
-                </span>
-
-                <button
-                  onClick={undoCheck}
-                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
-                >
-                  Undo
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (checkedOffListToastTimeout) clearTimeout(checkedOffListToastTimeout);
-                    setUndoCheckItem(null);
-                    setUndoCheckTimeout(null);
-                  }}
-                  className="text-gray-400 hover:text-white text-xl"
-                  aria-label="Dismiss"
-                >
-                  ✖
-                </button>
-              </div>
-            </div>
-          )
-        }
-
-        {/* =========================
-        TOAST NOTIFICATION
-        
-        TRIP COMPLETE AT ACTIVE STORE
-        ========================= */}
-
-        {
-          mounted && tripCompleteToastStore && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-              <div className="bg-gray-900 text-white px-12 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-                <span className="flex-1 font-semibold text-xl">
-                  <span className="text-xl mr-1">🎉</span> Your trip at {tripCompleteToastStore} is complete!
-                </span>
-
-                <button
-                  onClick={() => {
-                    if (tripCompleteToastTimeout) clearTimeout(tripCompleteToastTimeout);
-                    setTripCompleteToastStore(null);
-                    setTripCompleteToastTimeout(null);
-                    tripCompleteToastLockRef.current = null;
-                  }}
-                  className="text-gray-400 hover:text-white text-xl"
-                  aria-label="Dismiss"
-                >
-                  ✖
-                </button>
-              </div>
-            </div>
-          )
-        }
-
-        {/* =========================
-        TOAST NOTIFICATION
-        
-        TRIP STARTED
-        (WITH UNDO BUTTON)
-        ========================== */}
-        {
-          mounted && tripStartedToastStore && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-              <div className="bg-gray-900 text-white px-10 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
-                <span className="flex-1 font-semibold text-xl">
-                  <span className="text-xl mr-1">🚀</span> Trip started at {tripStartedToastStore}!
-                </span>
-
-
-                <button
-                  onClick={undoTripStart}
-                  className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap cursor-pointer"
-                >
-                  Undo
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (tripStartedToastTimeout) clearTimeout(tripStartedToastTimeout);
-                    setTripStartedToastStore(null);
-                    setTripStartedToastTripId(null);
-                    setTripStartedToastTimeout(null);
-                  }}
-                  className="text-gray-400 hover:text-white text-xl cursor-pointer"
-                  aria-label="Dismiss"
-                >
-                  ✖
-                </button>
-              </div>
-            </div>
-          )
-        }
+        {/* TOAST: Trip started */}
+        <UndoToast
+          isVisible={mounted && !!tripStartedToastStore}
+          message={tripStartedToastStore ? `Trip started at ${tripStartedToastStore}!` : ''}
+          onUndo={undoTripStart}
+          onDismiss={dismissTripStartedToast}
+          variant="success"
+          emoji="🚀"
+        />
 
       </div>
 
@@ -4163,7 +2303,7 @@ export default function ShoppingList() {
 
       <StatusModal
         isOpen={statusModal.isOpen}
-        onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+        onClose={closeStatusModal}
         title={statusModal.title}
         message={statusModal.message}
         type={statusModal.type}
