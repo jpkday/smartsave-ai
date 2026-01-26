@@ -606,7 +606,7 @@ export default function Deals() {
                                       className={`
                                        w-24 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm cursor-pointer whitespace-nowrap
                                        ${deal.isOnList
-                                          ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'
+                                          ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-red-50 hover:text-red-600 hover:border-red-100'
                                           : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300'
                                         }
                                      `}

@@ -42,9 +42,10 @@ interface ItemLibraryProps {
   // Data
   allItems: ItemRow[];
   buildModeAvailableAll: ItemRow[];
+  listIds: Set<number>;
   favorites: string[];
   recentRank: Map<number, number>;
-  frequentItemCounts: Record<string, number>;
+  frequentItemCounts: Record<string, number> | Record<number, number>;
   prices: { [key: string]: PriceData };
   storesByName: { [name: string]: string };
 
@@ -78,6 +79,7 @@ interface ItemLibraryProps {
 export default function ItemLibrary({
   allItems,
   buildModeAvailableAll,
+  listIds,
   favorites,
   recentRank,
   frequentItemCounts,
@@ -118,9 +120,10 @@ export default function ItemLibrary({
       .filter((it) => recentRank.has(it.id))
       .sort((a, b) => (recentRank.get(a.id) ?? Infinity) - (recentRank.get(b.id) ?? Infinity));
   } else if (selectItemsFilter === 'FREQUENT') {
+    const counts = frequentItemCounts as Record<number, number>;
     list = list
-      .filter((it) => frequentItemCounts[it.name] !== undefined)
-      .sort((a, b) => (frequentItemCounts[b.name] || 0) - (frequentItemCounts[a.name] || 0));
+      .filter((it) => counts[it.id] !== undefined)
+      .sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
   } else {
     list = list.slice();
   }
@@ -240,8 +243,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('FAVORITES')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
-              ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
-              : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+            ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
+            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
             }`}
         >
           Favorites
@@ -251,8 +254,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('FREQUENT')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
-              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
-              : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
+            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
+            : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
             }`}
         >
           Frequent
@@ -262,8 +265,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('RECENT')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
-              ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
-              : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
+            ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
+            : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
             }`}
         >
           Recent
@@ -315,8 +318,8 @@ export default function ItemLibrary({
               <div
                 key={it.id}
                 className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
-                    ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                  : 'bg-white border-gray-300 hover:bg-gray-50'
                   }`}
               >
                 <div className="flex-1 min-w-0">
@@ -388,12 +391,22 @@ export default function ItemLibrary({
                   )}
                 </div>
 
-                <button
-                  onClick={() => onToggleItemById(it.id, it.name)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
-                >
-                  Add
-                </button>
+                {listIds.has(it.id) ? (
+                  <button
+                    onClick={() => onToggleItemById(it.id, it.name)}
+                    className="flex items-center justify-center gap-1 bg-gray-50 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-100 hover:border-red-100 text-sm font-bold px-3 py-2 rounded-xl transition cursor-pointer"
+                    title="Remove from list"
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onToggleItemById(it.id, it.name)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                  >
+                    Add
+                  </button>
+                )}
               </div>
             );
           })}

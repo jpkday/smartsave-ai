@@ -151,7 +151,10 @@ export default function ShoppingList() {
         data
           .filter((d: any) => d.purchase_count > 1)
           .forEach((d: any) => {
-            counts[d.item_name] = d.purchase_count;
+            // Use item_id as key for robustness against renames
+            if (d.item_id) {
+              counts[d.item_id] = d.purchase_count;
+            }
           });
         setFrequentItemCounts(counts);
       }
@@ -2091,7 +2094,8 @@ export default function ShoppingList() {
             {(!isMobile || mobileMode === 'build') && (
               <ItemLibrary
                 allItems={allItems}
-                buildModeAvailableAll={buildModeAvailableAll}
+                buildModeAvailableAll={allItems} // Show everything, let ItemLibrary handle "Added" state
+                listIds={listIds}
                 favorites={favorites}
                 recentRank={recentRank}
                 frequentItemCounts={frequentItemCounts}
