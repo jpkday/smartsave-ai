@@ -62,10 +62,13 @@ KNOWN ITEMS (use for ai_match): [${knownItemsList}]
 ${skuMappingsSection}
 Return JSON: {"store":"","date":"YYYY-MM-DD","time":"HH:MM","items":[{"name":"RAW","normalized_name":"Category, Type","price":0,"quantity":1,"unit":"count|lb|oz","is_weighted":false,"sku":"","ai_match":""}]}`;
 
-        // Only 2 models for Hobby 10s timeout - no time for retries
+        // Candidate models to try in order (preferring faster/cheaper models first)
         const candidateModels = [
+            "gemini-3-flash-preview",  // Newest Flash (2026)
+            "gemini-2.5-flash",        // Stable Flash
             "gemini-2.0-flash",        // Fast & stable
-            "gemini-1.5-flash",        // Fallback
+            "gemini-3-pro-preview",    // Newest Pro (2026)
+            "gemini-2.5-pro",          // Stable Pro
         ];
 
         let result = null;
