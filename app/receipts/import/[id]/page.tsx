@@ -26,6 +26,7 @@ interface ReconciliationRow {
     ocrPrice: number;
     ocrQuantity: number;
     ocrUnit?: string;
+    ocrSku?: string;
     isWeighted?: boolean;
 
     // Selection state
@@ -132,6 +133,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 const ocrName = item.name;
                 const ocrNormalizedName = item.normalized_name;
                 const ocrUnit = item.unit;
+                const ocrSku = item.sku;
                 const isWeighted = item.is_weighted;
 
                 // Strategy A: Exact Alias Match (Prefer Store Specific, Fallback to Global)
@@ -154,6 +156,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
                         ocrUnit,
+                        ocrSku,
                         isWeighted,
                         status: 'matched',
                         selectedItemId: exactAlias.item_id,
@@ -172,6 +175,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
                         ocrUnit,
+                        ocrSku,
                         isWeighted,
                         status: 'matched',
                         selectedItemId: exactItem.id,
@@ -197,6 +201,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
                             ocrUnit,
+                            ocrSku,
                             isWeighted,
                             status: 'matched',
                             selectedItemId: match.item_id,
@@ -207,7 +212,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     }
                 }
 
-                // Fuzzy against Items 
+                // Fuzzy against Items
                 const fuzzyItemName = getFuzzyMatch(ocrNormalizedName || ocrName, candidateNames);
                 if (fuzzyItemName) {
                     const match = itemsList.find(i => i.name === fuzzyItemName);
@@ -218,6 +223,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
                             ocrUnit,
+                            ocrSku,
                             isWeighted,
                             status: 'matched',
                             selectedItemId: match.id,
@@ -239,6 +245,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
                             ocrUnit,
+                            ocrSku,
                             isWeighted,
                             status: 'matched',
                             selectedItemId: matchedItem.id,
@@ -256,6 +263,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     ocrPrice: item.price,
                     ocrQuantity: item.quantity,
                     ocrUnit,
+                    ocrSku,
                     isWeighted,
                     status: 'new',
                     newItemName: toTitleCase(ocrNormalizedName || ocrName),
@@ -399,6 +407,21 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         household_code: householdCode,
                         user_id: SHARED_USER_ID
                     });
+                }
+
+                // E. Store SKU (if extracted from receipt)
+                if (finalItemId && row.ocrSku) {
+                    const { error: skuError } = await supabase.from('store_item_sku').upsert(
+                        {
+                            store_id: storeId,
+                            item_id: finalItemId,
+                            store_sku: row.ocrSku
+                        },
+                        { onConflict: 'store_id,item_id' }
+                    );
+                    if (skuError) {
+                        console.warn('SKU upsert error:', skuError.message);
+                    }
                 }
             }
 
