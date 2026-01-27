@@ -250,8 +250,7 @@ function PricesContent() {
     // 2. Items
     const { data: itemsData } = await supabase
       .from('items')
-      .select('id, name')
-      .eq('user_id', SHARED_USER_ID);
+      .select('id, name');
 
     if (itemsData) {
       const loadedItems = itemsData.map((d: any) => ({ id: d.id.toString(), name: d.name }));
@@ -499,7 +498,7 @@ function PricesContent() {
     if (!name) return;
     if (items.some(i => i.name === name)) { handleItemSelect(name); return; }
     try {
-      const { data, error } = await supabase.from('items').insert({ name: name, user_id: SHARED_USER_ID, category: 'Other' }).select().single();
+      const { data, error } = await supabase.from('items').insert({ name: name }).select().single();
       if (error) throw error;
       const newItem = { id: data.id.toString(), name: data.name };
       setItems(prev => [...prev, newItem].sort((a, b) => a.name.localeCompare(b.name)));

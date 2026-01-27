@@ -53,6 +53,51 @@ export async function POST(req: NextRequest) {
         // Prepare candidate list string (cap at 500 to be safe)
         const knownItemsList = (candidateItems as string[]).slice(0, 500).join(", ");
 
+        // Fetch known SKU mappings to improve matching accuracy
+        let skuMappingsSection = "";
+        const householdCode = req.headers.get('x-household-code');
+        if (householdCode) {
+            try {
+                const { createClient } = require('@supabase/supabase-js');
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+                if (supabaseUrl && supabaseServiceKey) {
+                    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+                    // Fetch SKU mappings with store and item names
+                    const { data: skuData } = await supabase
+                        .from('store_item_sku')
+                        .select('store_sku, store_id, stores(name), item_id, items(name)')
+                        .limit(500);
+
+                    if (skuData && skuData.length > 0) {
+                        // Group by store
+                        const byStore: Record<string, string[]> = {};
+                        for (const row of skuData) {
+                            const storeName = row.stores?.name || 'Unknown';
+                            const itemName = row.items?.name || 'Unknown';
+                            if (!byStore[storeName]) byStore[storeName] = [];
+                            byStore[storeName].push(`${row.store_sku} = "${itemName}"`);
+                        }
+
+                        // Build section for prompt
+                        const storeEntries = Object.entries(byStore)
+                            .map(([store, mappings]) => `${store}:\n${mappings.join('\n')}`)
+                            .join('\n\n');
+
+                        skuMappingsSection = `
+      KNOWN SKU MAPPINGS (HIGH CONFIDENCE - use these when you see matching SKUs):
+      ${storeEntries}
+`;
+                        console.log(`Loaded ${skuData.length} SKU mappings for improved matching`);
+                    }
+                }
+            } catch (skuErr) {
+                console.warn("Failed to load SKU mappings (non-fatal):", skuErr);
+            }
+        }
+
         const prompt = `
       Analyze this receipt image and extract information in strict JSON format. 
       
@@ -88,7 +133,7 @@ export async function POST(req: NextRequest) {
          - ai_match: The exact string from the "Known Items" list below that best matches this item.
 
       KNOWN ITEMS LIST: [${knownItemsList}]
-
+${skuMappingsSection}
       Ignore tax, subtotals, and savings. Focus on line items.
       
       Output JSON format:

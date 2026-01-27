@@ -138,11 +138,9 @@ export default function Deals() {
     }
 
     // Get item categories
-    // Get item categories
     let itemsQuery = supabase
       .from('items')
-      .select('id, name, category_id')
-      .eq('user_id', SHARED_USER_ID);
+      .select('id, name, category_id');
 
     if (currentHouseholdCode !== 'TEST') {
       itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');

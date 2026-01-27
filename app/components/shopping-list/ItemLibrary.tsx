@@ -14,7 +14,6 @@ interface ItemNote {
 interface ItemRow {
   id: number;
   name: string;
-  category?: string;
   category_id?: number;
   active_note?: ItemNote | null;
 }
@@ -27,7 +26,6 @@ interface ListItem {
   checked: boolean;
   is_priority: boolean;
   category_id?: number | null;
-  category?: string | null;
   active_note?: ItemNote;
 }
 
@@ -333,7 +331,6 @@ export default function ItemLibrary({
                         checked: false,
                         is_priority: false,
                         category_id: it.category_id,
-                        category: it.category
                       });
                     }}
                     className="font-medium text-gray-800 hover:text-teal-600 cursor-pointer text-left break-words"
@@ -359,7 +356,6 @@ export default function ItemLibrary({
                           checked: false,
                           is_priority: false,
                           category_id: it.category_id,
-                          category: it.category
                         }, 'price')}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
                       >

@@ -22,9 +22,10 @@ const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 interface Item {
   id: number;
   name: string;
-  category?: string | null;
   category_id?: number | null;
   household_code?: string;
+  unit: string;
+  is_weighted: boolean;
 }
 
 
@@ -59,8 +60,10 @@ function ItemsContent() {
   const [selected, setSelected] = useState<Item | null>(null);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [editCategory, setEditCategory] = useState<string>('Other');
+  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
   const [editFavorite, setEditFavorite] = useState(false);
+  const [editIsWeighted, setEditIsWeighted] = useState(false);
+  const [editUnit, setEditUnit] = useState('count');
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   // Desktop inline edit
@@ -106,8 +109,10 @@ function ItemsContent() {
 
     // Initialize draft state
     setEditValue(selected.name);
-    setEditCategory(selected.category ?? 'Other');
+    setEditCategoryId(selected.category_id ?? null);
     setEditFavorite(favoritedIds.has(selected.id));
+    setEditIsWeighted(selected.is_weighted ?? false);
+    setEditUnit(selected.unit ?? 'count');
 
     // Focus name input and move cursor to end (mobile-safe)
     const t = setTimeout(() => {
@@ -147,8 +152,7 @@ function ItemsContent() {
 
     let query = supabase
       .from('items')
-      .select('id, name, category, category_id, household_code')
-      .eq('user_id', SHARED_USER_ID)
+      .select('id, name, category_id, household_code, unit, is_weighted')
       .order('name');
 
     if (householdCode !== 'TEST') {
@@ -168,9 +172,10 @@ function ItemsContent() {
         data.map((x: any) => ({
           id: x.id,
           name: x.name,
-          category: x.category ?? 'Other',
           category_id: x.category_id,
           household_code: x.household_code,
+          unit: x.unit || 'count',
+          is_weighted: x.is_weighted || false,
         }))
       );
     } else {
@@ -178,15 +183,16 @@ function ItemsContent() {
       for (const name of DEFAULT_ITEMS) {
         await supabase.from('items').insert({
           name,
-          user_id: SHARED_USER_ID,
           household_code: householdCode || 'ASDF',
         });
       }
       const defaultItems = DEFAULT_ITEMS.map((name, idx) => ({
         id: idx + 1, // temporary IDs
         name,
-        category: 'Other',
+        category_id: null,
         household_code: householdCode || 'ASDF',
+        unit: 'count',
+        is_weighted: false,
       }));
       setItems(defaultItems);
     }
@@ -302,7 +308,7 @@ function ItemsContent() {
   const openSheet = (item: Item) => {
     setSelected(item);
     setEditValue(item.name);
-    setEditCategory(item.category ?? 'Other');
+    setEditCategoryId(item.category_id ?? null);
     setEditFavorite(favoritedIds.has(item.id));
     setSheetOpen(true);
     setSaving(false);
@@ -322,7 +328,7 @@ function ItemsContent() {
     setSheetOpen(false);
     setSelected(null);
     setEditValue('');
-    setEditCategory('Other');
+    setEditCategoryId(null);
     setSaving(false);
   };
 
@@ -339,10 +345,9 @@ function ItemsContent() {
       .from('items')
       .insert({
         name,
-        user_id: SHARED_USER_ID,
         household_code: householdCode || 'ASDF',
       })
-      .select('id, name, category, household_code')
+      .select('id, name, category_id, household_code, unit, is_weighted')
       .single();
 
     if (error) {
@@ -355,8 +360,10 @@ function ItemsContent() {
       setItems((prev) => [...prev, {
         id: newItem.id,
         name: newItem.name,
-        category: newItem.category ?? 'Other',
+        category_id: newItem.category_id,
         household_code: newItem.household_code,
+        unit: newItem.unit || 'count',
+        is_weighted: newItem.is_weighted || false,
       }]);
 
       if (viewFilter === 'FAVORITES') {
@@ -377,10 +384,9 @@ function ItemsContent() {
         .from('items')
         .insert({
           name,
-          user_id: SHARED_USER_ID,
           household_code: householdCode || 'ASDF',
         })
-        .select('id, name, category, household_code')
+        .select('id, name, category_id, household_code, unit, is_weighted')
         .single();
 
       if (error) {
@@ -391,8 +397,10 @@ function ItemsContent() {
       item = {
         id: data.id,
         name: data.name,
-        category: data.category ?? 'Other',
-        household_code: data.household_code
+        category_id: data.category_id,
+        household_code: data.household_code,
+        unit: data.unit || 'count',
+        is_weighted: data.is_weighted || false,
       };
 
       setItems(prev => [...prev, item!]);
@@ -519,8 +527,7 @@ function ItemsContent() {
       const { error: shoppingListError } = await supabase
         .from('shopping_list')
         .delete()
-        .eq('item_name', item.name)
-        .eq('user_id', SHARED_USER_ID);
+        .eq('item_name', item.name);
 
       if (shoppingListError) {
         throw shoppingListError;
@@ -529,8 +536,7 @@ function ItemsContent() {
       const { error: priceError } = await supabase
         .from('price_history')
         .delete()
-        .eq('item_name', item.name)
-        .eq('user_id', SHARED_USER_ID);
+        .eq('item_name', item.name);
 
       if (priceError) {
         throw priceError;
@@ -540,8 +546,7 @@ function ItemsContent() {
       const { error: itemError } = await supabase
         .from('items')
         .delete()
-        .eq('id', item.id)
-        .eq('user_id', SHARED_USER_ID);
+        .eq('id', item.id);
 
       if (itemError) {
         throw itemError;
@@ -616,8 +621,10 @@ function ItemsContent() {
     if (!selected || !householdCode) return;
 
     const itemId = selected.id;
-    const nextCategory = (editCategory || 'Other').trim() || 'Other';
+    const nextCategoryId = editCategoryId;
     const nextFavorite = !!editFavorite;
+    const nextIsWeighted = !!editIsWeighted;
+    const nextUnit = editUnit || 'count';
     const nextName = editValue.trim();
     const nameChanged = nextName && nextName !== selected.name;
 
@@ -636,7 +643,7 @@ function ItemsContent() {
       // 2. Update Category (Optimistic)
       setItems((prev) =>
         prev.map((i) =>
-          i.id === itemId ? { ...i, category: nextCategory } : i
+          i.id === itemId ? { ...i, category_id: nextCategoryId, is_weighted: nextIsWeighted, unit: nextUnit } : i
         )
       );
 
@@ -651,13 +658,15 @@ function ItemsContent() {
         });
       }
 
-      // 4. Persist Category
-      const targetCatId = categories.find(c => c.name === nextCategory)?.id || null;
+      // 4. Persist
       const { error: catError } = await supabase
         .from('items')
-        .update({ category: nextCategory, category_id: targetCatId })
-        .eq('id', itemId)
-        .eq('user_id', SHARED_USER_ID);
+        .update({
+          category_id: nextCategoryId,
+          is_weighted: nextIsWeighted,
+          unit: nextUnit
+        })
+        .eq('id', itemId);
 
       if (catError) throw catError;
 
@@ -1246,16 +1255,55 @@ function ItemsContent() {
                 <div className="mt-3">
                   <label className="text-sm font-semibold text-gray-700">Category</label>
                   <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
+                    value={editCategoryId ?? ''}
+                    onChange={(e) => setEditCategoryId(e.target.value ? parseInt(e.target.value) : null)}
                     className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
                   >
-                    {categoryOptions.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    <option value="">Other</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Weight & Unit Section */}
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-bold text-gray-800">Is Weighted (Scale)</label>
+                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Counts as 1 item in total count</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditIsWeighted(p => !p)}
+                      className={`w-14 h-8 rounded-full transition-colors relative ${editIsWeighted ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                      disabled={saving}
+                    >
+                      <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${editIsWeighted ? 'left-7' : 'left-1'}`} />
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block text-center">Default Unit</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['count', 'lb', 'oz', 'each'].map(u => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => setEditUnit(u)}
+                          className={`py-2 text-xs font-bold rounded-xl border transition-all ${editUnit === u
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                            }`}
+                          disabled={saving}
+                        >
+                          {u.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Save Button */}

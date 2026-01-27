@@ -35,13 +35,16 @@ function HistoryContent() {
   const [stores, setStores] = useState<Store[]>([]);
   const [favoriteStoreIds, setFavoriteStoreIds] = useState<string[]>([]);
 
-  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [selectedItemName, setSelectedItemName] = useState<string>('');
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('All');
   const [priceHistory, setPriceHistory] = useState<PriceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPrice, setNewPrice] = useState('');
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
+  const [selectedItemUnit, setSelectedItemUnit] = useState<string>('count');
+  const [selectedItemIsWeighted, setSelectedItemIsWeighted] = useState<boolean>(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Status Modal State
@@ -64,7 +67,7 @@ function HistoryContent() {
   // Search/autocomplete state
   const [searchQuery, setSearchQuery] = useState('');
   const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
+  const [autocompleteItems, setAutocompleteItems] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     loadStoresAndItems();
@@ -94,51 +97,103 @@ function HistoryContent() {
     if (!isInitialLoad) return;
 
     // Load from URL parameters with proper decoding
-    const itemParam = searchParams.get('item');
+    const idParam = searchParams.get('itemId');
+    const nameParam = searchParams.get('item'); // Legacy/Fallback
     const storeParam = searchParams.get('store');
 
-    if (itemParam || storeParam) {
-      // URL params take priority
-      if (itemParam) {
+    const initialize = async () => {
+      let resolvedId = '';
+      let resolvedName = '';
+
+      if (idParam) {
         try {
-          const decodedItem = JSON.parse(itemParam);
-          setSelectedItem(decodedItem);
-          localStorage.setItem('history_last_item', decodedItem);
+          resolvedId = JSON.parse(idParam);
+          // Fetch name for this ID
+          const { data } = await supabase.from('items').select('name, unit, is_weighted').eq('id', resolvedId).single();
+          if (data) {
+            resolvedName = data.name;
+            setSelectedItemUnit(data.unit || 'count');
+            setSelectedItemIsWeighted(data.is_weighted || false);
+          }
         } catch {
-          setSelectedItem(itemParam);
-          localStorage.setItem('history_last_item', itemParam);
+          resolvedId = idParam;
+          const { data } = await supabase.from('items').select('name').eq('id', resolvedId).single();
+          if (data) resolvedName = data.name;
         }
+      } else if (nameParam) {
+        // Fallback to name if ID is missing (legacy URLs)
+        try {
+          resolvedName = JSON.parse(nameParam);
+        } catch {
+          resolvedName = nameParam;
+        }
+        // Try to find the first ID matching this name
+        const { data } = await supabase.from('items').select('id, name, unit, is_weighted').eq('name', resolvedName).limit(1).single();
+        if (data) {
+          resolvedId = data.id;
+          resolvedName = data.name;
+          setSelectedItemUnit(data.unit || 'count');
+          setSelectedItemIsWeighted(data.is_weighted || false);
+        }
+      } else {
+        // No URL params - check localStorage
+        try {
+          const lastId = localStorage.getItem('history_last_item_id');
+          const lastItem = localStorage.getItem('history_last_item'); // Legacy
+
+          if (lastId) {
+            resolvedId = lastId;
+            const { data } = await supabase.from('items').select('name, unit, is_weighted').eq('id', lastId).single();
+            if (data) {
+              resolvedName = data.name;
+              setSelectedItemUnit(data.unit || 'count');
+              setSelectedItemIsWeighted(data.is_weighted || false);
+            }
+          } else if (lastItem) {
+            resolvedName = lastItem;
+            const { data } = await supabase.from('items').select('id, name, unit, is_weighted').eq('name', lastItem).limit(1).single();
+            if (data) {
+              resolvedId = data.id;
+              resolvedName = data.name;
+              setSelectedItemUnit(data.unit || 'count');
+              setSelectedItemIsWeighted(data.is_weighted || false);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load from localStorage:', e);
+        }
+      }
+
+      if (resolvedId) {
+        setSelectedItemName(resolvedName);
+        setSelectedItemId(resolvedId);
+        localStorage.setItem('history_last_item_id', resolvedId);
+        localStorage.setItem('history_last_item', resolvedName);
       }
 
       if (storeParam) {
         try {
           const decodedStore = JSON.parse(storeParam);
-          setSelectedStoreId(decodedStore); // URL now holds ID
+          setSelectedStoreId(decodedStore);
           localStorage.setItem('history_last_store', decodedStore);
         } catch {
           setSelectedStoreId(storeParam);
           localStorage.setItem('history_last_store', storeParam);
         }
-      }
-    } else {
-      // No URL params - check localStorage
-      try {
-        const lastItem = localStorage.getItem('history_last_item');
+      } else if (!idParam && !nameParam) {
         const lastStore = localStorage.getItem('history_last_store');
-
-        if (lastItem) {
-          setSelectedItem(lastItem);
-          if (lastStore) {
-            setSelectedStoreId(lastStore);
-          }
-          updateURL(lastItem, lastStore || 'All');
+        if (lastStore) {
+          setSelectedStoreId(lastStore);
         }
-      } catch (e) {
-        console.error('Failed to load from localStorage:', e);
       }
-    }
 
-    setIsInitialLoad(false);
+      if (resolvedId) {
+        updateURL(resolvedId, resolvedName, storeParam || localStorage.getItem('history_last_store') || 'All');
+      }
+      setIsInitialLoad(false);
+    };
+
+    initialize();
   }, [searchParams, isInitialLoad]);
 
   // Fix for legacy store names in URL/localStorage causing 400 errors
@@ -150,38 +205,32 @@ function HistoryContent() {
     if (isValidId) return;
 
     // Not a valid ID. Try to fuzzy match by name (legacy support)
-    // The dropdown format is: Name (Location)
     const match = stores.find(s =>
       s.name === selectedStoreId ||
       (s.location && `${s.name} (${s.location})` === selectedStoreId)
     );
 
     if (match) {
-      // Found a match, update to ID
       setSelectedStoreId(match.id);
-      // Update localStorage so it's correct for next time
       try {
         localStorage.setItem('history_last_store', match.id);
       } catch (e) {
         console.error('Failed to update localStorage', e);
       }
     } else {
-      // No match, and not a valid ID in list. 
-      // If it looks like a UUID, we leave it (might be a store not in our list?)
-      // If it doesn't look like a UUID, it's definitely invalid (garbage name), reset to All.
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedStoreId);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedStoreId);
       if (!isUuid) {
         setSelectedStoreId('All');
-        updateURL(selectedItem, 'All');
+        updateURL(selectedItemId, selectedItemName, 'All');
       }
     }
-  }, [stores, selectedStoreId, selectedItem]);
+  }, [stores, selectedStoreId, selectedItemId, selectedItemName]);
 
   useEffect(() => {
-    if (selectedItem) {
+    if (selectedItemId) {
       loadPriceHistory();
     }
-  }, [selectedItem, selectedStoreId, favoriteStoreIds.join(',')]);
+  }, [selectedItemId, selectedStoreId, favoriteStoreIds.join(',')]);
 
   const loadStoresAndItems = async () => {
     // 1. Load all stores
@@ -230,7 +279,7 @@ function HistoryContent() {
       // Server-side search
       let query = supabase
         .from('items')
-        .select('name')
+        .select('id, name')
         .ilike('name', `%${value}%`);
 
       const householdCode = localStorage.getItem('household_code');
@@ -238,11 +287,11 @@ function HistoryContent() {
         query = query.or('household_code.neq.TEST,household_code.is.null');
       }
 
-      const { data: searchResults, error } = await query
+      const { data: searchResults } = await query
         .limit(10);
 
       if (searchResults) {
-        setAutocompleteItems(searchResults.map(i => i.name));
+        setAutocompleteItems(searchResults.map(i => ({ id: i.id, name: i.name })));
         setShowAutocomplete(searchResults.length > 0);
       }
     } else {
@@ -251,10 +300,20 @@ function HistoryContent() {
     }
   };
 
-  const selectItemFromSearch = (itemName: string) => {
-    setSelectedItem(itemName);
-    updateURL(itemName, selectedStoreId);
+  const selectItemFromSearch = async (itemId: string, itemName: string) => {
+    setSelectedItemName(itemName);
+    setSelectedItemId(itemId);
+    updateURL(itemId, itemName, selectedStoreId);
+
+    // Fetch details
+    const { data } = await supabase.from('items').select('unit, is_weighted').eq('id', itemId).single();
+    if (data) {
+      setSelectedItemUnit(data.unit || 'count');
+      setSelectedItemIsWeighted(data.is_weighted || false);
+    }
+
     try {
+      localStorage.setItem('history_last_item_id', itemId);
       localStorage.setItem('history_last_item', itemName);
     } catch (err) {
       console.error('Failed to save to localStorage:', err);
@@ -264,10 +323,10 @@ function HistoryContent() {
     setAutocompleteItems([]);
   };
 
-  const updateURL = (item: string, store: string) => {
+  const updateURL = (itemId: string, itemName: string, store: string) => {
     const params = new URLSearchParams();
-    // Use JSON encoding to handle commas in names
-    if (item) params.set('item', JSON.stringify(item));
+    if (itemId) params.set('itemId', JSON.stringify(itemId));
+    if (itemName) params.set('item', JSON.stringify(itemName));
     if (store && store !== 'All') params.set('store', JSON.stringify(store));
 
     const newURL = params.toString() ? `/history?${params.toString()}` : '/history';
@@ -293,7 +352,7 @@ function HistoryContent() {
       .from('price_history')
       .select('*')
       .eq('user_id', SHARED_USER_ID)
-      .eq('item_name', selectedItem)
+      .eq('item_id', selectedItemId)
       .order('recorded_date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -350,16 +409,12 @@ function HistoryContent() {
       return;
     }
 
-    // Get item_id
-    const { data: itemData } = await supabase
-      .from('items')
-      .select('id')
-      .eq('name', selectedItem)
-      .eq('user_id', SHARED_USER_ID)
-      .single();
+    // Register entry with selectedItemId
+    const item_id = selectedItemId;
+    const item_name = selectedItemName;
 
-    if (!itemData) {
-      showStatus('Item Not Found', 'Could not find the selected item in the database.', 'error');
+    if (!item_id) {
+      showStatus('Item Not Found', 'Could not find the selected item ID.', 'error');
       return;
     }
 
@@ -374,11 +429,13 @@ function HistoryContent() {
     const { error } = await supabase
       .from('price_history')
       .insert({
-        item_id: itemData.id,
-        item_name: selectedItem,
+        item_id: item_id,
+        item_name: item_name,
         store_id: selectedStoreId,
-        store: storeObj.name, // Keep saving name for query compatibility/redundancy
+        store: storeObj.name,
         price: newPrice,
+        unit: selectedItemUnit,
+        is_weighted: selectedItemIsWeighted,
         user_id: SHARED_USER_ID,
         recorded_date: newDate,
         created_at: new Date().toISOString()
@@ -441,23 +498,19 @@ function HistoryContent() {
       // Let's assume we use the selectedStoreId.
       const storeToUse = storeOverride || selectedStoreId;
 
-      // Get item_id
-      const { data: itemData } = await supabase
-        .from('items')
-        .select('id')
-        .eq('name', selectedItem)
-        .eq('user_id', SHARED_USER_ID)
-        .single();
+      // Use selectedItemId and selectedItemName
+      const item_id = selectedItemId;
+      const item_name = selectedItemName;
 
-      if (!itemData) {
-        throw new Error('Item not found');
+      if (!item_id) {
+        throw new Error('Item ID missing');
       }
 
       // Get store_id
       const { data: storeData } = await supabase
         .from('stores')
         .select('id, name')
-        .eq('id', storeToUse) // storeToUse will be ID now
+        .eq('id', storeToUse)
         .single();
 
       if (!storeData) {
@@ -468,11 +521,13 @@ function HistoryContent() {
       const { error } = await supabase
         .from('price_history')
         .insert({
-          item_id: itemData.id,
-          item_name: selectedItem,
+          item_id: item_id,
+          item_name: item_name,
           store_id: storeData.id,
           store: storeData.name,
           price: priceToConfirm,
+          unit: selectedItemUnit,
+          is_weighted: selectedItemIsWeighted,
           user_id: SHARED_USER_ID,
           recorded_date: getLocalDateString(),
           created_at: new Date().toISOString()
@@ -565,32 +620,34 @@ function HistoryContent() {
                 {showAutocomplete && autocompleteItems.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
-                      const isSelected = selectedItem === item;
+                      const isSelected = selectedItemId === item.id;
                       return (
                         <button
-                          key={item}
-                          onClick={() => selectItemFromSearch(item)}
+                          key={item.id}
+                          onClick={() => selectItemFromSearch(item.id, item.name)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
                             ? 'bg-indigo-50 text-blue-700 font-semibold'
                             : 'hover:bg-gray-50 text-gray-800'
                             }`}
                         >
-                          {item} {isSelected && '✓'}
+                          {item.name} {isSelected && '✓'}
                         </button>
                       );
                     })}
                   </div>
                 )}
               </div>
-              {selectedItem && (
+              {selectedItemId && (
                 <div className="mt-2">
                   <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
-                    {selectedItem}
+                    {selectedItemName}
                     <button
                       onClick={() => {
-                        setSelectedItem('');
-                        updateURL('', selectedStoreId);
+                        setSelectedItemId('');
+                        setSelectedItemName('');
+                        updateURL('', '', selectedStoreId);
                         try {
+                          localStorage.removeItem('history_last_item_id');
                           localStorage.removeItem('history_last_item');
                         } catch (err) {
                           console.error('Failed to clear localStorage:', err);
@@ -610,7 +667,7 @@ function HistoryContent() {
                 value={selectedStoreId}
                 onChange={(e) => {
                   setSelectedStoreId(e.target.value);
-                  updateURL(selectedItem, e.target.value);
+                  updateURL(selectedItemId, selectedItemName, e.target.value);
                   try {
                     localStorage.setItem('history_last_store', e.target.value);
                   } catch (err) {
@@ -639,7 +696,7 @@ function HistoryContent() {
                 value={selectedStoreId}
                 onChange={(e) => {
                   setSelectedStoreId(e.target.value);
-                  updateURL(selectedItem, e.target.value);
+                  updateURL(selectedItemId, selectedItemName, e.target.value);
                   try {
                     localStorage.setItem('history_last_store', e.target.value);
                   } catch (err) {
@@ -676,32 +733,34 @@ function HistoryContent() {
                 {showAutocomplete && autocompleteItems.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
-                      const isSelected = selectedItem === item;
+                      const isSelected = selectedItemId === item.id;
                       return (
                         <button
-                          key={item}
-                          onClick={() => selectItemFromSearch(item)}
+                          key={item.id}
+                          onClick={() => selectItemFromSearch(item.id, item.name)}
                           className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
                             ? 'bg-indigo-50 text-blue-700 font-semibold'
                             : 'hover:bg-gray-50 text-gray-800'
                             }`}
                         >
-                          {item} {isSelected && '✓'}
+                          {item.name} {isSelected && '✓'}
                         </button>
                       );
                     })}
                   </div>
                 )}
               </div>
-              {selectedItem && (
+              {selectedItemId && (
                 <div className="mt-3">
                   <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
-                    {selectedItem}
+                    {selectedItemName}
                     <button
                       onClick={() => {
-                        setSelectedItem('');
-                        updateURL('', selectedStoreId);
+                        setSelectedItemId('');
+                        setSelectedItemName('');
+                        updateURL('', '', selectedStoreId);
                         try {
+                          localStorage.removeItem('history_last_item_id');
                           localStorage.removeItem('history_last_item');
                         } catch (err) {
                           console.error('Failed to clear localStorage:', err);
@@ -719,7 +778,7 @@ function HistoryContent() {
         </div>
 
         {/* History Display */}
-        {!selectedItem ? (
+        {!selectedItemId ? (
           <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
             <p className="text-gray-500 text-base md:text-lg">Select an item above to view price history</p>
           </div>
@@ -731,7 +790,7 @@ function HistoryContent() {
           // Show grouped by store (All Stores view)
           priceHistory.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-              <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItem}</p>
+              <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItemName}</p>
               <p className="text-gray-400 text-sm mt-2">Select a specific store to add your first price entry</p>
             </div>
           ) : (
@@ -838,7 +897,7 @@ function HistoryContent() {
             {priceHistory.length > 0 ? (
               <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
-                  {selectedItem} at {stores.find(s => s.id === selectedStoreId)?.name || 'Unknown Store'}
+                  {selectedItemName} at {stores.find(s => s.id === selectedStoreId)?.name || 'Unknown Store'}
                 </h2>
                 <div className="space-y-3">
                   {priceHistory.map((record, idx) => {
@@ -892,7 +951,7 @@ function HistoryContent() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItem} at {stores.find(s => s.id === selectedStoreId)?.name}</p>
+                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItemName} at {stores.find(s => s.id === selectedStoreId)?.name}</p>
                 <p className="text-gray-400 text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
               </div>
             )}
@@ -901,7 +960,7 @@ function HistoryContent() {
             <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-2">Add Latest Price</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Adding price for: <span className="font-semibold">{selectedItem}</span> at <span className="font-semibold">{stores.find(s => s.id === selectedStoreId)?.name}</span>
+                Adding price for: <span className="font-semibold">{selectedItemName}</span> at <span className="font-semibold">{stores.find(s => s.id === selectedStoreId)?.name}</span>
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

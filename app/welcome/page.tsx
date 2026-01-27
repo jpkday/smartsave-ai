@@ -75,7 +75,6 @@ export default function WelcomePage() {
             const { data, error } = await supabase
                 .from('items')
                 .select('id, name')
-                .eq('user_id', SHARED_USER_ID)
                 .order('name');
 
             if (!error && data) {
@@ -117,7 +116,6 @@ export default function WelcomePage() {
                     .from('items')
                     .insert({
                         name: itemName,
-                        user_id: SHARED_USER_ID,
                         household_code: householdCode,
                     })
                     .select('id')

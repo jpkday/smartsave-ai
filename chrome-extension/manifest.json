@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "SmartSave Receipt Sync",
+  "version": "1.0.0",
+  "description": "Sync your Walmart and Costco receipts to SmartSave",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.walmart.com/*",
+    "https://www.costco.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.walmart.com/receipt-lookup*",
+        "https://www.walmart.com/orders/*"
+      ],
+      "js": ["content-walmart.js"],
+      "css": ["content.css"]
+    },
+    {
+      "matches": [
+        "https://www.costco.com/OrderStatusDetailView*",
+        "https://www.costco.com/MyAccountOrderDetailView*"
+      ],
+      "js": ["content-costco.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

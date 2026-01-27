@@ -187,15 +187,17 @@ export default function TripsPage() {
 
     const { data: itemsData } = await supabase
       .from('items')
-      .select('id, name, category_id')
+      .select('id, name, category_id, unit, is_weighted')
       .in('id', itemIds);
 
-    const itemMap: { [id: number]: { name: string; category_id: number } } = {};
+    const itemMap: { [id: number]: { name: string; category_id: number; unit: string; is_weighted: boolean } } = {};
     if (itemsData) {
       itemsData.forEach(item => {
         itemMap[item.id] = {
           name: item.name,
           category_id: item.category_id !== null ? item.category_id : -1, // Default to -1 (Other)
+          unit: item.unit || 'count',
+          is_weighted: item.is_weighted || false,
         };
       });
     }
@@ -213,8 +215,8 @@ export default function TripsPage() {
           checked_at: event.checked_at,
           category_id: itemInfo?.category_id ?? -1,
           price: event.price || undefined,
-          unit: event.unit,
-          is_weighted: event.is_weighted,
+          unit: itemInfo?.unit || event.unit, // Item library is source of truth
+          is_weighted: itemInfo?.is_weighted ?? event.is_weighted,
         };
       });
 

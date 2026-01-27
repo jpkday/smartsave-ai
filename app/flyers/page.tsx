@@ -400,7 +400,6 @@ function FlyersContent() {
     const { data: existingItems, error: existingItemsErr } = await supabase
       .from('items')
       .select('id, name')
-      .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
 
     if (existingItemsErr) {
@@ -416,7 +415,6 @@ function FlyersContent() {
       const { error: insertItemsErr } = await supabase.from('items').insert(
         missing.map((name) => ({
           name,
-          user_id: SHARED_USER_ID,
           household_code: householdCode,
         }))
       );
@@ -433,7 +431,6 @@ function FlyersContent() {
     const { data: allItemsData, error: allItemsErr } = await supabase
       .from('items')
       .select('id, name')
-      .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
 
     if (allItemsErr) {

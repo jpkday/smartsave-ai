@@ -45,7 +45,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     const [receipt, setReceipt] = useState<ImportedReceipt | null>(null);
     const [rows, setRows] = useState<ReconciliationRow[]>([]);
     const [stores, setStores] = useState<any[]>([]);
-    const [allItems, setAllItems] = useState<{ id: string, name: string }[]>([]);
+    const [allItems, setAllItems] = useState<{ id: string, name: string, unit?: string, is_weighted?: boolean }[]>([]);
     const [storeId, setStoreId] = useState<string>('');
     const [importing, setImporting] = useState(false);
     const [statusModal, setStatusModal] = useState<{
@@ -117,8 +117,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             // 2. Load Metadata (Stores, Items, Aliases)
             const [storesRes, itemsRes, aliasesRes] = await Promise.all([
                 supabase.from('stores').select('id, name').order('name'),
-                supabase.from('items').select('id, name').order('name'),
-                supabase.from('item_aliases').select('alias, item_id, items(name), store_id')
+                supabase.from('items').select('id, name, unit, is_weighted').order('name'),
+                supabase.from('item_aliases').select('alias, item_id, items(name, unit, is_weighted), store_id')
             ]);
 
             setStores(storesRes.data || []);
@@ -150,17 +150,18 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 }
 
                 if (exactAlias) {
+                    const itemData = Array.isArray(exactAlias.items) ? exactAlias.items[0] : (exactAlias.items as any);
                     return {
                         ocrName,
                         ocrNormalizedName,
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
-                        ocrUnit,
+                        ocrUnit: itemData?.unit && itemData.unit !== 'count' ? itemData.unit : ocrUnit,
                         ocrSku,
-                        isWeighted,
+                        isWeighted: itemData?.is_weighted ?? isWeighted,
                         status: 'matched',
                         selectedItemId: exactAlias.item_id,
-                        selectedItemName: Array.isArray(exactAlias.items) ? exactAlias.items[0]?.name : (exactAlias.items as any)?.name,
+                        selectedItemName: itemData?.name,
                         confidence: 'high',
                         isConfirmed: false
                     };
@@ -174,9 +175,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         ocrNormalizedName,
                         ocrPrice: item.price,
                         ocrQuantity: item.quantity,
-                        ocrUnit,
+                        ocrUnit: exactItem.unit && exactItem.unit !== 'count' ? exactItem.unit : ocrUnit,
                         ocrSku,
-                        isWeighted,
+                        isWeighted: exactItem.is_weighted ?? isWeighted,
                         status: 'matched',
                         selectedItemId: exactItem.id,
                         selectedItemName: exactItem.name,
@@ -195,17 +196,18 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 if (fuzzyAliasName) {
                     const match = aliases.find((a: any) => a.alias === fuzzyAliasName);
                     if (match) {
+                        const itemData = Array.isArray(match.items) ? match.items[0] : (match.items as any);
                         return {
                             ocrName,
                             ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
-                            ocrUnit,
+                            ocrUnit: itemData?.unit && itemData.unit !== 'count' ? itemData.unit : ocrUnit,
                             ocrSku,
-                            isWeighted,
+                            isWeighted: itemData?.is_weighted ?? isWeighted,
                             status: 'matched',
                             selectedItemId: match.item_id,
-                            selectedItemName: Array.isArray(match.items) ? match.items[0]?.name : (match.items as any)?.name,
+                            selectedItemName: itemData?.name,
                             confidence: 'low',
                             isConfirmed: false
                         };
@@ -222,9 +224,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
-                            ocrUnit,
+                            ocrUnit: match.unit && match.unit !== 'count' ? match.unit : ocrUnit,
                             ocrSku,
-                            isWeighted,
+                            isWeighted: match.is_weighted ?? isWeighted,
                             status: 'matched',
                             selectedItemId: match.id,
                             selectedItemName: match.name,
@@ -244,9 +246,9 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             ocrNormalizedName,
                             ocrPrice: item.price,
                             ocrQuantity: item.quantity,
-                            ocrUnit,
+                            ocrUnit: matchedItem.unit && matchedItem.unit !== 'count' ? matchedItem.unit : ocrUnit,
                             ocrSku,
-                            isWeighted,
+                            isWeighted: matchedItem.is_weighted ?? isWeighted,
                             status: 'matched',
                             selectedItemId: matchedItem.id,
                             selectedItemName: matchedItem.name,
@@ -347,7 +349,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                             .insert({
                                 name: row.newItemName,
                                 household_code: householdCode,
-                                user_id: SHARED_USER_ID
+                                unit: row.ocrUnit || 'count',
+                                is_weighted: row.isWeighted || false
                             })
                             .select()
                             .single();
@@ -582,7 +585,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                         Scale
                                                     </button>
                                                 )}
-                                                village                                           </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -620,15 +623,29 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                         items={allItems}
                                                         selectedItemId={row.status === 'matched' ? row.selectedItemId : undefined}
                                                         onSelect={(itemId, name) => {
+                                                            const itemData = allItems.find(i => i.id === itemId);
                                                             handleRowChange(idx, {
                                                                 status: 'matched',
                                                                 selectedItemId: itemId,
                                                                 selectedItemName: name,
+                                                                ocrUnit: itemData?.unit && itemData.unit !== 'count' ? itemData.unit : row.ocrUnit,
+                                                                isWeighted: itemData?.is_weighted ?? row.isWeighted,
                                                                 confidence: 'high'
                                                             });
                                                         }}
                                                         onInputChange={(name) => {
-                                                            if (row.status === 'new') {
+                                                            // Check if typed name exactly matches an existing item
+                                                            const exactMatch = allItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+                                                            if (exactMatch) {
+                                                                handleRowChange(idx, {
+                                                                    status: 'matched',
+                                                                    selectedItemId: exactMatch.id,
+                                                                    selectedItemName: exactMatch.name,
+                                                                    ocrUnit: exactMatch.unit && exactMatch.unit !== 'count' ? exactMatch.unit : row.ocrUnit,
+                                                                    isWeighted: exactMatch.is_weighted ?? row.isWeighted,
+                                                                    confidence: 'high'
+                                                                });
+                                                            } else if (row.status === 'new') {
                                                                 handleRowChange(idx, { newItemName: name });
                                                             }
                                                         }}

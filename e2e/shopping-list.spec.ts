@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Helper to set household code in localStorage
 async function setHouseholdCode(page: any, code: string) {
@@ -13,6 +18,39 @@ test.describe('Shopping List Page - Refactored Components', () => {
     await setHouseholdCode(page, 'TEST');
     await page.goto('/list');
     await page.waitForLoadState('networkidle');
+  });
+
+  test.afterAll(async () => {
+    console.log('Cleaning up TEST data...');
+
+    // 1. Get IDs of TEST items
+    const { data: testItems } = await supabase
+      .from('items')
+      .select('id')
+      .eq('household_code', 'TEST');
+
+    const testItemIds = testItems?.map(i => i.id) || [];
+
+    // 2. Delete matching records from shopping_list
+    if (testItemIds.length > 0) {
+      await supabase
+        .from('shopping_list')
+        .delete()
+        .or(`household_code.eq.TEST,item_id.in.(${testItemIds.join(',')})`);
+    } else {
+      await supabase
+        .from('shopping_list')
+        .delete()
+        .eq('household_code', 'TEST');
+    }
+
+    // 3. Delete the TEST items
+    await supabase
+      .from('items')
+      .delete()
+      .eq('household_code', 'TEST');
+
+    console.log('Cleanup complete.');
   });
 
   test('page loads successfully', async ({ page }) => {

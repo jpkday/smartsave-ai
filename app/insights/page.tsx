@@ -102,11 +102,9 @@ export default function InsightsPage() {
     const favStoreIds = new Set(favoritesData?.map((f: any) => f.store_id) || []);
 
     // Fetch items to get dynamic category IDs
-    // Fetch items to get dynamic category IDs
     let itemsQuery = supabase
       .from('items')
-      .select('id, name, category_id')
-      .eq('user_id', SHARED_USER_ID);
+      .select('id, name, category_id');
 
     if (householdCode !== 'TEST') {
       itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');

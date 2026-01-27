@@ -808,7 +808,7 @@ export default function ShoppingList() {
       setAllItems((prev) =>
         prev.map((i) =>
           i.id === editModalItem.item_id
-            ? { ...i, name: newName, category: categoryName, category_id: editModalCategoryId || undefined }
+            ? { ...i, name: newName, category_id: editModalCategoryId || undefined }
             : i
         )
       );
@@ -1098,11 +1098,9 @@ export default function ShoppingList() {
 
 
 
-    // ✅ Load all items with IDs
     let itemsQuery = supabase
       .from('items')
-      .select('id, name, category, category_id')
-      .eq('user_id', SHARED_USER_ID)
+      .select('id, name, category_id')
       .order('name');
 
     // Filter out 'TEST' items for regular users
@@ -1147,8 +1145,7 @@ export default function ShoppingList() {
       .select(`
         *,
         items!inner (
-           category_id,
-           category
+           category_id
         )
 
       `)
@@ -1175,7 +1172,6 @@ export default function ShoppingList() {
           checked: row.checked,
           is_priority: row.is_priority,
           category_id: itemData?.category_id,
-          category: itemData?.category,
           active_note: notesLookup[row.item_id] || null
         };
       });
@@ -1638,7 +1634,7 @@ export default function ShoppingList() {
 
         if (!itemId) {
           // fallback (in case allItems not loaded yet for some reason)
-          const { data: item } = await supabase.from('items').select('id').eq('name', itemName).eq('user_id', SHARED_USER_ID).single();
+          const { data: item } = await supabase.from('items').select('id').eq('name', itemName).single();
           if (!item?.id) continue;
           if (listItems.some((li) => li.item_id === item.id)) continue;
 
