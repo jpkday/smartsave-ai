@@ -191,7 +191,7 @@ export default function Header({ currentPage }: HeaderProps) {
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorites</div>
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorite</div>
                   {['Favorite Items', 'Favorite Stores'].map(pageName => (
                     <Link
                       key={pageName}

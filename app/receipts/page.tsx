@@ -10,7 +10,7 @@ import StatusModal from '../components/StatusModal';
 import ReceiptPhotoCapture from '../components/ReceiptPhotoCapture';
 import ItemSearchableDropdown, { ItemSearchableDropdownHandle } from '../components/ItemSearchableDropdown';
 import LoadingSpinner from '../components/LoadingSpinner';
-import heic2any from 'heic2any';
+// import heic2any from 'heic2any'; // Moved to dynamic import
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -63,7 +63,7 @@ function ReceiptsContent() {
   const itemRefs = useRef<(ItemSearchableDropdownHandle | null)[]>([]);
   const [createPastTrip, setCreatePastTrip] = useState(true);
   const [favoritedStoreIds, setFavoritedStoreIds] = useState<Set<string>>(new Set());
-  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') || '' : '';
+  const [householdCode, setHouseholdCode] = useState<string>('');
   const [tripEndLocal, setTripEndLocal] = useState('');
   const [storePriceLookup, setStorePriceLookup] = useState<Record<string, string>>({});
   const [showManualMobile, setShowManualMobile] = useState(false);
@@ -119,7 +119,9 @@ function ReceiptsContent() {
   }, [selectedStoreId]);
 
   useEffect(() => {
-    loadData();
+    const code = localStorage.getItem('household_code') || '';
+    setHouseholdCode(code);
+    loadData(code);
 
     const now = new Date();
     now.setSeconds(0, 0);
@@ -229,7 +231,8 @@ function ReceiptsContent() {
     loadLatestPricesForStore();
   }, [selectedStoreId]);
 
-  const loadData = async () => {
+  const loadData = async (codeOverride?: string) => {
+    const code = codeOverride || householdCode;
     // 1. Load all stores
     const { data: storesData } = await supabase
       .from('stores')
@@ -240,11 +243,11 @@ function ReceiptsContent() {
       // 2. Filter by favorites if household code exists
       let filteredStores = storesData;
 
-      if (householdCode) {
+      if (code) {
         const { data: favoritesData } = await supabase
           .from('household_store_favorites')
           .select('store_id')
-          .eq('household_code', householdCode);
+          .eq('household_code', code);
 
         if (favoritesData && favoritesData.length > 0) {
           const favoriteIds = new Set(favoritesData.map(f => f.store_id));
@@ -262,8 +265,8 @@ function ReceiptsContent() {
     }
     const [itemsRes, favsRes, aliasesRes] = await Promise.all([
       supabase.from('items').select('id, name').order('name'),
-      householdCode
-        ? supabase.from('household_item_favorites').select('item_id').eq('household_code', householdCode)
+      code
+        ? supabase.from('household_item_favorites').select('item_id').eq('household_code', code)
         : Promise.resolve({ data: [] }),
       supabase.from('item_aliases').select('alias, items!inner(name)')
     ]);
@@ -410,6 +413,7 @@ function ReceiptsContent() {
     // Handle HEIC/HEIF conversion
     if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
       try {
+        const heic2any = (await import('heic2any')).default;
         const convertedBlob = await heic2any({
           blob: file,
           toType: 'image/jpeg',

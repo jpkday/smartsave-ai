@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { CameraIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import heic2any from 'heic2any';
+// import heic2any from 'heic2any'; // Moved to dynamic import
 import LoadingSpinner from './LoadingSpinner';
 
 interface ReceiptPhotoCaptureProps {
@@ -26,6 +26,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
             // Handle HEIC/HEIF conversion
             if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
                 try {
+                    const heic2any = (await import('heic2any')).default;
                     const convertedBlob = await heic2any({
                         blob: file,
                         toType: 'image/jpeg',
