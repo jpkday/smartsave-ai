@@ -645,6 +645,16 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                         items={allItems}
                                                         selectedItemId={row.status === 'matched' ? row.selectedItemId : undefined}
                                                         onSelect={(itemId, name) => {
+                                                            if (itemId === '__new__') {
+                                                                handleRowChange(idx, {
+                                                                    status: 'new',
+                                                                    newItemName: name,
+                                                                    selectedItemId: undefined,
+                                                                    selectedItemName: undefined,
+                                                                    confidence: 'high'
+                                                                });
+                                                                return;
+                                                            }
                                                             const itemData = allItems.find(i => i.id === itemId);
                                                             handleRowChange(idx, {
                                                                 status: 'matched',
@@ -656,6 +666,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                             });
                                                         }}
                                                         onInputChange={(name) => {
+                                                            if (!name) return;
                                                             // Check if typed name exactly matches an existing item
                                                             const exactMatch = allItems.find(i => i.name.toLowerCase() === name.toLowerCase());
                                                             if (exactMatch) {
@@ -667,8 +678,16 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                                     isWeighted: exactMatch.is_weighted ?? row.isWeighted,
                                                                     confidence: 'high'
                                                                 });
-                                                            } else if (row.status === 'new') {
-                                                                handleRowChange(idx, { newItemName: name });
+                                                            } else {
+                                                                // If no exact match, update the "new" name or just keep user input
+                                                                if (row.status === 'new') {
+                                                                    handleRowChange(idx, { newItemName: name });
+                                                                } else {
+                                                                    // Potential new item if user types something else
+                                                                    // We don't switch to 'new' automatically to avoid jumping, 
+                                                                    // but we update the name in case they click "Confirm" or switch manually.
+                                                                    handleRowChange(idx, { newItemName: name });
+                                                                }
                                                             }
                                                         }}
                                                         placeholder={`Match "${row.ocrName}"...`}

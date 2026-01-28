@@ -52,10 +52,18 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
         function handleClickOutside(event: MouseEvent) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
-                const item = items.find(i => i.id === selectedItemId);
-                const finalName = item ? item.name : query;
-                setQuery(finalName);
-                if (onInputChange) onInputChange(finalName);
+                // If the user has typed something that isn't the selected item, 
+                // we should probably keep it or let the parent handle it.
+                // Reverting aggressively is what caused the frustration.
+                if (selectedItemId) {
+                    const item = items.find(i => i.id === selectedItemId);
+                    if (item && item.name.toLowerCase() !== query.toLowerCase().trim()) {
+                        // User changed the name but didn't select anything, keep what they typed
+                        if (onInputChange) onInputChange(query);
+                    } else if (item) {
+                        setQuery(item.name);
+                    }
+                }
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
@@ -111,12 +119,19 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
             }
         } else if (e.key === 'Enter') {
             if (selectedIndex === -1) {
-                const exactMatch = items.find(i => i.name.toLowerCase() === query.trim().toLowerCase());
+                const q = query.trim();
+                const exactMatch = items.find(i => i.name.toLowerCase() === q.toLowerCase());
                 if (exactMatch) {
                     handleSelect(exactMatch.id, exactMatch.name);
+                } else if (q.length > 0) {
+                    // Signal "Create New" on Enter if no selection and no exact match
+                    handleSelect('__new__', q);
                 } else {
                     setIsOpen(false);
                 }
+            } else if (selectedIndex === filteredItems.length && query.trim().length > 0) {
+                // "Create New" option was selected
+                handleSelect('__new__', query.trim());
             } else if (filteredItems[selectedIndex]) {
                 handleSelect(filteredItems[selectedIndex].id, filteredItems[selectedIndex].name);
             }
@@ -161,7 +176,7 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                 )}
             </div>
 
-            {isOpen && filteredItems.length > 0 && (
+            {isOpen && (query.trim().length > 0 || filteredItems.length > 0) && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto scrollbar-hide">
                     <div>
                         {filteredItems.map((item, index) => {
@@ -183,6 +198,23 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                                 </button>
                             );
                         })}
+
+                        {/* Special "Create New" option if query doesn't match an item exactly */}
+                        {query.trim().length > 0 && !items.some(i => i.name.toLowerCase() === query.trim().toLowerCase()) && (
+                            <button
+                                type="button"
+                                onMouseEnter={() => setSelectedIndex(filteredItems.length)}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelect('__new__', query.trim());
+                                }}
+                                className={`w-full text-left px-4 py-3 cursor-pointer text-blue-600 font-bold flex items-center gap-2 ${selectedIndex === filteredItems.length ? 'bg-blue-50' : ''
+                                    }`}
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                <span>Create new item: "{query.trim()}"</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
