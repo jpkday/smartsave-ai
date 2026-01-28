@@ -289,7 +289,7 @@ export default function Header({ currentPage }: HeaderProps) {
               </div>
             </div>
 
-            {/* FAVORITES GROUP (Dropdown) */}
+            {/* FAVORITE GROUP (Dropdown) */}
             <div className="group relative">
               <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Favorite Stores', 'Favorite Items', 'Stores', 'Items'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
