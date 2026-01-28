@@ -5,7 +5,7 @@ export const maxDuration = 60; // Increase timeout to 60 seconds
 
 export async function POST(req: NextRequest) {
     try {
-        const { image, candidateItems = [], shouldAddTrip = true } = await req.json();
+        const { image, candidateItems = [], candidateStores = [], shouldAddTrip = true } = await req.json();
 
         console.log("Analyze Request Received");
         if (image) {
@@ -132,9 +132,15 @@ export async function POST(req: NextRequest) {
          - sku: The SKU or product code if visible (string, optional)
          - ai_match: The exact string from the "Known Items" list below that best matches this item.
 
-      KNOWN ITEMS LIST: [${knownItemsList}]
+       KNOWN ITEMS LIST: [${knownItemsList}]
+       KNOWN STORES LIST: [${(candidateStores as string[]).join(", ")}]
 ${skuMappingsSection}
-      Ignore tax, subtotals, and savings. Focus on line items.
+       Ignore tax, subtotals, and savings. Focus on line items.
+       
+       DATE & TIME GUIDANCE:
+       - Date and time are often at the VERY TOP or VERY BOTTOM of the receipt.
+       - Look for strings like 'DATE:', 'TIME:', 'CHECK:', or 'ID' followed by a timestamp.
+       - Format date as YYYY-MM-DD and time as HH:MM.
       
       Output JSON format:
       {

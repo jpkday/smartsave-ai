@@ -23,8 +23,8 @@ interface ImportedReceipt {
 interface ReconciliationRow {
     ocrName: string;
     ocrNormalizedName?: string;
-    ocrPrice: number;
-    ocrQuantity: number;
+    ocrPrice: string;
+    ocrQuantity: string;
     ocrUnit?: string;
     ocrSku?: string;
     isWeighted?: boolean;
@@ -48,6 +48,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     const [allItems, setAllItems] = useState<{ id: string, name: string, unit?: string, is_weighted?: boolean }[]>([]);
     const [storeId, setStoreId] = useState<string>('');
     const [importing, setImporting] = useState(false);
+    const [ocrDate, setOcrDate] = useState<string>('');
+    const [ocrTime, setOcrTime] = useState<string>('');
     const [statusModal, setStatusModal] = useState<{
         isOpen: boolean;
         title: string;
@@ -114,6 +116,10 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             setReceipt(receiptData);
             setStoreId(receiptData.store_id || '');
 
+            // Set date/time from OCR if present
+            if (receiptData.ocr_data?.date) setOcrDate(receiptData.ocr_data.date);
+            if (receiptData.ocr_data?.time) setOcrTime(receiptData.ocr_data.time);
+
             // 2. Load Metadata (Stores, Items, Aliases)
             const [storesRes, itemsRes, aliasesRes] = await Promise.all([
                 supabase.from('stores').select('id, name').order('name'),
@@ -154,8 +160,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     return {
                         ocrName,
                         ocrNormalizedName,
-                        ocrPrice: item.price,
-                        ocrQuantity: item.quantity,
+                        ocrPrice: item.price?.toString() || '',
+                        ocrQuantity: item.quantity?.toString() || '1',
                         ocrUnit: itemData?.unit && itemData.unit !== 'count' ? itemData.unit : ocrUnit,
                         ocrSku,
                         isWeighted: itemData?.is_weighted ?? isWeighted,
@@ -173,8 +179,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     return {
                         ocrName,
                         ocrNormalizedName,
-                        ocrPrice: item.price,
-                        ocrQuantity: item.quantity,
+                        ocrPrice: item.price?.toString() || '',
+                        ocrQuantity: item.quantity?.toString() || '1',
                         ocrUnit: exactItem.unit && exactItem.unit !== 'count' ? exactItem.unit : ocrUnit,
                         ocrSku,
                         isWeighted: exactItem.is_weighted ?? isWeighted,
@@ -200,8 +206,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         return {
                             ocrName,
                             ocrNormalizedName,
-                            ocrPrice: item.price,
-                            ocrQuantity: item.quantity,
+                            ocrPrice: item.price?.toString() || '',
+                            ocrQuantity: item.quantity?.toString() || '1',
                             ocrUnit: itemData?.unit && itemData.unit !== 'count' ? itemData.unit : ocrUnit,
                             ocrSku,
                             isWeighted: itemData?.is_weighted ?? isWeighted,
@@ -222,8 +228,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         return {
                             ocrName,
                             ocrNormalizedName,
-                            ocrPrice: item.price,
-                            ocrQuantity: item.quantity,
+                            ocrPrice: item.price?.toString() || '',
+                            ocrQuantity: item.quantity?.toString() || '1',
                             ocrUnit: match.unit && match.unit !== 'count' ? match.unit : ocrUnit,
                             ocrSku,
                             isWeighted: match.is_weighted ?? isWeighted,
@@ -244,8 +250,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         return {
                             ocrName,
                             ocrNormalizedName,
-                            ocrPrice: item.price,
-                            ocrQuantity: item.quantity,
+                            ocrPrice: item.price?.toString() || '',
+                            ocrQuantity: item.quantity?.toString() || '1',
                             ocrUnit: matchedItem.unit && matchedItem.unit !== 'count' ? matchedItem.unit : ocrUnit,
                             ocrSku,
                             isWeighted: matchedItem.is_weighted ?? isWeighted,
@@ -262,8 +268,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 return {
                     ocrName,
                     ocrNormalizedName,
-                    ocrPrice: item.price,
-                    ocrQuantity: item.quantity,
+                    ocrPrice: item.price?.toString() || '',
+                    ocrQuantity: item.quantity?.toString() || '1',
                     ocrUnit,
                     ocrSku,
                     isWeighted,
@@ -287,8 +293,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
         return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     };
 
-    const subtotal = rows.reduce((acc, row) => acc + (row.ocrPrice * row.ocrQuantity), 0);
-    const confirmedTotal = rows.filter(r => r.isConfirmed).reduce((acc, row) => acc + (row.ocrPrice * row.ocrQuantity), 0);
+    const subtotal = rows.reduce((acc, row) => acc + (parseFloat(row.ocrPrice || '0') * parseFloat(row.ocrQuantity || '1')), 0);
+    const confirmedTotal = rows.filter(r => r.isConfirmed).reduce((acc, row) => acc + (parseFloat(row.ocrPrice || '0') * parseFloat(row.ocrQuantity || '1')), 0);
 
     const handleRowChange = (index: number, updates: Partial<ReconciliationRow>) => {
         const newRows = [...rows];
@@ -305,8 +311,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             if (!storeId) throw new Error("Please select a store.");
 
             let tripId = null;
-            const dateStr = receipt?.ocr_data?.date || new Date().toISOString().split('T')[0];
-            const timeStr = receipt?.ocr_data?.time || '12:00';
+            const dateStr = ocrDate || receipt?.ocr_data?.date || new Date().toISOString().split('T')[0];
+            const timeStr = ocrTime || receipt?.ocr_data?.time || '12:00';
             const isoDate = `${dateStr}T${timeStr}:00`;
 
             const tripEndDate = new Date(isoDate);
@@ -389,8 +395,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         raw_name: row.ocrName,
                         unit: row.ocrUnit || 'count',
                         is_weighted: row.isWeighted || false,
-                        price: row.ocrPrice || 0,
-                        quantity: row.ocrQuantity || 1,
+                        price: parseFloat(row.ocrPrice || '0') || 0,
+                        quantity: parseFloat(row.ocrQuantity || '1') || 1,
                         checked_at: tripEndDate.toISOString()
                     });
                 }
@@ -405,7 +411,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         is_weighted: row.isWeighted || false,
                         store_id: storeId,
                         store: stores.find(s => s.id === storeId)?.name || 'Unknown Store',
-                        price: row.ocrPrice || 0,
+                        price: parseFloat(row.ocrPrice || '0') || 0,
                         recorded_date: dateStr,
                         household_code: householdCode,
                         user_id: SHARED_USER_ID
@@ -485,6 +491,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                 <option value="">Select Store...</option>
                                 {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
+                            {!storeId && receipt?.ocr_data?.store && (
+                                <p className="mt-1 text-[10px] text-blue-600 font-medium italic">
+                                    AI Detected: "{receipt.ocr_data.store}"
+                                </p>
+                            )}
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">
@@ -503,8 +514,19 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         <div className="flex gap-4">
                             <div className="flex-1">
                                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Date & Time</label>
-                                <div className="p-2 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm">
-                                    {receipt?.ocr_data?.date || "Today"} {receipt?.ocr_data?.time && `${receipt?.ocr_data?.time}`}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="date"
+                                        value={ocrDate || receipt?.ocr_data?.date || ''}
+                                        onChange={e => setOcrDate(e.target.value)}
+                                        className="flex-1 p-1.5 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm"
+                                    />
+                                    <input
+                                        type="time"
+                                        value={ocrTime || receipt?.ocr_data?.time || ''}
+                                        onChange={e => setOcrTime(e.target.value)}
+                                        className="w-24 p-1.5 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm"
+                                    />
                                 </div>
                             </div>
                             <div className="flex-1">
@@ -545,11 +567,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                             <div className="flex items-center">
                                                 <span className="text-gray-400 font-bold mr-1">$</span>
                                                 <input
-                                                    type="number"
-                                                    step="0.01"
+                                                    type="text"
+                                                    inputMode="decimal"
                                                     value={row.ocrPrice}
                                                     disabled={row.isConfirmed}
-                                                    onChange={(e) => handleRowChange(idx, { ocrPrice: parseFloat(e.target.value) || 0 })}
+                                                    onChange={(e) => handleRowChange(idx, { ocrPrice: e.target.value })}
                                                     className="w-20 font-bold text-gray-800 bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 focus:outline-none disabled:border-none"
                                                 />
                                             </div>
@@ -558,11 +580,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                     {row.isWeighted ? 'Weight (lb):' : 'Qty:'}
                                                 </div>
                                                 <input
-                                                    type="number"
-                                                    step="any"
+                                                    type="text"
+                                                    inputMode="decimal"
                                                     value={row.ocrQuantity}
                                                     disabled={row.isConfirmed}
-                                                    onChange={(e) => handleRowChange(idx, { ocrQuantity: parseFloat(e.target.value) || 1 })}
+                                                    onChange={(e) => handleRowChange(idx, { ocrQuantity: e.target.value })}
                                                     className="w-12 text-xs font-bold text-gray-600 bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 focus:outline-none disabled:border-none"
                                                 />
                                                 {row.ocrUnit && (

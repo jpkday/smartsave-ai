@@ -248,6 +248,7 @@ function ReceiptsContent() {
 
         if (favoritesData && favoritesData.length > 0) {
           const favoriteIds = new Set(favoritesData.map(f => f.store_id));
+          setFavoritedStoreIds(favoriteIds);
           filteredStores = storesData.filter(s => favoriteIds.has(s.id));
         }
       }
@@ -440,7 +441,7 @@ function ReceiptsContent() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const MAX_SIZE = 1200; // Increased slightly for better OCR
+        const MAX_SIZE = 2000; // Increased significantly for better OCR of small text (dates/stores)
 
         if (width > height) {
           if (width > MAX_SIZE) {
@@ -510,6 +511,7 @@ function ReceiptsContent() {
         body: JSON.stringify({
           image: finalBase64,
           candidateItems: items, // Inject known items for AI matching
+          candidateStores: stores.filter(s => favoritedStoreIds.has(s.id)).map(s => s.name), // Only pass favorite stores for better matching
           shouldAddTrip
         }),
       });
