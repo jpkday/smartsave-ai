@@ -140,30 +140,7 @@ export default function ShoppingList() {
     }
   }, [showPriorityOnly, mounted]);
 
-  // Load frequent items
-  useEffect(() => {
-    async function loadFrequent() {
-      if (!householdCode) return;
-      const { data } = await supabase.rpc('get_frequent_items', { household: householdCode });
-      if (data) {
-        // Filter for items with > 1 purchase to be "Frequent" (staples)
-        const counts: Record<string, number> = {};
-        data
-          .filter((d: any) => d.purchase_count > 1)
-          .forEach((d: any) => {
-            // Use item_id as key for robustness against renames
-            if (d.item_id) {
-              counts[d.item_id] = d.purchase_count;
-            }
-          });
-        setFrequentItemCounts(counts);
-      }
-    }
-
-    if (mounted && householdCode) {
-      loadFrequent();
-    }
-  }, [householdCode, mounted]);
+  // Load frequent items moved to loadData
 
 
 
@@ -1320,6 +1297,22 @@ export default function ShoppingList() {
 
         setRecentItemIds(uniqueRecentIds);
       }
+    }
+
+    // Load frequent items (moved from standalone useEffect)
+    const { data: frequentData } = await supabase.rpc('get_frequent_items', { household: householdCode });
+    if (frequentData) {
+      // Filter for items with > 1 purchase to be "Frequent" (staples)
+      const counts: Record<string, number> = {};
+      frequentData
+        .filter((d: any) => d.purchase_count > 1)
+        .forEach((d: any) => {
+          // Use item_id as key for robustness against renames
+          if (d.item_id) {
+            counts[d.item_id] = d.purchase_count;
+          }
+        });
+      setFrequentItemCounts(counts);
     }
 
 

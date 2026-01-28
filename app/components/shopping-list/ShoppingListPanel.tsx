@@ -3,6 +3,7 @@
 import StoreSection from './StoreSection';
 import CategoryGroup from './CategoryGroup';
 import SearchItemInput from './SearchItemInput';
+import LoadingSpinner from '../LoadingSpinner';
 import { DEFAULT_ITEMS } from '../../lib/constants';
 
 interface ItemNote {
@@ -132,9 +133,8 @@ export default function ShoppingListPanel({
 }: ShoppingListPanelProps) {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-        <p className="text-slate-500 mt-4">Loading Shopping List...</p>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 py-12">
+        <LoadingSpinner message="Loading Shopping List..." />
       </div>
     );
   }
@@ -271,8 +271,8 @@ export default function ShoppingListPanel({
             <button
               onClick={onToggleShowPriority}
               className={`text-sm px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
-                  ? 'bg-red-100 text-red-700 border border-red-200'
-                  : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
+                ? 'bg-red-100 text-red-700 border border-red-200'
+                : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
                 }`}
               title="Show Urgent Items Only"
             >

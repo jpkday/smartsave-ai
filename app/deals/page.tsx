@@ -9,6 +9,7 @@ import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { SHARED_USER_ID } from '../lib/constants';
 import { formatLocalDate, parseLocalDate } from '../utils/date';
 import StatusModal from '../components/StatusModal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import {
   BuildingStorefrontIcon,
   ShoppingBagIcon,
@@ -459,9 +460,8 @@ export default function Deals() {
         {/* Deals Grouped by Store */}
         <div className="px-2 sm:px-4 md:px-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-white/80">
-              <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin mb-4" />
-              <p className="font-medium tracking-widest uppercase text-[10px]">Loading Deals...</p>
+            <div className="py-20 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 items-center justify-center">
+              <LoadingSpinner message="Loading Deals..." color="border-indigo-600" textColor="text-slate-500" />
             </div>
           ) : !hasFavorites ? (
             <div className="relative overflow-hidden rounded-[2.5rem] p-12 text-center border border-white/20 shadow-2xl">

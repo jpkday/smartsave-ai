@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
+import { useHouseholdCode } from '../hooks/useHouseholdCode';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Trip {
   id: string;
@@ -43,7 +45,7 @@ export default function TripsPage() {
   const [selectedStoreFilter, setSelectedStoreFilter] = useState('All');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Load persisted filter on mount
+  // Load persisted filters on mount
   useEffect(() => {
     const savedDays = localStorage.getItem('trips_days_filter');
     if (savedDays) {
@@ -52,31 +54,41 @@ export default function TripsPage() {
         setDaysToShow(parsed);
       }
     }
+    const savedStore = localStorage.getItem('trips_store_filter');
+    if (savedStore) {
+      setSelectedStoreFilter(savedStore);
+    }
     setIsInitialLoad(false);
   }, []);
 
   /* Refactored to use dynamic categories */
   const { getCategoryName, getCategoryColorById } = useCategories();
+  const { householdCode, loading: householdLoading } = useHouseholdCode();
 
   const [hasAnyTrips, setHasAnyTrips] = useState(true);
 
-  // Save filter change
+  // Save filter changes
   useEffect(() => {
     if (!isInitialLoad) {
       localStorage.setItem('trips_days_filter', daysToShow.toString());
+      localStorage.setItem('trips_store_filter', selectedStoreFilter);
     }
-  }, [daysToShow, isInitialLoad]);
+  }, [daysToShow, selectedStoreFilter, isInitialLoad]);
 
   // Category detail modal
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
-
   useEffect(() => {
-    loadTrips();
+    if (!householdLoading) {
+      if (householdCode) {
+        loadTrips();
+      } else {
+        setLoading(false);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daysToShow]);
+  }, [daysToShow, householdCode, householdLoading]);
 
   // Close category modal on ESC
   useEffect(() => {
@@ -342,10 +354,9 @@ export default function TripsPage() {
           </div>
         )}
 
-        {loading ? (
+        {(loading || householdLoading) ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-            <p className="text-slate-500 mt-4">Loading trips..</p>
+            <LoadingSpinner message="Loading Trips..." color="border-indigo-600" textColor="text-slate-500" />
           </div>
         ) : !hasAnyTrips ? (
           <div className="px-4 py-12 md:py-20 text-center">
@@ -392,24 +403,29 @@ export default function TripsPage() {
         ) : (
           <>
             {/* Summary Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-4">
-              <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                <div className="text-3xl font-bold text-indigo-500">{trips.length}</div>
-                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
-              </div>
-              <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                <div className="text-3xl font-bold text-purple-600">
-                  {trips.reduce((sum, t) => sum + t.itemCount, 0)}
+            {(() => {
+              const filteredTrips = trips.filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter);
+              return (
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                    <div className="text-3xl font-bold text-indigo-500">{filteredTrips.length}</div>
+                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
+                  </div>
+                  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                    <div className="text-3xl font-bold text-purple-600">
+                      {filteredTrips.reduce((sum, t) => sum + t.itemCount, 0)}
+                    </div>
+                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
+                  </div>
+                  <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
+                    <div className="text-3xl font-bold text-emerald-600">
+                      {formatMoney(filteredTrips.reduce((sum, t) => sum + t.totalCost, 0))}
+                    </div>
+                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Total Spend</div>
+                  </div>
                 </div>
-                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
-              </div>
-              <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                <div className="text-3xl font-bold text-emerald-600">
-                  {formatMoney(trips.reduce((sum, t) => sum + t.totalCost, 0))}
-                </div>
-                <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Total Spend</div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Category Breakdown */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
@@ -419,9 +435,10 @@ export default function TripsPage() {
               <div className="p-4 md:p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {(() => {
+                    const filteredTrips = trips.filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter);
                     const categoryTotals: { [categoryId: number]: number } = {};
 
-                    trips.forEach(trip => {
+                    filteredTrips.forEach(trip => {
                       trip.events.forEach(event => {
                         const catId = event.category_id !== null ? event.category_id : -1;
                         if (event.price) {

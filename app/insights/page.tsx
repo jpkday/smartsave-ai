@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import Header from '../components/Header';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { SHARED_USER_ID } from '../lib/constants';
@@ -64,7 +65,7 @@ export default function InsightsPage() {
 
   /* Use custom hooks */
   const { getCategoryName, getCategoryColorById } = useCategories();
-  const { householdCode } = useHouseholdCode();
+  const { householdCode, loading: householdLoading } = useHouseholdCode();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -76,14 +77,17 @@ export default function InsightsPage() {
   }, []);
 
   useEffect(() => {
-    if (householdCode) {
-      loadInsights();
-    } else {
-      setLoading(false);
+    if (!householdLoading) {
+      if (householdCode) {
+        loadInsights();
+      } else {
+        setLoading(false);
+      }
     }
-  }, [householdCode, timeRange]);
+  }, [householdCode, householdLoading, timeRange]);
 
   async function loadInsights() {
+    setLoading(true);
     if (!householdCode) {
       setLoading(false);
       return;
@@ -328,10 +332,10 @@ export default function InsightsPage() {
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
 
 
-        {loading ? (
+        {(loading || householdLoading) ? (
           <div className="px-2 sm:px-4 md:px-0">
-            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-              <p className="text-gray-600">Loading insights...</p>
+            <div className="py-20 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 items-center justify-center">
+              <LoadingSpinner message="Loading Insights..." color="border-indigo-600" textColor="text-slate-500" />
             </div>
           </div>
         ) : !householdCode ? (

@@ -16,6 +16,19 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Global rule for pointer cursors on all interactive elements */
+button,
+select,
+a,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+[role="button"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
 /* Hide scrollbars on mobile devices */
 @media (max-width: 768px) {
   * {

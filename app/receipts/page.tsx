@@ -9,6 +9,8 @@ import { PlusIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import StatusModal from '../components/StatusModal';
 import ReceiptPhotoCapture from '../components/ReceiptPhotoCapture';
 import ItemSearchableDropdown, { ItemSearchableDropdownHandle } from '../components/ItemSearchableDropdown';
+import LoadingSpinner from '../components/LoadingSpinner';
+import heic2any from 'heic2any';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const RECEIPT_DRAFT_KEY = 'receipt_draft_v1';
@@ -400,17 +402,33 @@ function ReceiptsContent() {
   const [scanPreview, setScanPreview] = useState<string | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
+    let file = e.target.files?.[0];
+    if (!file) return;
 
-      reader.onload = async (event) => {
-        const rawBase64 = event.target?.result as string;
-        await processReceiptImage(rawBase64);
-      };
+    setScanning(true);
+    // Handle HEIC/HEIF conversion
+    if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+      try {
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.8
+        });
 
-      reader.readAsDataURL(file);
+        const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+      } catch (err) {
+        console.error("HEIC conversion failed:", err);
+      }
     }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const rawBase64 = event.target?.result as string;
+      await processReceiptImage(rawBase64);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   // Helper to resize image
@@ -1098,10 +1116,11 @@ function ReceiptsContent() {
 
       {/* Analyzing Overlay (Visible when processing) */}
       {scanning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex flex-col items-center justify-center text-white">
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
-          <h2 className="text-2xl font-bold animate-pulse">Analyzing Receipt...</h2>
-          <p className="text-white/70 mt-2">Extracting your savings data</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
+            <LoadingSpinner size="lg" color="border-indigo-600" message="Analyzing Receipt..." textColor="text-black" />
+            <p className="text-gray-600 font-medium mt-[-1rem]">Extracting your savings data</p>
+          </div>
         </div>
       )}
     </div>
