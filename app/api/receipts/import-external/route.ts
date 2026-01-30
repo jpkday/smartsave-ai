@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
                 normalized_name: item.name, // Will be refined during import review
                 price: item.price,
                 quantity: item.quantity || 1,
-                unit: 'count',
+                unit: 'each',
                 is_weighted: false,
                 sku: item.sku || '',
                 ai_match: '' // Will be matched during import review

@@ -168,7 +168,7 @@ export default function EditItemModal({
                   <label className="text-sm font-semibold text-gray-700">Category</label>
                   <select
                     autoFocus={focusField === 'category'}
-                    value={categoryId ?? ''}
+                    value={(categories.find(c => c.id === categoryId)?.name.trim().toLowerCase() === 'other') ? '' : (categoryId ?? '')}
                     onChange={(e) => {
                       const value = e.target.value;
                       onCategoryChange(value === '' ? null : parseInt(value, 10));
@@ -176,9 +176,11 @@ export default function EditItemModal({
                     className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
                   >
                     <option value="">Other</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
+                    {categories
+                      .filter(cat => cat.name.trim().toLowerCase() !== 'other')
+                      .map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
                   </select>
                 </div>
 

@@ -43,7 +43,7 @@ function HistoryContent() {
   const [newPrice, setNewPrice] = useState('');
   const [newDate, setNewDate] = useState('');
   const [showCopied, setShowCopied] = useState(false);
-  const [selectedItemUnit, setSelectedItemUnit] = useState<string>('count');
+  const [selectedItemUnit, setSelectedItemUnit] = useState<string>('each');
   const [selectedItemIsWeighted, setSelectedItemIsWeighted] = useState<boolean>(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -112,7 +112,7 @@ function HistoryContent() {
           const { data } = await supabase.from('items').select('name, unit, is_weighted').eq('id', resolvedId).single();
           if (data) {
             resolvedName = data.name;
-            setSelectedItemUnit(data.unit || 'count');
+            setSelectedItemUnit(data.unit || 'each');
             setSelectedItemIsWeighted(data.is_weighted || false);
           }
         } catch {
@@ -132,7 +132,7 @@ function HistoryContent() {
         if (data) {
           resolvedId = data.id;
           resolvedName = data.name;
-          setSelectedItemUnit(data.unit || 'count');
+          setSelectedItemUnit(data.unit || 'each');
           setSelectedItemIsWeighted(data.is_weighted || false);
         }
       } else {
@@ -146,7 +146,7 @@ function HistoryContent() {
             const { data } = await supabase.from('items').select('name, unit, is_weighted').eq('id', lastId).single();
             if (data) {
               resolvedName = data.name;
-              setSelectedItemUnit(data.unit || 'count');
+              setSelectedItemUnit(data.unit || 'each');
               setSelectedItemIsWeighted(data.is_weighted || false);
             }
           } else if (lastItem) {
@@ -155,7 +155,7 @@ function HistoryContent() {
             if (data) {
               resolvedId = data.id;
               resolvedName = data.name;
-              setSelectedItemUnit(data.unit || 'count');
+              setSelectedItemUnit(data.unit || 'each');
               setSelectedItemIsWeighted(data.is_weighted || false);
             }
           }
@@ -308,7 +308,7 @@ function HistoryContent() {
     // Fetch details
     const { data } = await supabase.from('items').select('unit, is_weighted').eq('id', itemId).single();
     if (data) {
-      setSelectedItemUnit(data.unit || 'count');
+      setSelectedItemUnit(data.unit || 'each');
       setSelectedItemIsWeighted(data.is_weighted || false);
     }
 
@@ -963,7 +963,7 @@ function HistoryContent() {
                 Adding price for: <span className="font-semibold">{selectedItemName}</span> at <span className="font-semibold">{stores.find(s => s.id === selectedStoreId)?.name}</span>
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
                   <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
@@ -986,6 +986,23 @@ function HistoryContent() {
                     onChange={(e) => setNewDate(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Unit</label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {['each', 'lb', 'oz'].map(u => (
+                      <button
+                        key={u}
+                        onClick={() => setSelectedItemUnit(u)}
+                        className={`py-3 text-xs font-bold rounded-2xl border transition-all ${selectedItemUnit === u
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-300'
+                          }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-end">
                   <button

@@ -79,6 +79,7 @@ function ReceiptsContent() {
     type: 'info'
   });
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Alias Modal Removed
@@ -174,8 +175,13 @@ function ReceiptsContent() {
 
   // Handle triggered scan (opens modal on arrival)
   useEffect(() => {
-    if (searchParams.get('scan') === 'true') {
+    const scan = searchParams.get('scan');
+    const backTo = searchParams.get('returnTo');
+
+    if (scan === 'true') {
       setIsCaptureModalOpen(true);
+      if (backTo) setReturnUrl(backTo);
+
       // Clean up the URL to avoid re-opening on refresh
       const newUrl = window.location.pathname;
       router.replace(newUrl, { scroll: false });
@@ -1116,7 +1122,13 @@ function ReceiptsContent() {
       {isCaptureModalOpen && (
         <ReceiptPhotoCapture
           onImageCaptured={processReceiptImage}
-          onClose={() => setIsCaptureModalOpen(false)}
+          onClose={() => {
+            setIsCaptureModalOpen(false);
+            if (returnUrl) {
+              router.push(returnUrl);
+              setReturnUrl(null);
+            }
+          }}
         />
       )}
 

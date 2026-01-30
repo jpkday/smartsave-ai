@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import { useSearchParams } from 'next/navigation';
 import { useCategories } from '../hooks/useCategories';
+import GlobalItemEditModal from '../components/GlobalItemEditModal';
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
   'Milk (gallon)',
@@ -55,16 +56,9 @@ function ItemsContent() {
   // View Filter: ALL (default), FAVORITES, or HIDDEN
   const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('ALL');
 
-  // Mobile bottom sheet edit
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // Modal edit
+  const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
-  const [editFavorite, setEditFavorite] = useState(false);
-  const [editIsWeighted, setEditIsWeighted] = useState(false);
-  const [editUnit, setEditUnit] = useState('count');
-  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   // Desktop inline edit
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -83,12 +77,12 @@ function ItemsContent() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sheetOpen) closeSheet();
+      if (e.key === 'Escape' && modalOpen) closeModal();
       if (e.key === 'Escape' && editingName) cancelInlineEdit();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [sheetOpen, editingName]);
+  }, [modalOpen, editingName]);
 
   useEffect(() => {
     if (!editingName) return;
@@ -103,29 +97,23 @@ function ItemsContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editingName]);
 
-  // Populate edit sheet + focus name input at end
+  // Handle URL param for direct item editing
   useEffect(() => {
-    if (!sheetOpen || !selected) return;
+    if (items.length === 0 || !searchParams) return;
 
-    // Initialize draft state
-    setEditValue(selected.name);
-    setEditCategoryId(selected.category_id ?? null);
-    setEditFavorite(favoritedIds.has(selected.id));
-    setEditIsWeighted(selected.is_weighted ?? false);
-    setEditUnit(selected.unit ?? 'count');
+    const itemParam = searchParams.get('item');
+    if (!itemParam) return;
 
-    // Focus name input and move cursor to end (mobile-safe)
-    const t = setTimeout(() => {
-      const el = nameInputRef.current;
-      if (!el) return;
-
-      el.focus();
-      const len = el.value.length;
-      el.setSelectionRange(len, len);
-    }, 50);
-
-    return () => clearTimeout(t);
-  }, [sheetOpen, selected, favoritedIds]);
+    try {
+      const itemName = JSON.parse(itemParam);
+      const found = items.find(i => i.name === itemName);
+      if (found) {
+        openModal(found);
+      }
+    } catch (e) {
+      console.error('Invalid item param:', e);
+    }
+  }, [items, searchParams]);
 
 
   // Close autocomplete when clicking outside
@@ -174,7 +162,7 @@ function ItemsContent() {
           name: x.name,
           category_id: x.category_id,
           household_code: x.household_code,
-          unit: x.unit || 'count',
+          unit: x.unit || 'each',
           is_weighted: x.is_weighted || false,
         }))
       );
@@ -191,7 +179,7 @@ function ItemsContent() {
         name,
         category_id: null,
         household_code: householdCode || 'ASDF',
-        unit: 'count',
+        unit: 'each',
         is_weighted: false,
       }));
       setItems(defaultItems);
@@ -216,30 +204,6 @@ function ItemsContent() {
     setLoading(false);
   };
 
-  // Handle URL param for direct item editing
-  useEffect(() => {
-    if (items.length === 0) return;
-
-    const itemParam = searchParams.get('item');
-    if (!itemParam) return;
-
-    try {
-      const itemName = JSON.parse(itemParam);
-      const found = items.find(i => i.name === itemName);
-      if (found) {
-        // Even if hidden, user explicitly navigated here, so showing it via search param logic is fine
-        // but might want to ensure viewFilter allows it? 
-        // For simplicity, we just open it.
-        if (window.innerWidth < 768) {
-          openSheet(found);
-        } else {
-          startInlineEdit(found.name);
-        }
-      }
-    } catch (e) {
-      console.error('Invalid item param:', e);
-    }
-  }, [items, searchParams]);
 
   // Handle input change for autocomplete
   const handleInputChange = (value: string) => {
@@ -305,31 +269,14 @@ function ItemsContent() {
     return isMasterAccount || item.household_code === householdCode;
   };
 
-  const openSheet = (item: Item) => {
+  const openModal = (item: Item) => {
     setSelected(item);
-    setEditValue(item.name);
-    setEditCategoryId(item.category_id ?? null);
-    setEditFavorite(favoritedIds.has(item.id));
-    setSheetOpen(true);
-    setSaving(false);
-
-    setTimeout(() => {
-      const el = document.getElementById('item-rename-input') as HTMLInputElement | null;
-      if (el) {
-        el.focus();
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }
-    }, 50);
+    setModalOpen(true);
   };
 
-
-  const closeSheet = () => {
-    setSheetOpen(false);
+  const closeModal = () => {
+    setModalOpen(false);
     setSelected(null);
-    setEditValue('');
-    setEditCategoryId(null);
-    setSaving(false);
   };
 
   const addItem = async () => {
@@ -362,7 +309,7 @@ function ItemsContent() {
         name: newItem.name,
         category_id: newItem.category_id,
         household_code: newItem.household_code,
-        unit: newItem.unit || 'count',
+        unit: newItem.unit || 'each',
         is_weighted: newItem.is_weighted || false,
       }]);
 
@@ -399,7 +346,7 @@ function ItemsContent() {
         name: data.name,
         category_id: data.category_id,
         household_code: data.household_code,
-        unit: data.unit || 'count',
+        unit: data.unit || 'each',
         is_weighted: data.is_weighted || false,
       };
 
@@ -565,7 +512,7 @@ function ItemsContent() {
         return next;
       });
 
-      if (selected?.id === item.id) closeSheet();
+      if (selected?.id === item.id) closeModal();
       if (editingName === item.name) cancelInlineEdit();
 
     } catch (error) {
@@ -617,86 +564,23 @@ function ItemsContent() {
     setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, name: nextName } : i)));
   };
 
-  const saveRename = async () => {
-    if (!selected || !householdCode) return;
+  const handleSaveItem = (updatedItem: Item, favoriteChanged?: boolean, nextFavorite?: boolean) => {
+    // Update local items list
+    setItems((prev) =>
+      prev.map((i) => i.id === updatedItem.id ? updatedItem : i)
+    );
 
-    const itemId = selected.id;
-    const nextCategoryId = editCategoryId;
-    const nextFavorite = !!editFavorite;
-    const nextIsWeighted = !!editIsWeighted;
-    const nextUnit = editUnit || 'count';
-    const nextName = editValue.trim();
-    const nameChanged = nextName && nextName !== selected.name;
-
-    const prevItems = items;
-    const prevFavorites = favoritedIds;
-
-    setSaving(true);
-
-    try {
-      // 1. Rename if needed
-      if (nameChanged) {
-        await renameItem(selected.id, selected.name, nextName);
-        // renameItem updates 'items' state with the new name
-      }
-
-      // 2. Update Category (Optimistic)
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === itemId ? { ...i, category_id: nextCategoryId, is_weighted: nextIsWeighted, unit: nextUnit } : i
-        )
-      );
-
-      // 3. Update Favorites (Optimistic)
-      if (nextFavorite && !favoritedIds.has(itemId)) {
-        setFavoritedIds(prev => new Set([...prev, itemId]));
-      } else if (!nextFavorite && favoritedIds.has(itemId)) {
-        setFavoritedIds(prev => {
-          const next = new Set(prev);
-          next.delete(itemId);
-          return next;
-        });
-      }
-
-      // 4. Persist
-      const { error: catError } = await supabase
-        .from('items')
-        .update({
-          category_id: nextCategoryId,
-          is_weighted: nextIsWeighted,
-          unit: nextUnit
-        })
-        .eq('id', itemId);
-
-      if (catError) throw catError;
-
-      // 5. Persist Favorite
-      const isFavorited = prevFavorites.has(itemId);
-      if (nextFavorite && !isFavorited) {
-        const { error: favError } = await supabase
-          .from('household_item_favorites')
-          .insert({
-            household_code: householdCode,
-            item_id: itemId,
-          });
-        if (favError) throw favError;
-      } else if (!nextFavorite && isFavorited) {
-        const { error: unfavError } = await supabase
-          .from('household_item_favorites')
-          .delete()
-          .eq('household_code', householdCode)
-          .eq('item_id', itemId);
-        if (unfavError) throw unfavError;
-      }
-
-      closeSheet();
-    } catch (e) {
-      console.error('Save failed:', e);
-      // If rename succeeded but others failed, state might be partially updated.
-      // Reloading items is safest fallback involves fetching.
-      // For now just alert.
-      alert('An error occurred while saving. Please check your connection.');
-      setSaving(false);
+    // Update favorites if changed
+    if (favoriteChanged) {
+      setFavoritedIds((prev) => {
+        const next = new Set(prev);
+        if (nextFavorite) {
+          next.add(updatedItem.id);
+        } else {
+          next.delete(updatedItem.id);
+        }
+        return next;
+      });
     }
   };
 
@@ -770,7 +654,7 @@ function ItemsContent() {
 
         <button
           type="button"
-          onClick={() => openSheet(item)}
+          onClick={() => openModal(item)}
           className="flex-1 text-left min-w-0"
         >
           <div className="font-medium text-gray-800 truncate">{item.name}</div>
@@ -1182,145 +1066,16 @@ function ItemsContent() {
           </div>
         </div>
 
-        {/* EDIT ITEM bottom-slideup (mobile only) */}
-        {sheetOpen && selected && (
-          <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
-            <div className="absolute inset-0 bg-black/40" onClick={closeSheet} />
-
-            <div
-              className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4"
-              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
-            >
-              <div className="max-h-[85vh] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <button
-                    type="button"
-                    onClick={closeSheet}
-                    className="px-3 py-1 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50"
-                    aria-label="Close"
-                    disabled={saving}
-                  >
-                    ✕
-                  </button>
-
-                  <div className="font-semibold text-gray-800">Edit Item</div>
-
-                  {canDeleteItem(selected) && (
-                    <button
-                      type="button"
-                      onClick={() => deleteItem(selected)}
-                      className="px-3 py-1 rounded-2xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold"
-                      disabled={saving}
-                    >
-                      Delete
-                    </button>
-                  )}
-                  {!canDeleteItem(selected) && <div className="w-16"></div>}
-                </div>
-
-                {/* Name + Favorite Star */}
-                <div className="mt-3">
-                  <label className="text-sm font-semibold text-gray-700">Favorite & Item Name</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEditFavorite((p) => !p)}
-                      className={
-                        editFavorite
-                          ? 'text-4xl leading-none flex-shrink-0 px-1 cursor-pointer'
-                          : 'text-4xl leading-none flex-shrink-0 px-1 text-gray-300 cursor-pointer'
-                      }
-
-                      aria-label={editFavorite ? 'Unfavorite item' : 'Favorite item'}
-                      title={editFavorite ? 'Unfavorite' : 'Favorite'}
-                      disabled={saving}
-                    >
-                      {editFavorite ? '⭐' : '☆'}
-                    </button>
-
-                    <input
-                      ref={nameInputRef}
-                      id="item-rename-input"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && saveRename()}
-                      className="flex-1 px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base"
-                      placeholder="e.g., Grapefruit (ct)"
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
-
-                {/* Category Select */}
-                <div className="mt-3">
-                  <label className="text-sm font-semibold text-gray-700">Category</label>
-                  <select
-                    value={editCategoryId ?? ''}
-                    onChange={(e) => setEditCategoryId(e.target.value ? parseInt(e.target.value) : null)}
-                    className="w-full mt-1 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white text-gray-800 text-base"
-                  >
-                    <option value="">Other</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Weight & Unit Section */}
-                <div className="mt-5 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-bold text-gray-800">Is Weighted (Scale)</label>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Counts as 1 item in total count</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditIsWeighted(p => !p)}
-                      className={`w-14 h-8 rounded-full transition-colors relative ${editIsWeighted ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                      disabled={saving}
-                    >
-                      <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${editIsWeighted ? 'left-7' : 'left-1'}`} />
-                    </button>
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block text-center">Default Unit</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['count', 'lb', 'oz', 'each'].map(u => (
-                        <button
-                          key={u}
-                          type="button"
-                          onClick={() => setEditUnit(u)}
-                          className={`py-2 text-xs font-bold rounded-xl border transition-all ${editUnit === u
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                            }`}
-                          disabled={saving}
-                        >
-                          {u.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="flex justify-end mt-4">
-                  <button
-                    type="button"
-                    onClick={saveRename}
-                    className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold disabled:opacity-60"
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Global Item Edit Modal */}
+        <GlobalItemEditModal
+          isOpen={modalOpen}
+          onClose={closeModal}
+          item={selected}
+          householdCode={householdCode}
+          categories={categories}
+          isFavorited={selected ? favoritedIds.has(selected.id) : false}
+          onSave={handleSaveItem}
+        />
 
       </div>
     </div>

@@ -54,7 +54,6 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                 setIsOpen(false);
                 // If the user has typed something that isn't the selected item, 
                 // we should probably keep it or let the parent handle it.
-                // Reverting aggressively is what caused the frustration.
                 if (selectedItemId) {
                     const item = items.find(i => i.id === selectedItemId);
                     if (item && item.name.toLowerCase() !== query.toLowerCase().trim()) {

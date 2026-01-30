@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
          - normalized_name: The expanded name following 'Primary Category, Specific Type' style.
          - price: The UNIT price for one item (number). If multiple identical items are consolidated, this should be the price of a single item.
          - quantity: The numerical quantity or weight (number)
-         - unit: The unit of measure, e.g., 'lb', 'oz', 'count', 'bunch', 'bag' (string, default to 'count')
+         - unit: The unit of measure, e.g., 'lb', 'oz', 'each', 'bunch', 'bag' (string, default to 'each')
          - is_weighted: true if the item price is determined by weight (boolean)
          - sku: The SKU or product code if visible (string, optional)
          - ai_match: The exact string from the "Known Items" list below that best matches this item.

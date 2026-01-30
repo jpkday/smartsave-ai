@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import LoadingSpinner from '../components/LoadingSpinner';
+import GlobalItemEditModal from '../components/GlobalItemEditModal';
 
 interface Trip {
   id: string;
@@ -62,7 +63,7 @@ export default function TripsPage() {
   }, []);
 
   /* Refactored to use dynamic categories */
-  const { getCategoryName, getCategoryColorById } = useCategories();
+  const { categories, getCategoryName, getCategoryColorById } = useCategories();
   const { householdCode, loading: householdLoading } = useHouseholdCode();
 
   const [hasAnyTrips, setHasAnyTrips] = useState(true);
@@ -78,11 +79,15 @@ export default function TripsPage() {
   // Category detail modal
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<any | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [favoritedIds, setFavoritedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!householdLoading) {
       if (householdCode) {
         loadTrips();
+        loadFavorites();
       } else {
         setLoading(false);
       }
@@ -123,6 +128,15 @@ export default function TripsPage() {
   const closeCategoryModal = () => {
     setCategoryModalOpen(false);
     setSelectedCategory(null);
+  };
+
+  const loadFavorites = async () => {
+    if (!householdCode) return;
+    const { data } = await supabase
+      .from('household_item_favorites')
+      .select('item_id')
+      .eq('household_code', householdCode);
+    setFavoritedIds(new Set(data?.map(f => f.item_id) || []));
   };
 
   const loadTrips = async () => {
@@ -208,7 +222,7 @@ export default function TripsPage() {
         itemMap[item.id] = {
           name: item.name,
           category_id: item.category_id !== null ? item.category_id : -1, // Default to -1 (Other)
-          unit: item.unit || 'count',
+          unit: item.unit || 'each',
           is_weighted: item.is_weighted || false,
         };
       });
@@ -274,6 +288,23 @@ export default function TripsPage() {
 
     setTrips(tripsWithEvents);
     setLoading(false);
+  };
+
+  const handleEditItem = (event: TripEvent) => {
+    setItemToEdit({
+      id: event.item_id,
+      name: event.item_name,
+      category_id: event.category_id,
+      unit: event.unit || 'each',
+      is_weighted: event.is_weighted || false
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveItem = () => {
+    // Reload trips to reflect data changes
+    loadTrips();
+    loadFavorites();
   };
 
   const formatDate = (dateString: string) => {
@@ -706,12 +737,14 @@ export default function TripsPage() {
                     <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 pb-28">
                       <div className="space-y-2">
                         {categoryItems.map((item, idx) => (
-                          <div
+                          <button
                             key={idx}
-                            className={`p-3 rounded-xl border ${getCategoryColorById(selectedCategory)}`}
+                            onClick={() => handleEditItem(item)}
+                            className={`w-full text-left p-3 rounded-xl border hover:shadow-md transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer ${getCategoryColorById(selectedCategory)}`}
                           >
                             <div className="flex justify-between items-start mb-1">
-                              <span className="font-semibold">
+                              <span className="font-semibold flex items-center gap-2">
+                                {favoritedIds.has(item.item_id) && <span className="text-yellow-500">⭐</span>}
                                 {item.item_name}
                                 {item.quantity > 1 && (
                                   <span className="text-sm ml-1 opacity-75">× {item.quantity}</span>
@@ -725,20 +758,15 @@ export default function TripsPage() {
                               <span>{item.store}</span>
                               <span>•</span>
                               <span>
-                                {new Date(item.checked_at).toLocaleDateString('en-US', {
+                                {new Date(item.trip_date).toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                 })}
                               </span>
                               <span>•</span>
-                              <span>
-                                {new Date(item.checked_at).toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                })}
-                              </span>
+                              <span className="text-blue-600 font-bold uppercase tracking-wider md:hidden">Tap to Edit</span>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -759,6 +787,16 @@ export default function TripsPage() {
           </div>
         )}
       </div>
+      {/* Global Item Edit Modal */}
+      <GlobalItemEditModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        item={itemToEdit}
+        householdCode={householdCode}
+        categories={categories}
+        isFavorited={itemToEdit ? favoritedIds.has(itemToEdit.id) : false}
+        onSave={handleSaveItem}
+      />
     </div>
   );
 }
