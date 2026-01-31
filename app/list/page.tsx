@@ -626,7 +626,6 @@ export default function ShoppingList() {
           .from('items')
           .select('id')
           .eq('name', newName)
-          .eq('user_id', SHARED_USER_ID)
           .maybeSingle();
 
         if (existingErr) throw existingErr;
@@ -646,8 +645,7 @@ export default function ShoppingList() {
             category: categoryName,
             category_id: editModalCategoryId
           })
-          .eq('id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
+          .eq('id', editModalItem.item_id);
         if (itemError) throw itemError;
 
         const { error: listError } = await supabase
@@ -673,8 +671,7 @@ export default function ShoppingList() {
             category: categoryName,
             category_id: editModalCategoryId
           })
-          .eq('id', editModalItem.item_id)
-          .eq('user_id', SHARED_USER_ID);
+          .eq('id', editModalItem.item_id);
         if (catErr) throw catErr;
       }
 
@@ -1412,31 +1409,47 @@ export default function ShoppingList() {
     setShowAutocomplete(false);
     setAutocompleteItems([]);
     setNewItem('');
+    console.log('selectItem called for:', itemName);
 
     try {
       let itemId: number | null = null;
+      let finalItemName = itemName;
 
-      const { data: existingItem } = await supabase
-        .from('items')
-        .select('id')
-        .eq('name', itemName)
-        .eq('user_id', SHARED_USER_ID)
-        .maybeSingle();
+      // Check local cache first (Robust check)
+      const normalizedInput = itemName.trim().toLowerCase();
+      const localItem = allItems.find(i => i.name === itemName) ||
+        allItems.find(i => i.name.trim().toLowerCase() === normalizedInput);
 
-      if (existingItem) {
-        itemId = existingItem.id;
-      } else {
+      if (localItem) {
+        itemId = localItem.id;
+        finalItemName = localItem.name; // Use canonical name
+      }
+
+      if (!itemId) {
+        const { data: existingItem } = await supabase
+          .from('items')
+          .select('id, name')
+          .eq('name', itemName) // Try exact match first
+          .maybeSingle();
+
+        if (existingItem) {
+          itemId = existingItem.id;
+          finalItemName = existingItem.name;
+        }
+      }
+
+      // If we still don't have it, create it
+      if (!itemId) {
         const { data: newItemData, error: itemError } = await supabase
           .from('items')
           .insert({
             name: itemName,
-            user_id: SHARED_USER_ID,
             household_code: householdCode,
           })
           .select('id')
           .single();
 
-        if (itemError || !newItemData) throw new Error('Failed to create item');
+        if (itemError || !newItemData) throw new Error(`Failed to create item: ${itemError?.message}`);
         itemId = newItemData.id;
       }
 
@@ -1447,7 +1460,7 @@ export default function ShoppingList() {
             .from('shopping_list')
             .insert({
               item_id: itemId,
-              item_name: itemName,
+              item_name: finalItemName,
               quantity: 1,
               user_id: SHARED_USER_ID,
               household_code: householdCode,
@@ -1476,22 +1489,36 @@ export default function ShoppingList() {
 
     try {
       let itemId: number | null = null;
+      let finalItemName = itemName;
 
-      const { data: existingItem } = await supabase
-        .from('items')
-        .select('id')
-        .eq('name', itemName)
-        .eq('user_id', SHARED_USER_ID)
-        .maybeSingle();
+      // Check local cache first (Robust check)
+      const normalizedInput = itemName.toLowerCase();
+      const localItem = allItems.find(i => i.name === itemName) ||
+        allItems.find(i => i.name.trim().toLowerCase() === normalizedInput);
 
-      if (existingItem) {
-        itemId = existingItem.id;
-      } else {
+      if (localItem) {
+        itemId = localItem.id;
+        finalItemName = localItem.name;
+      }
+
+      if (!itemId) {
+        const { data: existingItem } = await supabase
+          .from('items')
+          .select('id, name')
+          .eq('name', itemName)
+          .maybeSingle();
+
+        if (existingItem) {
+          itemId = existingItem.id;
+          finalItemName = existingItem.name;
+        }
+      }
+
+      if (!itemId) {
         const { data: newItemData, error: itemError } = await supabase
           .from('items')
           .insert({
             name: itemName,
-            user_id: SHARED_USER_ID,
             household_code: householdCode,
           })
           .select('id')
@@ -1508,7 +1535,7 @@ export default function ShoppingList() {
             .from('shopping_list')
             .insert({
               item_id: itemId,
-              item_name: itemName,
+              item_name: finalItemName, // Use canonical name
               quantity: 1,
               user_id: SHARED_USER_ID,
               household_code: householdCode,
