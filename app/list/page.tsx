@@ -636,13 +636,11 @@ export default function ShoppingList() {
           return;
         }
 
-        const categoryName = getCategoryName(editModalCategoryId);
-
+        // Note: 'category' column was removed from items table in migration 20260127000001
         const { error: itemError } = await supabase
           .from('items')
           .update({
             name: newName,
-            category: categoryName,
             category_id: editModalCategoryId
           })
           .eq('id', editModalItem.item_id);
@@ -662,13 +660,11 @@ export default function ShoppingList() {
 
         if (phError) throw phError;
       } else {
-        // no rename — just update category
-        const categoryName = getCategoryName(editModalCategoryId);
-
+        // no rename — just update category_id
+        // Note: 'category' column was removed from items table in migration 20260127000001
         const { error: catErr } = await supabase
           .from('items')
           .update({
-            category: categoryName,
             category_id: editModalCategoryId
           })
           .eq('id', editModalItem.item_id);
@@ -1430,6 +1426,7 @@ export default function ShoppingList() {
           .from('items')
           .select('id, name')
           .eq('name', itemName) // Try exact match first
+          .limit(1)
           .maybeSingle();
 
         if (existingItem) {
@@ -1455,6 +1452,7 @@ export default function ShoppingList() {
 
       if (itemId) {
         const alreadyInList = listItems.some((li) => li.item_id === itemId);
+        console.log(`[DEBUG] selectItem insert check: itemId=${itemId}, alreadyInList=${alreadyInList}`);
         if (!alreadyInList) {
           const { data: inserted, error: listError } = await supabase
             .from('shopping_list')
