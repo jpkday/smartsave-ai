@@ -58,7 +58,8 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
     const handleAnalyze = () => {
         if (preview) {
             onImageCaptured(preview, addToTrips);
-            onClose();
+            // Do not close immediately - let the parent handle navigation or error state
+            // onClose(); 
         }
     };
 

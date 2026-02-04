@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useSearchParams } from 'next/navigation';
 import { useCategories } from '../hooks/useCategories';
 import GlobalItemEditModal from '../components/GlobalItemEditModal';
+import ConfirmModal from '../components/ConfirmModal';
 const DEFAULT_ITEMS = [
   'Eggs (dozen)',
   'Milk (gallon)',
@@ -59,6 +60,7 @@ function ItemsContent() {
   // Modal edit
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
 
   // Desktop inline edit
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -459,7 +461,7 @@ function ItemsContent() {
     }
   };
 
-  const deleteItem = async (item: Item) => {
+  const deleteItem = (item: Item) => {
     const canDelete = canDeleteItem(item);
 
     if (!canDelete) {
@@ -467,14 +469,24 @@ function ItemsContent() {
       return;
     }
 
-    if (!confirm('Delete this item? This will also remove it from all shopping lists.')) return;
+    setItemToDelete(item);
+  };
+
+  const performDelete = async () => {
+    if (!itemToDelete) return;
 
     try {
-      // Delete from dependent tables FIRST (to avoid foreign key constraint errors)
+      // NOTE: Database now handles cascading deletes via FK constraints for:
+      // - store_item_sku
+      // - item_aliases
+      // 
+      // We still clean up shopping_list/price_history manually to be safe/explicit, 
+      // or if they lack cascade.
+
       const { error: shoppingListError } = await supabase
         .from('shopping_list')
         .delete()
-        .eq('item_name', item.name);
+        .eq('item_name', itemToDelete.name);
 
       if (shoppingListError) {
         throw shoppingListError;
@@ -483,37 +495,39 @@ function ItemsContent() {
       const { error: priceError } = await supabase
         .from('price_history')
         .delete()
-        .eq('item_name', item.name);
+        .eq('item_name', itemToDelete.name);
 
       if (priceError) {
         throw priceError;
       }
 
-      // Now delete from items table (safe because no references exist)
+      // Now delete from items table
       const { error: itemError } = await supabase
         .from('items')
         .delete()
-        .eq('id', item.id);
+        .eq('id', itemToDelete.id);
 
       if (itemError) {
         throw itemError;
       }
 
       // Update UI
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
       setFavoritedIds(prev => {
         const next = new Set(prev);
-        next.delete(item.id);
+        next.delete(itemToDelete.id);
         return next;
       });
       setHiddenIds(prev => {
         const next = new Set(prev);
-        next.delete(item.id);
+        next.delete(itemToDelete.id);
         return next;
       });
 
-      if (selected?.id === item.id) closeModal();
-      if (editingName === item.name) cancelInlineEdit();
+      if (selected?.id === itemToDelete.id) closeModal();
+      if (editingName === itemToDelete.name) cancelInlineEdit();
+
+      setItemToDelete(null);
 
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -1075,6 +1089,16 @@ function ItemsContent() {
           categories={categories}
           isFavorited={selected ? favoritedIds.has(selected.id) : false}
           onSave={handleSaveItem}
+        />
+
+        <ConfirmModal
+          isOpen={!!itemToDelete}
+          onClose={() => setItemToDelete(null)}
+          onConfirm={performDelete}
+          title="Delete Item?"
+          message={`Are you sure you want to delete "${itemToDelete?.name}"? This will remove it from all shopping lists and history.`}
+          confirmText="Delete Item"
+          isDestructive={true}
         />
 
       </div>

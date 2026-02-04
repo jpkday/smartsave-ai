@@ -108,12 +108,8 @@ export async function POST(req: NextRequest) {
       
       SPECIAL INSTRUCTIONS FOR ABBREVIATIONS (e.g. Aldi, Lidl):
       - Aggressively expand abbreviations to their full, human-readable names using the Naming Style above.
-      - **ALDI CATALOG INTELLIGENCE**: If the store is ALDI, use your internal knowledge of ALDI product lines. Assume the receipt price is approximately 10-15% lower than the 'online' or 'instacart' price. Use this price-point to disambiguate similar items and identify the correct size/weight.
-        - Example 1: If the receipt says 'MIXED NUTS' at $5.29, you should know the online price is ~$5.85 for the '14.75 oz' size. You should output the 'normalized_name' as 'Nuts, Mixed w/ Sea Salt, 14.75 oz'.
-        - Example 2: If the receipt says '100% APPLE JUICE' at $1.99, you should know the online price is ~$2.19 for the '64 fl oz' size. You should output the 'normalized_name' as 'Juice, Apple, 100%, 64 fl oz'.
-        - Example 3: If the receipt says 'GROUND SIRLOIN' at $16.43, you should know the online price is ~$6.99/lb. After applying the 10-15% discount, you calculate the likely real-world price is ~$6.29/lb. You should calculate the weight ($16.43 / $6.29 = 2.61 lb) and output: 'normalized_name': 'Beef, Ground, Sirloin, 90% Lean', 'quantity': 2.61, 'unit': 'lb', 'is_weighted': true.
-        - Example 4: If the receipt says 'FRESH ATL SALMON' at $10.15, you should know the online price is ~$11.29/lb. After applying the 10-15% discount, you calculate the likely real-world price is ~$10.16/lb. You should calculate the weight ($10.15 / $10.16 = 1.0 lb) and output: 'normalized_name': 'Fish, Salmon, Atlantic, Norwegian', 'quantity': 1.0, 'unit': 'lb', 'is_weighted': true.
-        - Example 5: If the receipt says 'ITALIAN BREAD' at $2.25, you should know the online price is ~$2.49. This matches the naming convention. You should output: 'normalized_name': 'Bread, Italian'.
+       - **Text Fidelity**: Trust the text on the receipt. Do not attempt to guess weights or quantities if they are not explicitly printed.
+       - If the receipt says 'GROUND BEEF' and the price is $34.97, output 'price': 34.97, 'quantity': 1. Do NOT try to calculate the weight based on market prices.
       - Look specifically for weights (lb, kg, oz) or quantity indicators (e.g. '2 @ 1.50' or '0.45 lb') which may be on the same line or nearby.
       - If an item is sold by weight, capture the weight in the 'quantity' field, and set 'unit' to 'lb' or 'oz'.
       - If a weight is NOT found but the item is clearly a bulk item (e.g. 'GROUND SIRLOIN'), set 'is_weighted' to true.
@@ -131,12 +127,27 @@ export async function POST(req: NextRequest) {
          - is_weighted: true if the item price is determined by weight (boolean)
          - sku: The SKU or product code if visible (string, optional)
          - ai_match: The exact string from the "Known Items" list below that best matches this item.
+         - is_discount: true if this line is a coupon, discount, or savings (boolean, default false)
+         - related_sku: For coupons, the SKU of the item this discount applies to (string, optional)
+         - tax_code: Any tax indicator found next to the price or name (e.g. "A", "T", "*", "F"). (string, optional)
 
        KNOWN ITEMS LIST: [${knownItemsList}]
        KNOWN STORES LIST: [${(candidateStores as string[]).join(", ")}]
 ${skuMappingsSection}
-       Ignore tax, subtotals, and savings. Focus on line items.
+       Ignore tax and subtotals. Focus on line items AND coupon/discount lines.
+
+       COUPON/DISCOUNT EXTRACTION (CRITICAL):
+       - Extract ALL coupon, discount, and savings lines as separate items
+       - For Costco: Coupons appear as lines like "0000372203 / 1257371" followed by a negative price (e.g., "-4.50" or "4.50-")
+       - For other stores: Look for "COUPON", "DISCOUNT", "SAVINGS", "MFR CPN", "STORE CPN", or negative prices
+       - Set is_discount: true for all coupon/discount lines
+       - Set price as a NEGATIVE number for discounts (e.g., -4.50)
+       - For Costco coupons with format "XXXXXXX / YYYYYYY", use YYYYYYY as the related_sku (the item this coupon applies to)
        
+       TAX FLAGS:
+       - Look for "A", "T", "*", or other single-letter codes next to the price or at the end of the item name.
+       - Extract this into the 'tax_code' field.
+
        DATE & TIME GUIDANCE:
        - Date and time are often at the VERY TOP or VERY BOTTOM of the receipt.
        - Look for strings like 'DATE:', 'TIME:', 'CHECK:', or 'ID' followed by a timestamp.
@@ -148,15 +159,32 @@ ${skuMappingsSection}
         "date": "YYYY-MM-DD",
         "time": "HH:MM",
         "items": [
-          { 
-            "name": "RAW NAME", 
-            "normalized_name": "Category, Modifier", 
-            "price": 2.99, 
-            "quantity": 1, 
-            "unit": "lb", 
+          {
+            "name": "RAW NAME",
+            "normalized_name": "Category, Modifier",
+            "price": 2.99,
+            "quantity": 1,
+            "unit": "lb",
             "is_weighted": true,
-            "sku": "12345", 
-            "ai_match": "Milk" 
+            "sku": "12345",
+            "ai_match": "Milk",
+            "is_discount": false,
+            "ai_match": "Milk",
+            "is_discount": false,
+            "related_sku": null,
+            "tax_code": "A"
+          },
+          {
+            "name": "COUPON 0000372203 / 1257371",
+            "normalized_name": "Coupon",
+            "price": -4.50,
+            "quantity": 1,
+            "unit": "each",
+            "is_weighted": false,
+            "sku": "0000372203",
+            "ai_match": null,
+            "is_discount": true,
+            "related_sku": "1257371"
           }
         ]
       }
@@ -164,8 +192,8 @@ ${skuMappingsSection}
 
         // Candidate models to try in order (preferring faster/cheaper models first)
         const candidateModels = [
+            "gemini-2.5-flash",        // Stable Flash (Prioritized due to rate limits)
             "gemini-3-flash-preview",  // Newest Flash (2026)
-            "gemini-2.5-flash",        // Stable Flash
             "gemini-3-pro-preview",    // Newest Pro
             "gemini-2.5-pro",          // Stable Pro
             "gemini-1.5-flash",        // Legacy Fallback

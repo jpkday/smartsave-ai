@@ -59,6 +59,7 @@ interface ItemLibraryProps {
   autocompleteItems: string[];
   onNewItemChange: (value: string) => void;
   onSearchFocus: () => void;
+  onCloseAutocomplete: () => void;
 
   // Actions
   onToggleFavorite: (itemName: string) => void;
@@ -92,6 +93,7 @@ export default function ItemLibrary({
   autocompleteItems,
   onNewItemChange,
   onSearchFocus,
+  onCloseAutocomplete,
   onToggleFavorite,
   onToggleItemById,
   onAddNewItem,
@@ -131,7 +133,14 @@ export default function ItemLibrary({
     list = list.filter((it) => it.name.toUpperCase().startsWith(L));
   }
 
-  const renderList = list.slice(0, 250);
+  // Filter by search query (newItem)
+  if (newItem.trim()) {
+    const searchTerm = newItem.trim().toLowerCase();
+    list = list.filter((it) => it.name.toLowerCase().includes(searchTerm));
+  }
+
+  // Show all items (no limit) - use search/filters to narrow down
+  const renderList = list;
 
   // Toggle filter logic
   const toggleFilter = (filter: SelectItemsFilter) => {
@@ -160,17 +169,35 @@ export default function ItemLibrary({
       </div>
 
       {/* Search Bar */}
-      <SearchItemInput
-        value={newItem}
-        onChange={onNewItemChange}
-        onSubmit={onAddNewItem}
-        onFocus={onSearchFocus}
-        placeholder="Search items to add..."
-        showAutocomplete={showAutocomplete}
-        autocompleteItems={autocompleteItems}
-        onSelectAutocomplete={onSelectItem}
-        className="mb-3"
-      />
+      <div className="mb-3">
+        <SearchItemInput
+          value={newItem}
+          onChange={onNewItemChange}
+          onFocus={onSearchFocus}
+          placeholder="Search items..."
+          showAutocomplete={showAutocomplete}
+          autocompleteItems={autocompleteItems}
+          onSelectAutocomplete={(itemName) => {
+            // Just set the search value to filter the list, don't auto-add
+            onNewItemChange(itemName);
+          }}
+          onCloseAutocomplete={onCloseAutocomplete}
+          showSubmitButton={false}
+        />
+
+        {/* Show "Create & Add" button when search doesn't match any existing items */}
+        {newItem.trim() && !allItems.some(item => item.name.toLowerCase() === newItem.trim().toLowerCase()) && (
+          <button
+            onClick={onAddNewItem}
+            className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-2xl font-semibold cursor-pointer transition flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create & Add "{newItem.trim()}"
+          </button>
+        )}
+      </div>
 
       {/* Alphabet Filter */}
       <div className="relative flex items-center gap-2 mb-3">

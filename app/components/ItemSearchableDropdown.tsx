@@ -13,6 +13,7 @@ interface ItemSearchableDropdownProps {
     placeholder?: string;
     className?: string;
     favoritedIds?: Set<string>;
+    initialValue?: string;
 }
 
 const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSearchableDropdownProps>((props, ref) => {
@@ -23,7 +24,8 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
         onInputChange,
         placeholder = "Search items...",
         className = "",
-        favoritedIds = new Set()
+        favoritedIds = new Set(),
+        initialValue
     } = props;
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
@@ -42,10 +44,13 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
         if (selectedItemId) {
             const item = items.find(i => i.id === selectedItemId);
             if (item) setQuery(item.name);
-        } else {
+        } else if (initialValue && !query) {
+            setQuery(initialValue);
+        } else if (!selectedItemId && !initialValue && !query) {
+            // Only clear if no value provided
             setQuery('');
         }
-    }, [selectedItemId, items]);
+    }, [selectedItemId, items, initialValue]);
 
     // Click outside handler
     useEffect(() => {

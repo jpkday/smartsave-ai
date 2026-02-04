@@ -374,7 +374,6 @@ function CompareContent() {
           .from('items')
           .select('id')
           .eq('name', itemName)
-          .eq('user_id', SHARED_USER_ID)
           .eq('household_code', householdCode)
           .single();
 

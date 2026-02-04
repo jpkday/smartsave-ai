@@ -10,6 +10,8 @@ import StatusModal from '../components/StatusModal';
 import ReceiptPhotoCapture from '../components/ReceiptPhotoCapture';
 import ItemSearchableDropdown, { ItemSearchableDropdownHandle } from '../components/ItemSearchableDropdown';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProcessingLoader from '../components/ProcessingLoader';
+import { ReceiptItemCard, ReceiptItemInputs } from '../components/receipt-items';
 // import heic2any from 'heic2any'; // Moved to dynamic import
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -409,6 +411,7 @@ function ReceiptsContent() {
   };
 
   const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{ current: number; total: number | null; status: string }>({ current: 0, total: null, status: 'Preparing...' });
   const [scanPreview, setScanPreview] = useState<string | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -499,6 +502,7 @@ function ReceiptsContent() {
 
   const processReceiptImage = async (rawBase64: string, shouldAddTrip: boolean = true) => {
     setScanning(true);
+    setScanProgress({ current: 0, total: null, status: 'Preparing image...' });
     let finalBase64 = rawBase64;
 
     try {
@@ -510,6 +514,9 @@ function ReceiptsContent() {
     }
 
     setScanPreview(finalBase64);
+
+    // Show analyzing status (no fake counter)
+    setScanProgress({ current: 0, total: null, status: 'Analyzing receipt...' });
 
     try {
       const response = await fetch('/api/receipts/analyze', {
@@ -539,8 +546,15 @@ function ReceiptsContent() {
         throw new Error(data?.error || `Server error (${response.status}): ${text.slice(0, 100)}`);
       }
 
+      // Show actual item count found
+      const itemCount = data.ocr_preview?.items?.length || data.items?.length || 0;
+      setScanProgress({ current: itemCount, total: itemCount, status: `${itemCount} items found!` });
+
       if (data.success && data.importId) {
-        router.push(`/receipts/import/${data.importId}`);
+        // Brief pause to show the final count
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setScanProgress({ current: itemCount, total: itemCount, status: 'Loading review...' });
+        router.push(`/receipts/import/${data.importId}?autopilot=true`);
       } else {
         setStatusModal({
           isOpen: true,
@@ -650,7 +664,6 @@ function ReceiptsContent() {
     const { data: existingItems, error: existingItemsErr } = await supabase
       .from('items')
       .select('id, name')
-      .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
 
     if (existingItemsErr) {
@@ -671,7 +684,6 @@ function ReceiptsContent() {
       const { error: insertItemsErr } = await supabase.from('items').insert(
         missing.map((name) => ({
           name,
-          user_id: SHARED_USER_ID,
           household_code: householdCode,
         }))
       );
@@ -693,7 +705,6 @@ function ReceiptsContent() {
     const { data: allItemsData, error: allItemsErr } = await supabase
       .from('items')
       .select('id, name')
-      .eq('user_id', SHARED_USER_ID)
       .in('name', uniqueNames);
 
     if (allItemsErr) {
@@ -1015,70 +1026,43 @@ function ReceiptsContent() {
               <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
               <div className="space-y-3">
                 {receiptItems.map((ri, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
-                    <div className="flex-1">
-                      <ItemSearchableDropdown
-                        ref={(el) => { itemRefs.current[idx] = el; }}
-                        items={items}
-                        selectedItemId={ri.itemId}
-                        onSelect={(id: string, name: string) => updateItem(idx, 'itemId', id)}
-                        onInputChange={(name: string) => updateItem(idx, 'item', name)}
-                        placeholder="Search or add item..."
-                        favoritedIds={favoritedItemIds}
-                      />
-                    </div>
-
-                    {/* SKU Input */}
-                    <div className="w-24">
-                      <input
-                        type="text"
-                        placeholder="SKU"
-                        value={ri.sku || ''}
-                        onChange={(e) => updateItem(idx, 'sku', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
-                      />
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="w-16">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="1"
-                        value={ri.quantity}
-                        onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold text-right"
-                      />
-                    </div>
-
-                    <div className="w-28">
-                      <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-                        <span className="text-gray-800 font-semibold mr-1">$</span>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={ri.price}
-                          onChange={(e) => updateItem(idx, 'price', e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && ri.item && ri.price) {
-                              e.preventDefault();
-                              if (idx === receiptItems.length - 1) addRow();
-                            }
-                          }}
-                          className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                  <ReceiptItemCard
+                    key={idx}
+                    variant="simple"
+                    displayName={ri.item}
+                    itemSelector={
+                      <div className="flex-1">
+                        <ItemSearchableDropdown
+                          ref={(el) => { itemRefs.current[idx] = el; }}
+                          items={items}
+                          selectedItemId={ri.itemId}
+                          onSelect={(id: string, name: string) => updateItem(idx, 'itemId', id)}
+                          onInputChange={(name: string) => updateItem(idx, 'item', name)}
+                          placeholder="Search or add item..."
+                          favoritedIds={favoritedItemIds}
                         />
                       </div>
-                    </div>
-                    <button
-                      onClick={() => removeRow(idx)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
-                      aria-label="Close"
-                      title="Remove"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
+                    }
+                    inputs={
+                      <ReceiptItemInputs
+                        price={ri.price}
+                        onPriceChange={(val) => updateItem(idx, 'price', val)}
+                        quantity={ri.quantity}
+                        onQuantityChange={(val) => updateItem(idx, 'quantity', val)}
+                        sku={ri.sku}
+                        onSkuChange={(val) => updateItem(idx, 'sku', val)}
+                        showSku={true}
+                        layout="horizontal"
+                        onPriceKeyPress={(e) => {
+                          if (e.key === 'Enter' && ri.item && ri.price) {
+                            e.preventDefault();
+                            if (idx === receiptItems.length - 1) addRow();
+                          }
+                        }}
+                      />
+                    }
+                    onRemove={() => removeRow(idx)}
+                  />
                 ))}
               </div>
               <button
@@ -1136,8 +1120,7 @@ function ReceiptsContent() {
       {scanning && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
-            <LoadingSpinner size="lg" color="border-indigo-600" message="Analyzing Receipt..." textColor="text-black" />
-            <p className="text-gray-600 font-medium mt-[-1rem]">Extracting your savings data</p>
+            <ProcessingLoader progress={scanProgress.current > 0 ? { current: scanProgress.current, total: scanProgress.total || 0 } : null} />
           </div>
         </div>
       )}

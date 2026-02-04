@@ -435,35 +435,13 @@ export default function ShoppingList() {
   // Store preferences are now managed by useStorePreferences hook
 
   const getPriceForStore = (store: string, itemName: string): number | null => {
-    // Debug logging for salmon
-    const isSalmon = itemName?.toLowerCase().includes('salmon');
-
     // Try ID-based lookup first (handles renamed items)
     const storeId = storesByName[store];
     const item = allItems.find(i => i.name === itemName);
 
-    if (isSalmon) {
-      console.log('🔍 Looking up salmon price:', {
-        store,
-        itemName,
-        storeId,
-        itemId: item?.id,
-        hasStoreId: !!storeId,
-        hasItem: !!item
-      });
-    }
-
     if (storeId && item) {
       const idKey = `id:${storeId}-${item.id}`;
       const pdById = prices[idKey];
-
-      if (isSalmon) {
-        console.log('🔍 ID-based lookup:', {
-          idKey,
-          foundById: !!pdById,
-          price: pdById?.price
-        });
-      }
 
       if (pdById) {
         const n = parseFloat(pdById.price);
@@ -474,14 +452,6 @@ export default function ShoppingList() {
     // Fall back to name-based lookup (backwards compatibility)
     const nameKey = `${store}-${itemName}`;
     const pdByName = prices[nameKey];
-
-    if (isSalmon) {
-      console.log('🔍 Name-based lookup:', {
-        nameKey,
-        foundByName: !!pdByName,
-        price: pdByName?.price
-      });
-    }
 
     if (!pdByName) return null;
     const n = parseFloat(pdByName.price);
@@ -1071,7 +1041,8 @@ export default function ShoppingList() {
     let itemsQuery = supabase
       .from('items')
       .select('id, name, category_id')
-      .order('name');
+      .order('name')
+      .range(0, 9999); // Use range instead of limit to bypass default 1000 row limit
 
     // Filter out 'TEST' items for regular users
     if (householdCode !== 'TEST') {
@@ -1173,19 +1144,6 @@ export default function ShoppingList() {
         // Create both ID-based and name-based keys for backwards compatibility
         const nameKey = `${p.store}-${p.item_name}`;
         const idKey = p.store_id && p.item_id ? `id:${p.store_id}-${p.item_id}` : null;
-
-        // Debug logging for salmon
-        if (p.item_name?.toLowerCase().includes('salmon')) {
-          console.log('🐟 Salmon price record:', {
-            item_name: p.item_name,
-            item_id: p.item_id,
-            store: p.store,
-            store_id: p.store_id,
-            price: p.price,
-            nameKey,
-            idKey
-          });
-        }
 
         // Update name-based key
         if (!latestPrices[nameKey] ||
@@ -2124,6 +2082,7 @@ export default function ShoppingList() {
                 autocompleteItems={autocompleteItems}
                 onNewItemChange={handleInputChange}
                 onSearchFocus={handleSearchFocus}
+                onCloseAutocomplete={() => setShowAutocomplete(false)}
                 onToggleFavorite={toggleFavorite}
                 onToggleItemById={toggleItemById}
                 onAddNewItem={addNewItem}
