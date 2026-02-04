@@ -40,7 +40,6 @@ interface ShoppingListItemProps {
   isDealsItem: boolean;
   missingCategory: boolean;
   mobileMode: 'store' | 'build';
-  activeTripsCount: number;
 
   // Handlers
   onToggleChecked: (id: string) => void;
@@ -70,7 +69,6 @@ export default function ShoppingListItem({
   isDealsItem,
   missingCategory,
   mobileMode,
-  activeTripsCount,
   onToggleChecked,
   onTogglePriority,
   onOpenEdit,
@@ -81,17 +79,17 @@ export default function ShoppingListItem({
   storePrefs,
   getDaysAgo
 }: ShoppingListItemProps) {
-  // Determine if checkbox should be disabled
-  const isCheckboxDisabled = mobileMode === 'build' || (mobileMode === 'store' && activeTripsCount === 0);
+  // Determine if checkbox should be disabled (only in build mode)
+  const isCheckboxDisabled = mobileMode === 'build';
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${
+      className={`flex flex-wrap items-center gap-2 px-2 py-1.5 rounded-lg border transition ${
         item.checked
           ? 'bg-gray-100 border-gray-300'
           : isFavorite
             ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-            : 'bg-white border-gray-300 hover:bg-gray-50'
+            : 'bg-white border-gray-200 hover:bg-gray-50'
       }`}
     >
       {/* Checkbox */}
@@ -103,7 +101,7 @@ export default function ShoppingListItem({
           if (isCheckboxDisabled) return;
           onToggleChecked(item.id);
         }}
-        className={`w-6 h-6 rounded transition ${
+        className={`w-6 h-6 rounded transition flex-shrink-0 ${
           isCheckboxDisabled ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
         }`}
       />
@@ -132,7 +130,7 @@ export default function ShoppingListItem({
         </div>
 
         {/* Price Info & Action Buttons */}
-        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           {price > 0 ? (
             <p className="text-xs text-green-600 min-w-0">
               {formatMoney(price)}{' '}
