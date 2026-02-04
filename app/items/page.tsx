@@ -37,6 +37,7 @@ function ItemsContent() {
   const [loading, setLoading] = useState(true);
   const [favoritedIds, setFavoritedIds] = useState<Set<number>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  const [pantryIds, setPantryIds] = useState<Set<number>>(new Set());
 
   const householdCode = typeof window !== 'undefined' ? localStorage.getItem('household_code') : null;
   const isMasterAccount = householdCode === 'ASDF';
@@ -54,8 +55,8 @@ function ItemsContent() {
     setFilterLetter((prev) => (prev === letter ? 'All' : letter));
   };
 
-  // View Filter: ALL (default), FAVORITES, or HIDDEN
-  const [viewFilter, setViewFilter] = useState<'ALL' | 'FAVORITES' | 'HIDDEN'>('ALL');
+  // View Filter: ALL, PANTRY (default), FAVORITES, or HIDDEN
+  const [viewFilter, setViewFilter] = useState<'ALL' | 'PANTRY' | 'FAVORITES' | 'HIDDEN'>('PANTRY');
 
   // Modal edit
   const [modalOpen, setModalOpen] = useState(false);
@@ -203,6 +204,26 @@ function ItemsContent() {
 
     setHiddenIds(new Set(hiddenData?.map(h => h.item_id) || []));
 
+    // Load pantry items (items from user's trips)
+    const { data: userTripsData } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('household_code', householdCode);
+
+    if (userTripsData && userTripsData.length > 0) {
+      const tripIds = userTripsData.map((t: any) => t.id);
+
+      const { data: eventsData } = await supabase
+        .from('shopping_list_events')
+        .select('item_id')
+        .in('trip_id', tripIds);
+
+      if (eventsData && eventsData.length > 0) {
+        const uniqueItemIds = [...new Set(eventsData.map((e: any) => e.item_id).filter(Boolean))];
+        setPantryIds(new Set(uniqueItemIds));
+      }
+    }
+
     setLoading(false);
   };
 
@@ -234,11 +255,13 @@ function ItemsContent() {
   const filtered = useMemo(() => {
     let base = items;
 
-    // 1. Filter by View (Active vs Hidden vs Favorites)
+    // 1. Filter by View (All, Pantry, Favorites, or Hidden)
     if (viewFilter === 'HIDDEN') {
       base = base.filter(i => hiddenIds.has(i.id));
     } else if (viewFilter === 'FAVORITES') {
       base = base.filter(i => favoritedIds.has(i.id) && !hiddenIds.has(i.id));
+    } else if (viewFilter === 'PANTRY') {
+      base = base.filter(i => pantryIds.has(i.id) && !hiddenIds.has(i.id));
     } else {
       // ALL: Show everything (Active + Hidden)
       // no-op
@@ -255,7 +278,7 @@ function ItemsContent() {
     return base
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter((i) => i.name.toUpperCase().startsWith(filterLetter));
-  }, [items, inputValue, filterLetter, viewFilter, hiddenIds, favoritedIds]);
+  }, [items, inputValue, filterLetter, viewFilter, hiddenIds, favoritedIds, pantryIds]);
 
   const favorites = useMemo(
     () => filtered.filter((i) => favoritedIds.has(i.id)).sort((a, b) => a.name.localeCompare(b.name)),
@@ -940,18 +963,18 @@ function ItemsContent() {
             ) : (
               <>
                 {/* View Filters (Moved Here) - Styled like List Build Mode */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-4 gap-2 mb-4">
                   <button
-                    onClick={() => setViewFilter('ALL')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'ALL'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                    onClick={() => setViewFilter('PANTRY')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'PANTRY'
+                      ? 'bg-green-600 text-white border-green-600 shadow-md transform scale-105'
+                      : 'bg-white text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300'
                       }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    All Items
+                    My Pantry
                   </button>
                   <button
                     onClick={() => setViewFilter('FAVORITES')}
@@ -963,7 +986,7 @@ function ItemsContent() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
-                    Favorites
+                    My Favorites
                   </button>
                   <button
                     onClick={() => setViewFilter('HIDDEN')}
@@ -975,17 +998,27 @@ function ItemsContent() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                     </svg>
-                    Hidden
+                    Hidden Items
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('ALL')}
+                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'ALL'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
+                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                      }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Explore All
                   </button>
                 </div>
-
-
                 <div className="mb-4 border-b border-gray-100"></div>
 
                 {/* List Header / Stats */}
                 <div className="flex justify-between items-center mb-3">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
-                    {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorite Items' : 'All Items'}
+                    {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorite Items' : viewFilter === 'PANTRY' ? 'My Pantry' : 'All Items'}
                   </h2>
                   <div className="flex items-center gap-2">
                     {(inputValue !== '' || filterLetter !== 'All') && (
@@ -1006,7 +1039,19 @@ function ItemsContent() {
                 {/* No Items State */}
                 {filtered.length === 0 && (
                   <>
-                    {viewFilter === 'FAVORITES' && !inputValue && filterLetter === 'All' ? (
+                    {viewFilter === 'PANTRY' && !inputValue && filterLetter === 'All' ? (
+                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full text-green-600">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Your Pantry is Empty</h3>
+                        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                          Start shopping and uploading receipts to build your personal pantry of items you've purchased!
+                        </p>
+                      </div>
+                    ) : viewFilter === 'FAVORITES' && !inputValue && filterLetter === 'All' ? (
                       <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
                         <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full text-amber-600">
                           <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
