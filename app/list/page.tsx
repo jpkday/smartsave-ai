@@ -1038,18 +1038,40 @@ export default function ShoppingList() {
 
 
 
-    let itemsQuery = supabase
-      .from('items')
-      .select('id, name, category_id')
-      .order('name')
-      .range(0, 9999); // Use range instead of limit to bypass default 1000 row limit
+    // Fetch user's "pantry" - items they've actually purchased in trips
+    // 1. Get all trips for this household
+    const { data: userTripsData } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('household_code', householdCode);
 
-    // Filter out 'TEST' items for regular users
-    if (householdCode !== 'TEST') {
-      itemsQuery = itemsQuery.or('household_code.neq.TEST,household_code.is.null');
+    let itemsData: ItemRow[] = [];
+    let itemsError = null;
+
+    if (userTripsData && userTripsData.length > 0) {
+      const tripIds = userTripsData.map((t: any) => t.id);
+
+      // 2. Get all events for these trips to extract item_ids
+      const { data: eventsData } = await supabase
+        .from('shopping_list_events')
+        .select('item_id')
+        .in('trip_id', tripIds);
+
+      if (eventsData && eventsData.length > 0) {
+        // 3. Get unique item IDs
+        const uniqueItemIds = [...new Set(eventsData.map((e: any) => e.item_id).filter(Boolean))];
+
+        // 4. Fetch those items from items table
+        const { data: pantryItems, error } = await supabase
+          .from('items')
+          .select('id, name, category_id')
+          .in('id', uniqueItemIds)
+          .order('name');
+
+        itemsData = pantryItems || [];
+        itemsError = error;
+      }
     }
-
-    const { data: itemsData, error: itemsError } = await itemsQuery;
 
 
 

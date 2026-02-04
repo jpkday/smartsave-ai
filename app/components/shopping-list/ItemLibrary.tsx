@@ -164,7 +164,7 @@ export default function ItemLibrary({
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-semibold text-gray-800">
-          Item Library <span className="text-sm text-gray-500 font-normal">({list.length})</span>
+          My Pantry <span className="text-sm text-gray-500 font-normal">({list.length.toLocaleString()})</span>
         </h2>
       </div>
 
