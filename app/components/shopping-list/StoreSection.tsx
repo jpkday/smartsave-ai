@@ -70,8 +70,6 @@ interface StoreSectionProps {
   onOpenStoreModal: (itemName: string) => void;
   onRemove: (id: string) => void;
   onClearNote: (itemId: number, noteId: string) => void;
-
-  activeTripsCount: number;
 }
 
 export default function StoreSection({
@@ -100,8 +98,7 @@ export default function StoreSection({
   onOpenEdit,
   onOpenStoreModal,
   onRemove,
-  onClearNote,
-  activeTripsCount
+  onClearNote
 }: StoreSectionProps) {
   // Calculate store total
   const storeTotal = storeItems.reduce((sum, item) => {
@@ -214,7 +211,6 @@ export default function StoreSection({
               storeId={storeId}
               hasActiveTrip={hasActiveTrip}
               mobileMode={mobileMode}
-              activeTripsCount={activeTripsCount}
               favorites={favorites}
               dealsItemNames={dealsItemNames}
               prices={prices}

@@ -34,7 +34,6 @@ interface CategoryGroupProps {
   storeId?: string;
   hasActiveTrip: boolean;
   mobileMode: 'store' | 'build';
-  activeTripsCount: number;
 
   // Data access
   favorites: string[];
@@ -65,7 +64,6 @@ export default function CategoryGroup({
   storeId,
   hasActiveTrip,
   mobileMode,
-  activeTripsCount,
   favorites,
   dealsItemNames,
   prices,
@@ -144,7 +142,6 @@ export default function CategoryGroup({
               isDealsItem={dealsItemNames.has(item.item_name)}
               missingCategory={missingCategory}
               mobileMode={mobileMode}
-              activeTripsCount={activeTripsCount}
               onToggleChecked={onToggleChecked}
               onTogglePriority={onTogglePriority}
               onOpenEdit={onOpenEdit}

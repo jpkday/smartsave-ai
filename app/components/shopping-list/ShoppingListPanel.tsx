@@ -344,7 +344,6 @@ export default function ShoppingListPanel({
                   onOpenStoreModal={onOpenStoreModal}
                   onRemove={onRemove}
                   onClearNote={onClearNote}
-                  activeTripsCount={Object.keys(activeTrips).length}
                 />
               );
             })}
@@ -389,7 +388,6 @@ export default function ShoppingListPanel({
                   onOpenStoreModal={onOpenStoreModal}
                   onRemove={onRemove}
                   onClearNote={onClearNote}
-                  activeTripsCount={Object.keys(activeTrips).length}
                 />
               );
             })}
@@ -433,7 +431,6 @@ export default function ShoppingListPanel({
                         storeId={undefined}
                         hasActiveTrip={false}
                         mobileMode={mobileMode}
-                        activeTripsCount={Object.keys(activeTrips).length}
                         favorites={favorites}
                         dealsItemNames={dealsItemNames}
                         prices={prices}
