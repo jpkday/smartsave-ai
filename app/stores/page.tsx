@@ -4,8 +4,7 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
-
-// Helper Icon
+// Helper Icons
 const PencilIcon = ({ className }: { className?: string }) => (
   <svg className={className ?? 'w-5 h-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
@@ -24,6 +23,7 @@ interface Store {
   created_at: string;
   is_favorite?: boolean;
   household_code?: string;
+  sort_order?: number;
 }
 
 export default function Stores() {
@@ -62,24 +62,33 @@ export default function Stores() {
       return;
     }
 
-    // Load favorited stores for this household
+    // Load favorited stores for this household with sort_order
     const { data: favoritesData } = await supabase
       .from('household_store_favorites')
-      .select('store_id')
-      .eq('household_code', householdCode);
+      .select('store_id, sort_order')
+      .eq('household_code', householdCode)
+      .order('sort_order', { ascending: true });
 
-    const favoritedIds = new Set(favoritesData?.map((f: any) => f.store_id) || []);
+    // Create a map of store_id -> sort_order
+    const favoritesMap = new Map<string, number>();
+    (favoritesData || []).forEach((f: any) => {
+      favoritesMap.set(f.store_id, f.sort_order);
+    });
 
-    // Mark stores as favorited and sort (favorites first)
+    // Mark stores as favorited and include sort_order
     const storesWithFavorites = (storesData || []).map((s: any) => ({
       ...s,
-      is_favorite: favoritedIds.has(s.id)
+      is_favorite: favoritesMap.has(s.id),
+      sort_order: favoritesMap.get(s.id) ?? 0
     }));
 
-    // Sort: favorited first, then alphabetically
+    // Sort: favorited first (by sort_order), then non-favorites alphabetically
     storesWithFavorites.sort((a, b) => {
       if (a.is_favorite && !b.is_favorite) return -1;
       if (!a.is_favorite && b.is_favorite) return 1;
+      if (a.is_favorite && b.is_favorite) {
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      }
       return a.name.localeCompare(b.name);
     });
 
@@ -229,12 +238,17 @@ export default function Stores() {
         return;
       }
     } else {
-      // Add to favorites
+      // Add to favorites - calculate next sort_order
+      const maxSortOrder = stores
+        .filter(s => s.is_favorite)
+        .reduce((max, s) => Math.max(max, s.sort_order ?? 0), 0);
+
       const { error } = await supabase
         .from('household_store_favorites')
         .insert({
           household_code: householdCode,
-          store_id: storeId
+          store_id: storeId,
+          sort_order: maxSortOrder + 1000
         });
 
       if (error) {
@@ -245,6 +259,57 @@ export default function Stores() {
     }
 
     loadStores();
+  };
+
+  // Move store up or down in the list
+  const moveStore = async (storeId: string, direction: 'up' | 'down') => {
+    const currentIndex = favoritedStores.findIndex(s => s.id === storeId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= favoritedStores.length) return;
+
+    // Calculate new sort_order using gap strategy
+    const newStores = [...favoritedStores];
+    const [removed] = newStores.splice(currentIndex, 1);
+    newStores.splice(newIndex, 0, removed);
+
+    let newSortOrder: number;
+    if (newIndex === 0) {
+      newSortOrder = (newStores[1]?.sort_order ?? 1000) / 2;
+    } else if (newIndex === newStores.length - 1) {
+      newSortOrder = (newStores[newIndex - 1]?.sort_order ?? 0) + 1000;
+    } else {
+      const prev = newStores[newIndex - 1]?.sort_order ?? 0;
+      const next = newStores[newIndex + 1]?.sort_order ?? prev + 2000;
+      newSortOrder = (prev + next) / 2;
+    }
+
+    // Optimistic update
+    const updatedStores = stores.map(s =>
+      s.id === storeId ? { ...s, sort_order: newSortOrder } : s
+    );
+    updatedStores.sort((a, b) => {
+      if (a.is_favorite && !b.is_favorite) return -1;
+      if (!a.is_favorite && b.is_favorite) return 1;
+      if (a.is_favorite && b.is_favorite) {
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      }
+      return a.name.localeCompare(b.name);
+    });
+    setStores(updatedStores);
+
+    // Persist to database
+    const { error } = await supabase
+      .from('household_store_favorites')
+      .update({ sort_order: newSortOrder })
+      .eq('household_code', householdCode)
+      .eq('store_id', storeId);
+
+    if (error) {
+      console.error('Error reordering store:', error);
+      loadStores();
+    }
   };
 
   const favoritedStores = stores.filter(s => s.is_favorite);
@@ -343,8 +408,11 @@ export default function Stores() {
           {favoritedStores.length > 0 && (
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-800 mb-3">⭐ Your Stores</h2>
+              {favoritedStores.length > 1 && (
+                <p className="text-sm text-gray-500 mb-3">Use arrows to reorder your favorite stores</p>
+              )}
               <div className="space-y-2">
-                {favoritedStores.map(store => (
+                {favoritedStores.map((store, index) => (
                   <div key={store.id} className="editing-row">
                     {editingId === store.id ? (
                       <div className="flex flex-col sm:flex-row gap-2 p-3 bg-blue-50 rounded-2xl border-2 border-blue-300">
@@ -383,7 +451,42 @@ export default function Stores() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 transition">
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 transition">
+                        {/* Up/Down Arrows */}
+                        {favoritedStores.length > 1 && (
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => moveStore(store.id, 'up')}
+                              disabled={index === 0}
+                              className={`p-1 rounded transition ${
+                                index === 0
+                                  ? 'text-gray-200 cursor-not-allowed'
+                                  : 'text-gray-400 hover:text-gray-600 hover:bg-yellow-100 cursor-pointer'
+                              }`}
+                              title="Move up"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => moveStore(store.id, 'down')}
+                              disabled={index === favoritedStores.length - 1}
+                              className={`p-1 rounded transition ${
+                                index === favoritedStores.length - 1
+                                  ? 'text-gray-200 cursor-not-allowed'
+                                  : 'text-gray-400 hover:text-gray-600 hover:bg-yellow-100 cursor-pointer'
+                              }`}
+                              title="Move down"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Favorite Star */}
                         <button
                           onClick={() => toggleFavorite(store.id, store.is_favorite || false)}
                           className="text-2xl leading-none flex-shrink-0 cursor-pointer text-yellow-500 hover:scale-110 transition-transform"
@@ -391,6 +494,7 @@ export default function Stores() {
                           ⭐
                         </button>
 
+                        {/* Store Info */}
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-gray-800 truncate">{store.name}</div>
                           {store.location && (
@@ -398,26 +502,25 @@ export default function Stores() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          {(store.household_code === householdCode || householdCode === 'ASDF') && (
-                            <>
-                              <button
-                                onClick={() => startEdit(store)}
-                                className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
-                                title="Edit"
-                              >
-                                <PencilIcon />
-                              </button>
-                              <button
-                                onClick={() => deleteStore(store.id, store.name)}
-                                className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        {/* Action Buttons */}
+                        {(store.household_code === householdCode || householdCode === 'ASDF') && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEdit(store)}
+                              className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
+                              title="Edit"
+                            >
+                              <PencilIcon />
+                            </button>
+                            <button
+                              onClick={() => deleteStore(store.id, store.name)}
+                              className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
+                              title="Delete"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

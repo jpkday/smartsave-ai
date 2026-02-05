@@ -71,13 +71,20 @@ export default function Deals() {
       return;
     }
 
-    // 1. Fetch User's Favorited Stores
+    // 1. Fetch User's Favorited Stores with sort_order
     const { data: favoritesData } = await supabase
       .from('household_store_favorites')
-      .select('store_id')
-      .eq('household_code', currentHouseholdCode);
+      .select('store_id, sort_order')
+      .eq('household_code', currentHouseholdCode)
+      .order('sort_order', { ascending: true });
 
     const favStoreIds = favoritesData?.map((f: any) => f.store_id) || [];
+
+    // Build sort_order map by store_id
+    const storeOrderById: { [store_id: string]: number } = {};
+    (favoritesData || []).forEach((f: any) => {
+      storeOrderById[f.store_id] = f.sort_order ?? 0;
+    });
 
     if (favStoreIds.length === 0) {
       setHasFavorites(false);
@@ -174,8 +181,9 @@ export default function Deals() {
       }
     });
 
-    // Store map for store filter
+    // Store map for store filter and name -> id mapping for sorting
     const storeSet = new Set<string>();
+    const storeNameToId: { [name: string]: string } = {};
 
     const dealMap = new Map<string, Deal>();
 
@@ -220,6 +228,7 @@ export default function Deals() {
       // Keep only the lowest price for this item at this store
       if (!existing || currentPrice < existing.price) {
         storeSet.add(p.store);
+        if (p.store_id) storeNameToId[p.store] = p.store_id;
         dealMap.set(dealKey, {
           item_name: p.item_name,
           item_id: lookup.id,
@@ -258,7 +267,16 @@ export default function Deals() {
     dealList.sort((a, b) => b.discountPercent - a.discountPercent);
 
     setDeals(dealList);
-    setStores([...storeSet].sort());
+    // Sort stores by favorite sort_order, then alphabetically
+    const sortedStores = [...storeSet].sort((a, b) => {
+      const idA = storeNameToId[a];
+      const idB = storeNameToId[b];
+      const orderA = idA ? (storeOrderById[idA] ?? Infinity) : Infinity;
+      const orderB = idB ? (storeOrderById[idB] ?? Infinity) : Infinity;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.localeCompare(b);
+    });
+    setStores(sortedStores);
     setLoading(false);
   };
 

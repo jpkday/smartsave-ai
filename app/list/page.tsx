@@ -72,6 +72,7 @@ export default function ShoppingList() {
   const [activeTrips, setActiveTrips] = useState<{ [store_id: string]: string }>({});
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
+  const [favoriteStoreOrder, setFavoriteStoreOrder] = useState<{ [store_id: string]: number }>({});
 
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
@@ -952,14 +953,22 @@ export default function ShoppingList() {
   // LOAD DATA CONSTANT
 
   const loadData = useCallback(async () => {
-    // Load favorited stores for this household
+    // Load favorited stores for this household with sort_order
     const { data: householdFavorites } = await supabase
       .from('household_store_favorites')
-      .select('store_id')
-      .eq('household_code', householdCode);
+      .select('store_id, sort_order')
+      .eq('household_code', householdCode)
+      .order('sort_order', { ascending: true });
 
     const favoriteStoreIds = new Set(householdFavorites?.map((f: any) => f.store_id) || []);
     const hasFavorites = favoriteStoreIds.size > 0;
+
+    // Build sort_order map for favorite stores
+    const storeOrderMap: { [store_id: string]: number } = {};
+    (householdFavorites || []).forEach((f: any) => {
+      storeOrderMap[f.store_id] = f.sort_order ?? 0;
+    });
+    setFavoriteStoreOrder(storeOrderMap);
 
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
     if (storesError) console.error('Error loading stores:', storesError);
@@ -969,6 +978,14 @@ export default function ShoppingList() {
       const filteredStores = hasFavorites
         ? storesData.filter(s => favoriteStoreIds.has(s.id))
         : storesData;
+
+      // Sort stores by favoriteStoreOrder (ranked favorites first), then alphabetically
+      filteredStores.sort((a, b) => {
+        const orderA = storeOrderMap[a.id] ?? Infinity;
+        const orderB = storeOrderMap[b.id] ?? Infinity;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
 
       setStores(filteredStores.map((s) => s.name));
       const lookup: { [name: string]: string } = {};
@@ -2137,6 +2154,7 @@ export default function ShoppingList() {
               categoryOrder={categoryOrder}
               activeTrips={activeTrips}
               myActiveStoreId={myActiveStoreId}
+              favoriteStoreOrder={favoriteStoreOrder}
               newItem={newItem}
               showAutocomplete={showAutocomplete}
               autocompleteItems={autocompleteItems}

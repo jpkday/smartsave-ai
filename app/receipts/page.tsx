@@ -251,21 +251,32 @@ function ReceiptsContent() {
       // 2. Filter by favorites if household code exists
       let filteredStores = storesData;
 
+      // Build sort_order map for favorites
+      const storeOrderMap: { [store_id: string]: number } = {};
+
       if (code) {
         const { data: favoritesData } = await supabase
           .from('household_store_favorites')
-          .select('store_id')
-          .eq('household_code', code);
+          .select('store_id, sort_order')
+          .eq('household_code', code)
+          .order('sort_order', { ascending: true });
 
         if (favoritesData && favoritesData.length > 0) {
           const favoriteIds = new Set(favoritesData.map(f => f.store_id));
           setFavoritedStoreIds(favoriteIds);
           filteredStores = storesData.filter(s => favoriteIds.has(s.id));
+          // Build sort_order map
+          favoritesData.forEach(f => {
+            storeOrderMap[f.store_id] = f.sort_order ?? 0;
+          });
         }
       }
 
-      // 3. Sort by Name then Location
+      // 3. Sort by favorite sort_order, then Name, then Location
       const sorted = filteredStores.sort((a, b) => {
+        const orderA = storeOrderMap[a.id] ?? Infinity;
+        const orderB = storeOrderMap[b.id] ?? Infinity;
+        if (orderA !== orderB) return orderA - orderB;
         if (a.name !== b.name) return a.name.localeCompare(b.name);
         return (a.location || '').localeCompare(b.location || '');
       });

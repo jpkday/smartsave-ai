@@ -56,6 +56,7 @@ interface ShoppingListPanelProps {
   categoryOrder: Record<string, number>;
   activeTrips: { [store_id: string]: string };
   myActiveStoreId: string | null;
+  favoriteStoreOrder?: { [store_id: string]: number };
 
   // Search state (for quick add and empty state)
   newItem: string;
@@ -106,6 +107,7 @@ export default function ShoppingListPanel({
   categoryOrder,
   activeTrips,
   myActiveStoreId,
+  favoriteStoreOrder = {},
   newItem,
   showAutocomplete,
   autocompleteItems,
@@ -348,7 +350,7 @@ export default function ShoppingListPanel({
               );
             })}
 
-          {/* Second: All other stores alphabetically */}
+          {/* Second: All other stores by rank (favorites first), then alphabetically */}
           {storeEntries
             .filter(([store]) => {
               const storeId = storesByName[store];
@@ -357,6 +359,12 @@ export default function ShoppingListPanel({
             .sort(([storeA], [storeB]) => {
               if (storeA === 'No Price Data' || storeA === 'Other Stores') return 1;
               if (storeB === 'No Price Data' || storeB === 'Other Stores') return -1;
+              // Sort by favorite store order (ranked favorites first)
+              const storeIdA = storesByName[storeA];
+              const storeIdB = storesByName[storeB];
+              const orderA = storeIdA ? (favoriteStoreOrder[storeIdA] ?? Infinity) : Infinity;
+              const orderB = storeIdB ? (favoriteStoreOrder[storeIdB] ?? Infinity) : Infinity;
+              if (orderA !== orderB) return orderA - orderB;
               return storeA.localeCompare(storeB);
             })
             .map(([store, storeItems]) => {
