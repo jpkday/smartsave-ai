@@ -73,6 +73,7 @@ export default function ShoppingList() {
   const [stores, setStores] = useState<string[]>([]);
   const [storesByName, setStoresByName] = useState<{ [name: string]: string }>({});
   const [favoriteStoreOrder, setFavoriteStoreOrder] = useState<{ [store_id: string]: number }>({});
+  const [storeCategoryOrders, setStoreCategoryOrders] = useState<{ [storeId: string]: { [categoryId: number]: number } }>({});
 
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [items, setItems] = useState<string[]>([]);
@@ -969,6 +970,23 @@ export default function ShoppingList() {
       storeOrderMap[f.store_id] = f.sort_order ?? 0;
     });
     setFavoriteStoreOrder(storeOrderMap);
+
+    // Load per-store category orders for all favorite stores
+    const { data: categoryOrdersData } = await supabase
+      .from('household_store_category_order')
+      .select('store_id, category_id, sort_order')
+      .eq('household_code', householdCode)
+      .order('sort_order', { ascending: true });
+
+    // Build lookup: { [storeId]: { [categoryId]: sortOrder } }
+    const storeCategoryOrderMap: { [storeId: string]: { [categoryId: number]: number } } = {};
+    (categoryOrdersData || []).forEach((row: any) => {
+      if (!storeCategoryOrderMap[row.store_id]) {
+        storeCategoryOrderMap[row.store_id] = {};
+      }
+      storeCategoryOrderMap[row.store_id][row.category_id] = row.sort_order;
+    });
+    setStoreCategoryOrders(storeCategoryOrderMap);
 
     const { data: storesData, error: storesError } = await supabase.from('stores').select('id, name').order('name');
     if (storesError) console.error('Error loading stores:', storesError);
@@ -2155,6 +2173,7 @@ export default function ShoppingList() {
               activeTrips={activeTrips}
               myActiveStoreId={myActiveStoreId}
               favoriteStoreOrder={favoriteStoreOrder}
+              storeCategoryOrders={storeCategoryOrders}
               newItem={newItem}
               showAutocomplete={showAutocomplete}
               autocompleteItems={autocompleteItems}

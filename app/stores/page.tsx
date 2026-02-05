@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { useCategories } from '../hooks/useCategories';
+
+interface CategoryOrder {
+  categoryId: number;
+  name: string;
+  color: string;
+  sortOrder: number;
+}
 
 // Helper Icons
 const PencilIcon = ({ className }: { className?: string }) => (
@@ -36,6 +44,11 @@ export default function Stores() {
 
   const [householdCode, setHouseholdCode] = useState<string>('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Category ordering state
+  const { categories } = useCategories();
+  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+  const [storeCategoryOrders, setStoreCategoryOrders] = useState<{ [storeId: string]: CategoryOrder[] }>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -312,6 +325,117 @@ export default function Stores() {
     }
   };
 
+  // Toggle expanded state for a store's category ordering
+  const toggleStoreExpanded = async (storeId: string) => {
+    if (expandedStoreId === storeId) {
+      setExpandedStoreId(null);
+      return;
+    }
+
+    setExpandedStoreId(storeId);
+
+    // Load category order for this store if not already loaded
+    if (!storeCategoryOrders[storeId]) {
+      await loadStoreCategoryOrder(storeId);
+    }
+  };
+
+  // Load category order for a specific store (lazy loading)
+  const loadStoreCategoryOrder = async (storeId: string) => {
+    // First, load any custom order from database
+    const { data: customOrder } = await supabase
+      .from('household_store_category_order')
+      .select('category_id, sort_order')
+      .eq('household_code', householdCode)
+      .eq('store_id', storeId)
+      .order('sort_order', { ascending: true });
+
+    let categoryOrders: CategoryOrder[];
+
+    if (customOrder && customOrder.length > 0) {
+      // Use custom order, but include any categories not in custom order at the end
+      const customOrderMap = new Map(customOrder.map(c => [c.category_id, c.sort_order]));
+      const orderedCategories = categories
+        .map(cat => ({
+          categoryId: cat.id,
+          name: cat.name,
+          color: cat.color,
+          sortOrder: customOrderMap.get(cat.id) ?? cat.sort_order + 10000 // Put uncustomized at end
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      categoryOrders = orderedCategories;
+    } else {
+      // Use global category order
+      categoryOrders = categories.map(cat => ({
+        categoryId: cat.id,
+        name: cat.name,
+        color: cat.color,
+        sortOrder: cat.sort_order
+      }));
+    }
+
+    setStoreCategoryOrders(prev => ({
+      ...prev,
+      [storeId]: categoryOrders
+    }));
+  };
+
+  // Move a category up or down for a specific store
+  const moveCategoryForStore = async (storeId: string, categoryId: number, direction: 'up' | 'down') => {
+    const currentOrder = storeCategoryOrders[storeId];
+    if (!currentOrder) return;
+
+    const currentIndex = currentOrder.findIndex(c => c.categoryId === categoryId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= currentOrder.length) return;
+
+    // Create new array with reordered items
+    const newOrder = [...currentOrder];
+    const [removed] = newOrder.splice(currentIndex, 1);
+    newOrder.splice(newIndex, 0, removed);
+
+    // Calculate new sort_order using gap strategy
+    let newSortOrder: number;
+    if (newIndex === 0) {
+      newSortOrder = (newOrder[1]?.sortOrder ?? 1000) / 2;
+    } else if (newIndex === newOrder.length - 1) {
+      newSortOrder = (newOrder[newIndex - 1]?.sortOrder ?? 0) + 1000;
+    } else {
+      const prev = newOrder[newIndex - 1]?.sortOrder ?? 0;
+      const next = newOrder[newIndex + 1]?.sortOrder ?? prev + 2000;
+      newSortOrder = (prev + next) / 2;
+    }
+
+    // Update the moved category's sortOrder
+    newOrder[newIndex] = { ...newOrder[newIndex], sortOrder: newSortOrder };
+
+    // Optimistic update
+    setStoreCategoryOrders(prev => ({
+      ...prev,
+      [storeId]: newOrder
+    }));
+
+    // Persist to database using upsert
+    const { error } = await supabase
+      .from('household_store_category_order')
+      .upsert({
+        household_code: householdCode,
+        store_id: storeId,
+        category_id: categoryId,
+        sort_order: newSortOrder
+      }, {
+        onConflict: 'household_code,store_id,category_id'
+      });
+
+    if (error) {
+      console.error('Error reordering category:', error);
+      // Reload on error
+      loadStoreCategoryOrder(storeId);
+    }
+  };
+
   const favoritedStores = stores.filter(s => s.is_favorite);
   const otherStores = stores.filter(s => !s.is_favorite);
 
@@ -451,6 +575,7 @@ export default function Stores() {
                         </div>
                       </div>
                     ) : (
+                      <>
                       <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 transition">
                         {/* Up/Down Arrows */}
                         {favoritedStores.length > 1 && (
@@ -503,25 +628,100 @@ export default function Stores() {
                         </div>
 
                         {/* Action Buttons */}
-                        {(store.household_code === householdCode || householdCode === 'ASDF') && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => startEdit(store)}
-                              className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
-                              title="Edit"
+                        <div className="flex items-center gap-1">
+                          {(store.household_code === householdCode || householdCode === 'ASDF') && (
+                            <>
+                              <button
+                                onClick={() => startEdit(store)}
+                                className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
+                                title="Edit"
+                              >
+                                <PencilIcon />
+                              </button>
+                              <button
+                                onClick={() => deleteStore(store.id, store.name)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
+                                title="Delete"
+                              >
+                                🗑️
+                              </button>
+                            </>
+                          )}
+                          {/* Expand/Collapse for category ordering */}
+                          <button
+                            onClick={() => toggleStoreExpanded(store.id)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition cursor-pointer"
+                            title={expandedStoreId === store.id ? "Hide categories" : "Customize category order"}
+                          >
+                            <svg
+                              className={`w-5 h-5 transition-transform ${expandedStoreId === store.id ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <PencilIcon />
-                            </button>
-                            <button
-                              onClick={() => deleteStore(store.id, store.name)}
-                              className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
-                              title="Delete"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        )}
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Expanded Category Order Section */}
+                      {expandedStoreId === store.id && (
+                        <div className="mt-2 ml-8 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+                          <p className="text-xs text-indigo-600 font-semibold mb-2">
+                            Category Order for {store.name}
+                          </p>
+                          {storeCategoryOrders[store.id] ? (
+                            <div className="space-y-1.5">
+                              {storeCategoryOrders[store.id].map((cat, catIndex) => (
+                                <div
+                                  key={cat.categoryId}
+                                  className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-indigo-100"
+                                >
+                                  {/* Up/Down arrows for category */}
+                                  <div className="flex flex-col gap-0.5">
+                                    <button
+                                      onClick={() => moveCategoryForStore(store.id, cat.categoryId, 'up')}
+                                      disabled={catIndex === 0}
+                                      className={`p-0.5 rounded transition ${
+                                        catIndex === 0
+                                          ? 'text-gray-200 cursor-not-allowed'
+                                          : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 cursor-pointer'
+                                      }`}
+                                      title="Move up"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => moveCategoryForStore(store.id, cat.categoryId, 'down')}
+                                      disabled={catIndex === storeCategoryOrders[store.id].length - 1}
+                                      className={`p-0.5 rounded transition ${
+                                        catIndex === storeCategoryOrders[store.id].length - 1
+                                          ? 'text-gray-200 cursor-not-allowed'
+                                          : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 cursor-pointer'
+                                      }`}
+                                      title="Move down"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  {/* Category color dot and name */}
+                                  <span className={`px-2.5 py-1 rounded-md text-sm font-medium ${cat.color}`}>
+                                    {cat.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">Loading categories...</div>
+                          )}
+                        </div>
+                      )}
+                      </>
                     )}
                   </div>
                 ))}

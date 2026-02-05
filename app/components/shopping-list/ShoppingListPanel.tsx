@@ -57,6 +57,7 @@ interface ShoppingListPanelProps {
   activeTrips: { [store_id: string]: string };
   myActiveStoreId: string | null;
   favoriteStoreOrder?: { [store_id: string]: number };
+  storeCategoryOrders?: { [storeId: string]: { [categoryId: number]: number } };
 
   // Search state (for quick add and empty state)
   newItem: string;
@@ -108,6 +109,7 @@ export default function ShoppingListPanel({
   activeTrips,
   myActiveStoreId,
   favoriteStoreOrder = {},
+  storeCategoryOrders = {},
   newItem,
   showAutocomplete,
   autocompleteItems,
@@ -331,6 +333,7 @@ export default function ShoppingListPanel({
                   isMobile={isMobile}
                   onEndTrip={onEndTrip}
                   categories={categories}
+                  storeCategoryOrder={storeId ? storeCategoryOrders[storeId] : undefined}
                   favorites={favorites}
                   dealsItemNames={dealsItemNames}
                   prices={prices}
@@ -381,6 +384,7 @@ export default function ShoppingListPanel({
                   isMobile={isMobile}
                   onStartTrip={onStartTrip}
                   categories={categories}
+                  storeCategoryOrder={storeId ? storeCategoryOrders[storeId] : undefined}
                   favorites={favorites}
                   dealsItemNames={dealsItemNames}
                   prices={prices}

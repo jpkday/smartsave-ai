@@ -49,6 +49,7 @@ interface StoreSectionProps {
 
   // Category data
   categories: Category[];
+  storeCategoryOrder?: { [categoryId: number]: number };
 
   // Data access
   favorites: string[];
@@ -84,6 +85,7 @@ export default function StoreSection({
   onStartTrip,
   onEndTrip,
   categories,
+  storeCategoryOrder,
   favorites,
   dealsItemNames,
   prices,
@@ -116,10 +118,24 @@ export default function StoreSection({
     return acc;
   }, {} as { [key: number]: ListItem[] });
 
-  // Sort categories by sort_order
+  // Sort categories by per-store order if available, else global sort_order
   const sortedCategories = Object.entries(itemsByCategory).sort(([catIdA], [catIdB]) => {
     const idA = parseInt(catIdA);
     const idB = parseInt(catIdB);
+
+    // Check for per-store custom order first
+    if (storeCategoryOrder) {
+      const customA = storeCategoryOrder[idA];
+      const customB = storeCategoryOrder[idB];
+      if (customA !== undefined && customB !== undefined) {
+        return customA - customB;
+      }
+      // If only one has custom order, it comes first
+      if (customA !== undefined) return -1;
+      if (customB !== undefined) return 1;
+    }
+
+    // Fall back to global category sort_order
     const orderA = categories.find(c => c.id === idA)?.sort_order || 999;
     const orderB = categories.find(c => c.id === idB)?.sort_order || 999;
     return orderA - orderB;
