@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { CameraIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CameraIcon, PhotoIcon, XMarkIcon, DocumentIcon } from '@heroicons/react/24/outline';
 // import heic2any from 'heic2any'; // Moved to dynamic import
 import LoadingSpinner from './LoadingSpinner';
 
@@ -12,6 +12,8 @@ interface ReceiptPhotoCaptureProps {
 
 export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: ReceiptPhotoCaptureProps) {
     const [preview, setPreview] = useState<string | null>(null);
+    const [isPDF, setIsPDF] = useState(false);
+    const [pdfFileName, setPdfFileName] = useState<string | null>(null);
     const [addToTrips, setAddToTrips] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -23,7 +25,24 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
 
         setIsProcessing(true);
         try {
-            // Handle HEIC/HEIF conversion
+            // Check if it's a PDF
+            const fileIsPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+            setIsPDF(fileIsPDF);
+
+            if (fileIsPDF) {
+                // For PDFs, read directly as base64 (no conversion needed)
+                setPdfFileName(file.name);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const result = reader.result as string;
+                    setPreview(result);
+                    setIsProcessing(false);
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+
+            // Handle HEIC/HEIF conversion for images
             if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
                 try {
                     const heic2any = (await import('heic2any')).default;
@@ -65,6 +84,8 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
 
     const handleRetake = () => {
         setPreview(null);
+        setIsPDF(false);
+        setPdfFileName(null);
         if (cameraInputRef.current) cameraInputRef.current.value = '';
         if (galleryInputRef.current) galleryInputRef.current.value = '';
     };
@@ -87,7 +108,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                     <span className="hidden md:block">Upload Receipt</span>
                 </h2>
                 <p className="text-gray-600 text-sm mb-6">
-                    Upload a clear photo of your receipt to automatically extract items and prices.
+                    Upload a photo or PDF of your receipt to automatically extract items and prices.
                 </p>
 
                 {isProcessing ? (
@@ -109,7 +130,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                         <input
                             ref={galleryInputRef}
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.pdf,application/pdf"
                             onChange={handleFileSelect}
                             className="hidden"
                             id="receipt-gallery-input"
@@ -141,8 +162,8 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                                 <PhotoIcon className="w-10 h-10" />
                             </div>
                             <div className="text-center">
-                                <p className="text-xl font-bold text-blue-900">Upload Image</p>
-                                <p className="text-sm text-blue-600 font-medium opacity-80">Choose from gallery</p>
+                                <p className="text-xl font-bold text-blue-900">Upload File</p>
+                                <p className="text-sm text-blue-600 font-medium opacity-80">Image or PDF</p>
                             </div>
                         </button>
 
@@ -169,8 +190,8 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                                 Tips for Best Results:
                             </p>
                             <ul className="list-disc list-inside space-y-1 opacity-90 pl-1">
-                                <li>Place receipt on a dark, flat surface</li>
-                                <li>Ensure lighting is bright and even</li>
+                                <li>PDF receipts from email work great</li>
+                                <li>For photos: place receipt on a dark, flat surface</li>
                                 <li>Include the entire receipt from top to bottom</li>
                                 <li>Keep the camera steady and wait for focus</li>
                             </ul>
@@ -178,9 +199,21 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {/* Image Preview */}
+                        {/* Preview */}
                         <div className="rounded-2xl overflow-hidden border-2 border-gray-100 shadow-md max-h-[50vh] flex items-center justify-center bg-gray-50">
-                            <img src={preview} alt="Receipt preview" className="max-w-full h-auto object-contain" />
+                            {isPDF ? (
+                                <div className="flex flex-col items-center gap-4 p-8">
+                                    <div className="bg-red-100 rounded-full p-4">
+                                        <DocumentIcon className="w-16 h-16 text-red-600" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-lg font-bold text-gray-900">PDF Receipt</p>
+                                        <p className="text-sm text-gray-500 truncate max-w-[200px]">{pdfFileName}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <img src={preview!} alt="Receipt preview" className="max-w-full h-auto object-contain" />
+                            )}
                         </div>
 
                         {/* Trip Data Checkbox - Also right-aligned and no container here */}

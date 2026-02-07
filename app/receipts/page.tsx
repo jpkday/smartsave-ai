@@ -430,6 +430,19 @@ function ReceiptsContent() {
     if (!file) return;
 
     setScanning(true);
+
+    // Check if it's a PDF - skip all image processing
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (isPDF) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const rawBase64 = event.target?.result as string;
+        await processReceiptImage(rawBase64, true, true); // skipResize = true for PDFs
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     // Handle HEIC/HEIF conversion
     if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
       try {
@@ -511,17 +524,22 @@ function ReceiptsContent() {
     });
   };
 
-  const processReceiptImage = async (rawBase64: string, shouldAddTrip: boolean = true) => {
+  const processReceiptImage = async (rawBase64: string, shouldAddTrip: boolean = true, skipResize: boolean = false) => {
     setScanning(true);
-    setScanProgress({ current: 0, total: null, status: 'Preparing image...' });
+    setScanProgress({ current: 0, total: null, status: 'Preparing...' });
     let finalBase64 = rawBase64;
 
-    try {
-      // Try to resize
-      finalBase64 = await resizeImage(rawBase64);
-    } catch (resizeErr) {
-      console.error("Image resize failed:", resizeErr);
-      finalBase64 = rawBase64;
+    // Auto-detect PDF from base64 header and skip resize
+    const isPDF = rawBase64.startsWith('data:application/pdf');
+
+    if (!skipResize && !isPDF) {
+      try {
+        // Try to resize images (not PDFs)
+        finalBase64 = await resizeImage(rawBase64);
+      } catch (resizeErr) {
+        console.error("Image resize failed:", resizeErr);
+        finalBase64 = rawBase64;
+      }
     }
 
     setScanPreview(finalBase64);
@@ -927,13 +945,13 @@ function ReceiptsContent() {
                   <input
                     ref={galleryInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
 
                   <p className="text-xs text-blue-700 mt-2 text-center w-full">
-                    We'll extract item and price data automatically.
+                    Upload an image or PDF — we'll extract items automatically.
                   </p>
                 </div>
 
