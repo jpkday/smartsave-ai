@@ -17,6 +17,7 @@ import StatusModal from '../components/StatusModal';
 import UndoToast from '../components/shopping-list/UndoToast';
 import ItemLibrary from '../components/shopping-list/ItemLibrary';
 import ShoppingListPanel from '../components/shopping-list/ShoppingListPanel';
+import { SuggestionData } from '../components/shopping-list/SuggestionsCarousel';
 import StoreModal from '../components/shopping-list/StoreModal';
 import EditItemModal from '../components/shopping-list/EditItemModal';
 import { SHARED_USER_ID, DEFAULT_ITEMS } from '../lib/constants';
@@ -99,6 +100,7 @@ export default function ShoppingList() {
   type SelectItemsFilter = 'FAVORITES' | 'RECENT' | 'FREQUENT' | null;
   const [selectItemsFilter, setSelectItemsFilter] = useState<SelectItemsFilter>(null);
   const [frequentItemCounts, setFrequentItemCounts] = useState<Record<string, number>>({});
+  const [suggestionData, setSuggestionData] = useState<SuggestionData>({ overdue: [], upcoming: [], together: [], deals: [], staples: [] });
 
   // Price Photo Capture State
   const [showPricePhotoCapture, setShowPricePhotoCapture] = useState(false);
@@ -1031,10 +1033,18 @@ export default function ShoppingList() {
         const isStale = (now.getTime() - startTime) > STALE_TRIP_MS;
 
         if (isStale) {
-          supabase.from('trips').update({ ended_at: now.toISOString() }).eq('id', trip.id).then(({ error }) => {
-            if (error) console.error('Failed to auto-close stale trip:', trip.id, error);
-            else console.log('Auto-closed stale trip:', trip.id);
-          });
+          // End via the API so purchased (checked) items are cleared from the list, same as End Trip
+          fetch('/api/trips/end', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ trip_id: trip.id, store_id: trip.store_id, household_code: householdCode }),
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              console.log('Auto-closed stale trip:', trip.id);
+              loadData();
+            })
+            .catch((error) => console.error('Failed to auto-close stale trip:', trip.id, error));
         } else {
           // Valid trip
           if (!tripsByStore[trip.store_id]) {
@@ -1323,6 +1333,67 @@ export default function ShoppingList() {
       setFrequentItemCounts(counts);
     }
 
+    // Load suggestion data (all 4 RPCs in parallel)
+    const allListItemIds = listData?.map((r: any) => r.item_id).filter((id: any) => typeof id === 'number') || [];
+    const [overdueRes, upcomingRes, togetherRes, dealsRes, historyRes] = await Promise.all([
+      supabase.rpc('get_overdue_items', { household: householdCode }),
+      supabase.rpc('get_upcoming_items', { household: householdCode }),
+      allListItemIds.length > 0
+        ? supabase.rpc('get_often_together_items', { household: householdCode, current_item_ids: allListItemIds })
+        : Promise.resolve({ data: [] }),
+      supabase.rpc('get_pantry_deals', { household: householdCode }),
+      supabase
+        .from('shopping_list_events')
+        .select('item_id, item_name, checked_at')
+        .eq('household_code', householdCode)
+        .not('item_id', 'is', null)
+        .not('checked_at', 'is', null)
+        .order('checked_at', { ascending: false })
+        .limit(3000),
+    ]);
+
+    // Filter out items already on the list
+    const onListIds = new Set(allListItemIds);
+    const filterOnList = (items: any[]) => (items || []).filter((i: any) => !onListIds.has(i.item_id));
+
+    // Staples: rank items by purchase frequency, decayed by how many shopping days ago each purchase was.
+    // Counting shopping days (not calendar days) keeps long gaps in app usage from skewing results.
+    const STAPLE_DECAY = 0.85;
+    const ACTIVE_SESSIONS = 6; // items not bought in the last N shopping days are treated as no longer bought
+    const shoppingDays = [...new Set((historyRes.data ?? []).map((e) => e.checked_at.slice(0, 10)))]; // newest first
+    const sessionIndex = new Map(shoppingDays.map((d, i) => [d, i]));
+    const byItem = new Map<number, { item_name: string; days: Set<string>; score: number }>();
+    (historyRes.data ?? []).forEach((e) => {
+      const day = e.checked_at.slice(0, 10);
+      const entry = byItem.get(e.item_id) ?? { item_name: e.item_name, days: new Set<string>(), score: 0 };
+      if (!entry.days.has(day)) {
+        entry.days.add(day);
+        entry.score += STAPLE_DECAY ** sessionIndex.get(day)!;
+      }
+      byItem.set(e.item_id, entry);
+    });
+    const activeItemIds = new Set(
+      [...byItem].filter(([, v]) => [...v.days].some((d) => sessionIndex.get(d)! < ACTIVE_SESSIONS)).map(([id]) => id)
+    );
+    const staples = [...byItem]
+      .filter(([id]) => !onListIds.has(id))
+      .sort(([, a], [, b]) => b.score - a.score)
+      .slice(0, 12)
+      .map(([item_id, v]) => ({
+        item_id,
+        item_name: v.item_name,
+        times_purchased: v.days.size,
+        last_purchase: [...v.days].sort().pop()!,
+      }));
+    const filterActive = (items: any[]) => filterOnList(items).filter((i: any) => activeItemIds.has(i.item_id));
+
+    setSuggestionData({
+      overdue: filterActive(overdueRes.data),
+      upcoming: filterActive(upcomingRes.data),
+      together: filterOnList(togetherRes.data || []),
+      deals: filterOnList(dealsRes.data),
+      staples,
+    });
 
     setLoading(false);
   }, [householdCode]);
@@ -2159,6 +2230,7 @@ export default function ShoppingList() {
             <ShoppingListPanel
               loading={loading}
               listItems={listItems}
+              suggestionData={suggestionData}
               showCheckedItems={showCheckedItems}
               showPriorityOnly={showPriorityOnly}
               isMobile={isMobile}

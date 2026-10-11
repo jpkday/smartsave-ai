@@ -4,6 +4,7 @@ import StoreSection from './StoreSection';
 import CategoryGroup from './CategoryGroup';
 import SearchItemInput from './SearchItemInput';
 import LoadingSpinner from '../LoadingSpinner';
+import SuggestionsCarousel, { SuggestionData } from './SuggestionsCarousel';
 import { DEFAULT_ITEMS } from '../../lib/constants';
 
 interface ItemNote {
@@ -41,6 +42,7 @@ interface ShoppingListPanelProps {
   // State
   loading: boolean;
   listItems: ListItem[];
+  suggestionData: SuggestionData;
   showCheckedItems: boolean;
   showPriorityOnly: boolean;
   isMobile: boolean;
@@ -95,6 +97,7 @@ interface ShoppingListPanelProps {
 export default function ShoppingListPanel({
   loading,
   listItems,
+  suggestionData,
   showCheckedItems,
   showPriorityOnly,
   isMobile,
@@ -173,33 +176,65 @@ export default function ShoppingListPanel({
             />
           </div>
 
-          {/* Suggestions Grid */}
+          {/* Personalized Suggestions or Common Items fallback */}
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Common Items</h3>
-              {favorites.length > 0 && (
-                <button
-                  onClick={onAddFavorites}
-                  className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  ⭐ Add all Favorites
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {DEFAULT_ITEMS.map((name) => (
-                <button
-                  key={name}
-                  onClick={() => onSelectItem(name)}
-                  className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all group shadow-sm hover:shadow-md cursor-pointer active:scale-95"
-                >
-                  <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
-                    {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
-                  </span>
-                  <span className="text-xs font-bold text-gray-700 text-center line-clamp-1">{name.split(' (')[0]}</span>
-                </button>
-              ))}
-            </div>
+            {suggestionData.staples.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Your Usuals</h3>
+                  {favorites.length > 0 && (
+                    <button
+                      onClick={onAddFavorites}
+                      className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      ⭐ Add all Favorites
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {suggestionData.staples.map((item) => (
+                    <button
+                      key={item.item_id}
+                      onClick={() => onSelectItem(item.item_name)}
+                      className="flex flex-col items-start p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all shadow-sm hover:shadow-md cursor-pointer active:scale-95 text-left"
+                    >
+                      <span className="text-sm font-bold text-gray-800 line-clamp-1">{item.item_name}</span>
+                      <span className="text-xs text-gray-400 mt-1">
+                        {`Bought ${item.times_purchased}× · last ${new Date(item.last_purchase + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Common Items</h3>
+                  {favorites.length > 0 && (
+                    <button
+                      onClick={onAddFavorites}
+                      className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      ⭐ Add all Favorites
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {DEFAULT_ITEMS.map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => onSelectItem(name)}
+                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all group shadow-sm hover:shadow-md cursor-pointer active:scale-95"
+                    >
+                      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+                        {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
+                      </span>
+                      <span className="text-xs font-bold text-gray-700 text-center line-clamp-1">{name.split(' (')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -250,6 +285,9 @@ export default function ShoppingListPanel({
 
   return (
     <>
+      {/* SUGGESTIONS CAROUSEL */}
+      <SuggestionsCarousel data={suggestionData} onAddItem={onSelectItem} />
+
       {/* SHOPPING LIST HEADER */}
       <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
