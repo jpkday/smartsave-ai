@@ -358,6 +358,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
                 const itemPrice = parseFloat(item.price?.toString() || '0');
 
+                // Receipts that print weight (e.g. "1.08 lb x 2.09/lb") give us the real weight and unit price.
+                // Only estimate weight from history when the receipt shows just a line total.
+                const ocrQuantity = parseFloat(item.quantity?.toString() || '1');
+                const ocrHasWeight = !!isWeighted && ocrQuantity > 0 && ocrQuantity !== 1;
+
                 // Apply OCR error correction
                 const correctedName = correctOcrName(ocrName);
                 const ocrCorrectedName = correctedName;
@@ -373,7 +378,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 if (ocrSku && skuMap.has(ocrSku.toLowerCase())) {
                     const skuMatch = skuMap.get(ocrSku.toLowerCase())!;
 
-                    const est = calculateWeightFromHistory(skuMatch.itemId, itemPrice, skuMatch.isWeighted);
+                    const est = ocrHasWeight ? null : calculateWeightFromHistory(skuMatch.itemId, itemPrice, skuMatch.isWeighted);
 
                     // If estimated, Price field shows Unit Price. Else shows Total.
                     const displayPrice = est
@@ -423,7 +428,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 if (exactAlias) {
                     const itemData = Array.isArray(exactAlias.items) ? exactAlias.items[0] : (exactAlias.items as any);
                     const isItemWeighted = itemData?.is_weighted ?? isWeighted;
-                    const est = calculateWeightFromHistory(exactAlias.item_id, itemPrice, isItemWeighted);
+                    const est = ocrHasWeight ? null : calculateWeightFromHistory(exactAlias.item_id, itemPrice, isItemWeighted);
 
                     const displayPrice = est
                         ? est.pricePerLb!.toFixed(2)
@@ -453,7 +458,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                 const exactItem = itemsList.find(i => i.name.toLowerCase() === nameForMatching.toLowerCase());
                 if (exactItem) {
                     const isItemWeighted = exactItem.is_weighted ?? isWeighted;
-                    const est = calculateWeightFromHistory(exactItem.id, itemPrice, isItemWeighted);
+                    const est = ocrHasWeight ? null : calculateWeightFromHistory(exactItem.id, itemPrice, isItemWeighted);
 
                     const displayPrice = est
                         ? est.pricePerLb!.toFixed(2)
@@ -491,7 +496,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     if (match) {
                         const itemData = Array.isArray(match.items) ? match.items[0] : (match.items as any);
                         const isItemWeighted = itemData?.is_weighted ?? isWeighted;
-                        const est = calculateWeightFromHistory(match.item_id, itemPrice, isItemWeighted);
+                        const est = ocrHasWeight ? null : calculateWeightFromHistory(match.item_id, itemPrice, isItemWeighted);
 
                         const displayPrice = est
                             ? est.pricePerLb!.toFixed(2)
@@ -524,7 +529,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     const match = itemsList.find(i => i.name === fuzzyItemName);
                     if (match) {
                         const isItemWeighted = match.is_weighted ?? isWeighted;
-                        const est = calculateWeightFromHistory(match.id, itemPrice, isItemWeighted);
+                        const est = ocrHasWeight ? null : calculateWeightFromHistory(match.id, itemPrice, isItemWeighted);
 
                         const displayPrice = est
                             ? est.pricePerLb!.toFixed(2)
@@ -557,7 +562,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     const matchedItem = itemsList.find(i => i.name === item.ai_match);
                     if (matchedItem) {
                         const isItemWeighted = matchedItem.is_weighted ?? isWeighted;
-                        const est = calculateWeightFromHistory(matchedItem.id, itemPrice, isItemWeighted);
+                        const est = ocrHasWeight ? null : calculateWeightFromHistory(matchedItem.id, itemPrice, isItemWeighted);
 
                         const displayPrice = est
                             ? est.pricePerLb!.toFixed(2)
