@@ -269,15 +269,29 @@ ${skuMappingsSection}
             // 2. Identify Store
             let storeId = null;
             if (data.store) {
-                const { data: stores } = await supabase
-                    .from('stores')
-                    .select('id, name')
-                    .ilike('name', `%${data.store}%`); // Simple fuzzy
+                const [{ data: stores }, { data: favs }] = await Promise.all([
+                    supabase.from('stores').select('id, name, household_code'),
+                    supabase.from('household_store_favorites').select('store_id').eq('household_code', householdCode),
+                ]);
+                const favIds = new Set((favs ?? []).map((f: any) => f.store_id));
+                const ocrStore = String(data.store).toLowerCase();
 
-                if (stores && stores.length > 0) {
-                    storeId = stores[0].id;
+                // Name match either way ("Costco Wholesale" contains "Costco"), then prefer
+                // the household's favorite stores, then stores the household owns
+                const candidates = (stores ?? [])
+                    .filter((s: any) => {
+                        const name = s.name.toLowerCase();
+                        return ocrStore.includes(name) || name.includes(ocrStore);
+                    })
+                    .sort((a: any, b: any) =>
+                        (Number(favIds.has(b.id)) - Number(favIds.has(a.id))) ||
+                        (Number(b.household_code === householdCode) - Number(a.household_code === householdCode))
+                    );
+
+                if (candidates.length > 0) {
+                    storeId = candidates[0].id;
                     // Inject identified store matches into response for UI
-                    data.store_match = stores[0];
+                    data.store_match = { id: candidates[0].id, name: candidates[0].name };
                 }
             }
 

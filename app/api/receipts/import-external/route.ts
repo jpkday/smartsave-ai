@@ -34,13 +34,19 @@ export async function POST(req: NextRequest) {
 
         // Find or create store
         let storeId = null;
-        const { data: stores } = await supabase
-            .from('stores')
-            .select('id, name')
-            .ilike('name', `%${storeName}%`);
+        const [{ data: stores }, { data: favs }] = await Promise.all([
+            supabase.from('stores').select('id, name, household_code').ilike('name', `%${storeName}%`),
+            supabase.from('household_store_favorites').select('store_id').eq('household_code', householdCode),
+        ]);
 
         if (stores && stores.length > 0) {
-            storeId = stores[0].id;
+            // Several stores share a name (e.g. "Walmart"): prefer this household's favorites, then its own stores
+            const favIds = new Set((favs ?? []).map((f: any) => f.store_id));
+            const [best] = [...stores].sort((a: any, b: any) =>
+                (Number(favIds.has(b.id)) - Number(favIds.has(a.id))) ||
+                (Number(b.household_code === householdCode) - Number(a.household_code === householdCode))
+            );
+            storeId = best.id;
         }
 
         // Format OCR data to match expected structure

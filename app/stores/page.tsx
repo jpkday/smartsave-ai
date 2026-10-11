@@ -88,12 +88,15 @@ export default function Stores() {
       favoritesMap.set(f.store_id, f.sort_order);
     });
 
-    // Mark stores as favorited and include sort_order
-    const storesWithFavorites = (storesData || []).map((s: any) => ({
-      ...s,
-      is_favorite: favoritesMap.has(s.id),
-      sort_order: favoritesMap.get(s.id) ?? 0
-    }));
+    // Mark stores as favorited and include sort_order.
+    // Only show this household's favorites and stores it created (hide other households' stores).
+    const storesWithFavorites = (storesData || [])
+      .filter((s: any) => favoritesMap.has(s.id) || s.household_code === householdCode)
+      .map((s: any) => ({
+        ...s,
+        is_favorite: favoritesMap.has(s.id),
+        sort_order: favoritesMap.get(s.id) ?? 0
+      }));
 
     // Sort: favorited first (by sort_order), then non-favorites alphabetically
     storesWithFavorites.sort((a, b) => {

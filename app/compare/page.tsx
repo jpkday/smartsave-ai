@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { filterToHouseholdStores } from '../lib/stores';
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_DEMO_ITEM_ID = 43; // Item ID for demo default
@@ -169,9 +170,10 @@ function CompareContent() {
     if (storesError) console.error('Error loading stores:', storesError);
 
     if (storesData) {
-      setStores(storesData);
+      const householdStores = await filterToHouseholdStores(storesData);
+      setStores(householdStores);
       const lookup: { [name: string]: string } = {};
-      storesData.forEach((s) => (lookup[s.name] = s.id));
+      householdStores.forEach((s) => (lookup[s.name] = s.id));
       setStoresByName(lookup);
     }
 

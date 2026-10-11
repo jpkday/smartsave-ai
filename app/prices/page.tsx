@@ -8,6 +8,7 @@ import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { SHARED_USER_ID } from '../lib/constants';
 import { formatLocalDate } from '../utils/date';
 import StatusModal from '../components/StatusModal';
+import { filterToHouseholdStores } from '../lib/stores';
 
 interface Store {
   id: string;
@@ -244,7 +245,7 @@ function PricesContent() {
     // 1. Stores
     const { data: storesData } = await supabase.from('stores').select('*');
     if (storesData) {
-      setStores(storesData);
+      setStores(await filterToHouseholdStores(storesData));
     }
 
     // 2. Items
