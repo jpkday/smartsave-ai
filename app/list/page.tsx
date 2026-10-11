@@ -80,6 +80,7 @@ export default function ShoppingList() {
   const [items, setItems] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentItemIds, setRecentItemIds] = useState<number[]>([]);
+  const [recentItemMeta, setRecentItemMeta] = useState<Record<number, { checked_at: string; store: string | null }>>({});
   const [favoritesIds, setFavoritesIds] = useState<number[]>([]);
   const [dealsItemNames, setDealsItemNames] = useState<Set<string>>(new Set());
 
@@ -438,7 +439,7 @@ export default function ShoppingList() {
   // =========================
   // Store preferences are now managed by useStorePreferences hook
 
-  const getPriceForStore = (store: string, itemName: string): number | null => {
+  const getPriceEntryForStore = (store: string, itemName: string): { price: number; date: string } | null => {
     // Try ID-based lookup first (handles renamed items)
     const storeId = storesByName[store];
     const item = allItems.find(i => i.name === itemName);
@@ -449,7 +450,7 @@ export default function ShoppingList() {
 
       if (pdById) {
         const n = parseFloat(pdById.price);
-        if (Number.isFinite(n)) return n;
+        if (Number.isFinite(n)) return { price: n, date: pdById.date };
       }
     }
 
@@ -459,22 +460,32 @@ export default function ShoppingList() {
 
     if (!pdByName) return null;
     const n = parseFloat(pdByName.price);
-    return Number.isFinite(n) ? n : null;
+    return Number.isFinite(n) ? { price: n, date: pdByName.date } : null;
   };
+
+  const getPriceForStore = (store: string, itemName: string): number | null =>
+    getPriceEntryForStore(store, itemName)?.price ?? null;
 
   const getStoreOptionsForItem = (itemName: string) => {
     const options = stores
-      .map((store) => ({ store, price: getPriceForStore(store, itemName) }))
-      .filter((o) => o.price !== null) as Array<{ store: string; price: number }>;
+      .map((store) => ({ store, entry: getPriceEntryForStore(store, itemName) }))
+      .filter((o) => o.entry !== null)
+      .map((o) => ({ store: o.store, price: o.entry!.price, date: o.entry!.date }));
     options.sort((a, b) => a.price - b.price);
     return options;
   };
 
   const formatMoney = (n: number) => `$${n.toFixed(2)}`;
 
+  // Prices older than this don't compete for "cheapest store" when a fresher price exists
+  const STALE_PRICE_DAYS = 90;
+
   const getCheapestStoreForItem = (itemName: string): string | null => {
     const options = getStoreOptionsForItem(itemName);
-    return options.length ? options[0].store : null;
+    const cutoff = Date.now() - STALE_PRICE_DAYS * 24 * 60 * 60 * 1000;
+    const fresh = options.filter((o) => new Date(o.date).getTime() >= cutoff);
+    const best = fresh[0] ?? options[0];
+    return best ? best.store : null;
   };
 
   const getEffectiveStore = (itemName: string): string | null => {
@@ -1291,7 +1302,7 @@ export default function ShoppingList() {
 
       const { data: recentData, error: recentErr } = await supabase
         .from('shopping_list_events')
-        .select('item_id, checked_at')
+        .select('item_id, checked_at, store')
         .eq('household_code', householdCode)
         .not('checked_at', 'is', null)
         .gte('checked_at', thirtyDaysAgo)
@@ -1302,18 +1313,19 @@ export default function ShoppingList() {
         console.error('[RECENT] query error:', recentErr);
         setRecentItemIds([]);
       } else {
-        const seen = new Set<number>();
+        const meta: Record<number, { checked_at: string; store: string | null }> = {};
         const uniqueRecentIds = (recentData ?? [])
-          .map((r) => r.item_id)
-          .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
-          .filter((id) => {
-            if (seen.has(id)) return false;
-            seen.add(id);
+          .filter((r) => typeof r.item_id === 'number' && Number.isFinite(r.item_id))
+          .filter((r) => {
+            if (meta[r.item_id]) return false;
+            meta[r.item_id] = { checked_at: r.checked_at, store: r.store };
             return true;
           })
+          .map((r) => r.item_id as number)
           .slice(0, 50);
 
         setRecentItemIds(uniqueRecentIds);
+        setRecentItemMeta(meta);
       }
     }
 
@@ -2198,6 +2210,7 @@ export default function ShoppingList() {
                 listIds={listIds}
                 favorites={favorites}
                 recentRank={recentRank}
+                recentItemMeta={recentItemMeta}
                 frequentItemCounts={frequentItemCounts}
                 prices={prices}
                 storesByName={storesByName}

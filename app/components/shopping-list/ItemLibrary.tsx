@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { Fragment, useRef } from 'react';
 import SearchItemInput from './SearchItemInput';
 
 interface ItemNote {
@@ -43,6 +43,7 @@ interface ItemLibraryProps {
   listIds: Set<number>;
   favorites: string[];
   recentRank: Map<number, number>;
+  recentItemMeta: Record<number, { checked_at: string; store: string | null }>;
   frequentItemCounts: Record<string, number> | Record<number, number>;
   prices: { [key: string]: PriceData };
   storesByName: { [name: string]: string };
@@ -81,6 +82,7 @@ export default function ItemLibrary({
   listIds,
   favorites,
   recentRank,
+  recentItemMeta,
   frequentItemCounts,
   prices,
   storesByName,
@@ -141,6 +143,24 @@ export default function ItemLibrary({
 
   // Show all items (no limit) - use search/filters to narrow down
   const renderList = list;
+
+  // Group recent items by the trip they were last bought on (local day + store)
+  const getRecentTripGroup = (itemId: number): { key: string; label: string } | null => {
+    const meta = recentItemMeta[itemId];
+    if (!meta) return null;
+    const d = new Date(meta.checked_at);
+    const dayKey = d.toLocaleDateString('en-CA');
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+    const dayLabel =
+      dayKey === today.toLocaleDateString('en-CA') ? 'Today'
+        : dayKey === yesterday.toLocaleDateString('en-CA') ? 'Yesterday'
+          : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return {
+      key: `${dayKey}|${meta.store ?? ''}`,
+      label: meta.store ? `${dayLabel} · ${meta.store}` : dayLabel,
+    };
+  };
 
   // Toggle filter logic
   const toggleFilter = (filter: SelectItemsFilter) => {
@@ -325,8 +345,13 @@ export default function ItemLibrary({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
-          {renderList.map((it: ItemRow) => {
+          {renderList.map((it: ItemRow, idx: number) => {
             const isFavorite = favorites.includes(it.name);
+
+            // Recent view: header above each trip (purchase day + store)
+            const tripGroup = selectItemsFilter === 'RECENT' ? getRecentTripGroup(it.id) : null;
+            const showTripHeader =
+              tripGroup !== null && (idx === 0 || getRecentTripGroup(renderList[idx - 1].id)?.key !== tripGroup.key);
 
             // Price logic
             const effStore = getEffectiveStore(it.name);
@@ -340,8 +365,13 @@ export default function ItemLibrary({
             const price = priceData?.price ? parseFloat(priceData.price) : 0;
 
             return (
+              <Fragment key={it.id}>
+              {showTripHeader && (
+                <div className={`text-xs font-bold text-gray-500 uppercase tracking-wider px-1 ${idx === 0 ? '' : 'pt-2'}`}>
+                  {tripGroup!.label}
+                </div>
+              )}
               <div
-                key={it.id}
                 className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
                   ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
                   : 'bg-white border-gray-300 hover:bg-gray-50'
@@ -431,6 +461,7 @@ export default function ItemLibrary({
                   </button>
                 )}
               </div>
+              </Fragment>
             );
           })}
         </div>
