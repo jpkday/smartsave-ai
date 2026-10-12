@@ -180,11 +180,11 @@ export default function ItemLibrary({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-4">
+    <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
-        <h2 className="text-xl font-semibold text-gray-800">
-          My Pantry <span className="text-sm text-gray-500 font-normal">({list.length.toLocaleString()})</span>
+        <h2 className="text-xl font-semibold text-bb-cream">
+          My Pantry <span className="text-sm text-bb-muted font-normal">({list.length.toLocaleString()})</span>
         </h2>
       </div>
 
@@ -209,7 +209,7 @@ export default function ItemLibrary({
         {newItem.trim() && !allItems.some(item => item.name.toLowerCase() === newItem.trim().toLowerCase()) && (
           <button
             onClick={onAddNewItem}
-            className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-2xl font-semibold cursor-pointer transition flex items-center justify-center gap-2"
+            className="mt-2 w-full bg-bb-gold hover:brightness-110 text-bb-navy px-4 py-2 rounded-2xl font-semibold cursor-pointer transition flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -229,7 +229,7 @@ export default function ItemLibrary({
               alphabetScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             }
           }}
-          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
+          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full border border-bb-line bg-white/5 hover:bg-white/10 text-bb-muted hover:text-bb-cream cursor-pointer transition flex-shrink-0"
           aria-label="Scroll left"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -240,7 +240,7 @@ export default function ItemLibrary({
         {/* Pinned "All" Button */}
         <button
           onClick={() => onFilterLetterChange('All')}
-          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap flex-shrink-0 ${filterLetter === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap flex-shrink-0 ${filterLetter === 'All' ? 'bg-bb-gold text-bb-navy' : 'bg-white/5 text-bb-muted hover:text-bb-cream hover:bg-white/10'
             }`}
         >
           All
@@ -257,7 +257,7 @@ export default function ItemLibrary({
               <button
                 key={letter}
                 onClick={() => toggleLetter(letter)}
-                className={`min-w-[2.25rem] md:min-w-[2.5rem] flex items-center justify-center px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`min-w-[2.25rem] md:min-w-[2.5rem] flex items-center justify-center px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition whitespace-nowrap ${filterLetter === letter ? 'bg-bb-gold text-bb-navy' : 'bg-white/5 text-bb-muted hover:text-bb-cream hover:bg-white/10'
                   }`}
               >
                 {letter}
@@ -273,7 +273,7 @@ export default function ItemLibrary({
               alphabetScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
             }
           }}
-          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 cursor-pointer transition flex-shrink-0"
+          className="hidden md:flex items-center justify-center w-8 h-8 rounded-full border border-bb-line bg-white/5 hover:bg-white/10 text-bb-muted hover:text-bb-cream cursor-pointer transition flex-shrink-0"
           aria-label="Scroll right"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -288,8 +288,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('FAVORITES')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FAVORITES'
-            ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
-            : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+            ? 'bg-bb-gold text-bb-navy border-bb-gold'
+            : 'bg-transparent text-bb-muted border-bb-line hover:bg-white/5 hover:text-bb-cream'
             }`}
         >
           Favorites
@@ -299,8 +299,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('FREQUENT')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'FREQUENT'
-            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
-            : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300'
+            ? 'bg-bb-gold text-bb-navy border-bb-gold'
+            : 'bg-transparent text-bb-muted border-bb-line hover:bg-white/5 hover:text-bb-cream'
             }`}
         >
           Frequent
@@ -310,8 +310,8 @@ export default function ItemLibrary({
         <button
           onClick={() => toggleFilter('RECENT')}
           className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer ${selectItemsFilter === 'RECENT'
-            ? 'bg-red-500 text-white border-red-500 shadow-md transform scale-105'
-            : 'bg-white text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300'
+            ? 'bg-bb-gold text-bb-navy border-bb-gold'
+            : 'bg-transparent text-bb-muted border-bb-line hover:bg-white/5 hover:text-bb-cream'
             }`}
         >
           Recent
@@ -320,23 +320,23 @@ export default function ItemLibrary({
 
       {/* Item List */}
       {list.length === 0 ? (
-        <div className="text-gray-500 text-center py-8">
+        <div className="text-bb-muted text-center py-8">
           {selectItemsFilter === 'FAVORITES' ? (
             <div className="flex flex-col items-center gap-2">
               <span className="text-4xl">⭐</span>
-              <p className="font-semibold text-gray-700">No favorites yet</p>
+              <p className="font-semibold text-bb-cream">No favorites yet</p>
               <p className="text-sm">Star items to easily find them here. Click the Favorites tab again to clear the filter.</p>
             </div>
           ) : selectItemsFilter === 'FREQUENT' ? (
             <div className="flex flex-col items-center gap-2">
               <span className="text-4xl">📈</span>
-              <p className="font-semibold text-gray-700">No frequently bought items</p>
+              <p className="font-semibold text-bb-cream">No frequently bought items</p>
               <p className="text-sm">Items you buy often will appear here. Click the Frequent tab again to clear the filter.</p>
             </div>
           ) : selectItemsFilter === 'RECENT' ? (
             <div className="flex flex-col items-center gap-2">
               <span className="text-4xl">🕒</span>
-              <p className="font-semibold text-gray-700">No recent items</p>
+              <p className="font-semibold text-bb-cream">No recent items</p>
               <p className="text-sm">Items you've bought recently will appear here. Click the Recent tab again to clear the filter.</p>
             </div>
           ) : (
@@ -367,14 +367,14 @@ export default function ItemLibrary({
             return (
               <Fragment key={it.id}>
               {showTripHeader && (
-                <div className={`text-xs font-bold text-gray-500 uppercase tracking-wider px-1 ${idx === 0 ? '' : 'pt-2'}`}>
+                <div className={`text-xs font-bold text-bb-muted uppercase tracking-wider px-1 ${idx === 0 ? '' : 'pt-2'}`}>
                   {tripGroup!.label}
                 </div>
               )}
               <div
                 className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
-                  ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-                  : 'bg-white border-gray-300 hover:bg-gray-50'
+                  ? 'bg-white/[0.03] border-bb-gold/30 hover:bg-white/5'
+                  : 'bg-white/[0.03] border-bb-line hover:bg-white/5'
                   }`}
               >
                 <div className="flex-1 min-w-0">
@@ -390,16 +390,16 @@ export default function ItemLibrary({
                         category_id: it.category_id,
                       });
                     }}
-                    className="font-medium text-gray-800 hover:text-teal-600 cursor-pointer text-left break-words"
+                    className="font-medium text-bb-cream hover:text-bb-gold cursor-pointer text-left break-words"
                   >
                     {it.name}
                   </button>
 
                   <div className="mt-1 flex items-center gap-2">
                     {(priceData && price > 0) ? (
-                      <p className="text-xs text-green-600">
+                      <p className="text-xs text-bb-cream">
                         {formatMoney(price)}{' '}
-                        <span className="text-gray-400 ml-1">
+                        <span className="text-bb-muted ml-1">
                           ({getDaysAgo(priceData.date)}, {effStore})
                         </span>
                       </p>
@@ -414,7 +414,7 @@ export default function ItemLibrary({
                           is_priority: false,
                           category_id: it.category_id,
                         }, 'price')}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+                        className="text-bb-gold text-xs font-semibold hover:underline cursor-pointer transition inline-block"
                       >
                         Add Price
                       </button>
@@ -423,19 +423,19 @@ export default function ItemLibrary({
                     {(priceData && price > 0) && (() => {
                       const unitPrice = getFormattedUnitPrice(it.name, price);
                       return unitPrice ? (
-                        <span className="text-teal-600 text-xs font-medium">• {unitPrice}</span>
+                        <span className="text-bb-muted text-xs font-medium">• {unitPrice}</span>
                       ) : null;
                     })()}
                   </div>
 
                   {/* Active Note Preview */}
                   {it.active_note && (
-                    <div className="mt-1 flex items-start gap-1 p-1 bg-orange-50 border border-orange-100 rounded text-xs text-orange-800 max-w-fit">
+                    <div className="mt-1 flex items-start gap-1 p-1 bg-bb-gold/10 border border-bb-gold/20 rounded text-xs text-bb-gold max-w-fit">
                       <span className="select-none text-xs">⚠️</span>
                       <div className="flex-1">
                         <span className="font-semibold line-clamp-1">{it.active_note.note}</span>
                         {it.active_note.store_id && (
-                          <div className="text-[10px] text-orange-600">
+                          <div className="text-[10px] text-bb-gold/80">
                             at {Object.keys(storesByName).find(name => storesByName[name] === it.active_note?.store_id) || 'Unknown Store'}
                           </div>
                         )}
@@ -447,7 +447,7 @@ export default function ItemLibrary({
                 {listIds.has(it.id) ? (
                   <button
                     onClick={() => onToggleItemById(it.id, it.name)}
-                    className="flex items-center justify-center gap-1 bg-gray-50 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-100 hover:border-red-100 text-sm font-bold px-3 py-2 rounded-xl transition cursor-pointer"
+                    className="flex items-center justify-center gap-1 bg-transparent hover:bg-bb-red/10 text-bb-muted hover:text-bb-red border border-bb-line hover:border-bb-red/30 text-sm font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer"
                     title="Remove from list"
                   >
                     Remove
@@ -455,7 +455,7 @@ export default function ItemLibrary({
                 ) : (
                   <button
                     onClick={() => onToggleItemById(it.id, it.name)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                    className="bg-bb-gold hover:brightness-110 text-bb-navy text-sm font-semibold px-3.5 py-1.5 rounded-xl transition cursor-pointer"
                   >
                     Add
                   </button>

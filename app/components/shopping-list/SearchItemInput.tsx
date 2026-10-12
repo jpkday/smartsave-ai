@@ -40,8 +40,8 @@ export default function SearchItemInput({
             placeholder={placeholder}
             className={
               isHero
-                ? 'w-full px-6 py-4 border-2 border-gray-100 rounded-2xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 text-gray-800 text-lg shadow-inner bg-gray-50 transition-all font-medium italic'
-                : 'w-full px-3 py-2 pr-8 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800'
+                ? 'w-full px-6 py-4 border border-bb-line rounded-2xl bg-bb-raised text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50 text-lg transition-all font-medium italic'
+                : 'w-full px-3 py-2 pr-8 border border-bb-line rounded-2xl bg-bb-raised text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50'
             }
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -56,7 +56,7 @@ export default function SearchItemInput({
           {value && !showSubmitButton && (
             <button
               onClick={() => onChange('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-bb-muted hover:text-bb-cream transition"
               type="button"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,8 +71,8 @@ export default function SearchItemInput({
             onClick={onSubmit}
             className={
               isHero
-                ? 'bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-700 cursor-pointer transition-all shadow-lg active:scale-95 text-lg'
-                : 'bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap'
+                ? 'bg-bb-gold text-bb-navy px-8 py-4 rounded-2xl font-bold hover:brightness-110 cursor-pointer transition-all active:scale-95 text-lg'
+                : 'bg-bb-gold text-bb-navy px-4 py-2 rounded-2xl font-semibold hover:brightness-110 cursor-pointer transition whitespace-nowrap'
             }
           >
             Add
@@ -84,8 +84,8 @@ export default function SearchItemInput({
         <div
           className={
             isHero
-              ? 'absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'
-              : 'absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto'
+              ? 'absolute z-10 w-full mt-2 bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-h-60 overflow-y-auto overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'
+              : 'absolute z-10 w-full mt-1 bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-h-60 overflow-y-auto'
           }
         >
           {(isHero ? autocompleteItems : autocompleteItems.slice(0, 10)).map((item) => (
@@ -97,8 +97,8 @@ export default function SearchItemInput({
               }}
               className={
                 isHero
-                  ? 'w-full text-left px-6 py-4 hover:bg-teal-50 cursor-pointer border-b border-gray-50 last:border-b-0 text-gray-800 font-medium transition-colors'
-                  : 'w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800'
+                  ? 'w-full text-left px-6 py-4 hover:bg-white/5 cursor-pointer border-b border-bb-line last:border-b-0 text-bb-cream font-medium transition-colors'
+                  : 'w-full text-left px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-bb-line last:border-b-0 text-bb-cream'
               }
             >
               {item}

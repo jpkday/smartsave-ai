@@ -493,7 +493,7 @@ function FlyersContent() {
   };
 
   return (
-    <div className="min-h-screen app-bg pb-20 md:pb-0">
+    <div className="min-h-screen app-bg text-bb-cream pb-20 md:pb-0">
       <div className="sticky top-0 z-50 app-header w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3">
           <div className="flex justify-between items-center">
@@ -511,28 +511,28 @@ function FlyersContent() {
       </div>
 
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
-        <div className="bg-white rounded-2xl shadow-lg p-3">
+        <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-3">
           {/* Desktop Header */}
           <div className="hidden md:block mb-2 px-3 pt-2">
-            <h1 className="text-2xl font-bold text-gray-800">Add Flyer</h1>
+            <h1 className="text-2xl font-bold text-bb-cream">Add Flyer</h1>
           </div>
 
           {/* Intro / Instructions */}
           <div className="mb-6 px-3 text-center md:text-left">
-            <h2 className="text-gray-600 text-sm font-medium">Enter deals from your local flyers manually.</h2>
+            <h2 className="text-bb-muted text-sm font-medium">Enter deals from your local flyers manually.</h2>
           </div>
 
-          <div className="w-full bg-white p-3">
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+          <div className="w-full bg-bb-panel p-3">
+            <div className="border border-bb-line rounded-2xl shadow-sm p-4">
 
               {/* Store and Date Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store</label>
+                  <label className="block text-sm font-semibold text-bb-cream mb-2">Store</label>
                   <select
                     value={selectedStoreId}
                     onChange={(e) => setSelectedStoreId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                    className="w-full px-4 py-3 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold cursor-pointer [color-scheme:dark]"
                   >
                     <option value="">Select</option>
                     {stores.map((s, idx) => (
@@ -546,21 +546,21 @@ function FlyersContent() {
                 {/* Validity Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Valid From</label>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">Valid From</label>
                     <input
                       type="date"
                       value={validFrom}
                       onChange={(e) => setValidFrom(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                      className="w-full px-4 py-3 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold cursor-pointer [color-scheme:dark]"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Until</label>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">Valid Until</label>
                     <input
                       type="date"
                       value={validUntil}
                       onChange={(e) => setValidUntil(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                      className="w-full px-4 py-3 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold cursor-pointer [color-scheme:dark]"
                     />
                   </div>
                 </div>
@@ -569,9 +569,9 @@ function FlyersContent() {
           </div>
 
           {/* Items Table */}
-          <div className="w-full bg-white p-3">
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
+          <div className="w-full bg-bb-panel p-3">
+            <div className="border border-bb-line rounded-2xl shadow-sm p-4">
+              <h2 className="text-xl font-bold text-bb-cream mb-3">Items</h2>
               <div className="space-y-3">
                 {receiptItems.map((ri, idx) => (
                   <div key={idx} className="flex gap-3 items-center">
@@ -594,13 +594,13 @@ function FlyersContent() {
                         placeholder="SKU"
                         value={ri.sku || ''}
                         onChange={(e) => updateItem(idx, 'sku', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                        className="w-full px-3 py-2 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream placeholder:text-slate-500"
                       />
                     </div>
 
                     <div className="w-28">
-                      <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-                        <span className="text-gray-800 font-semibold mr-1">$</span>
+                      <div className="flex items-center bg-bb-raised border border-bb-line rounded-2xl px-3 py-2 focus-within:border-bb-gold/50 focus-within:ring-2 focus-within:ring-bb-gold/50">
+                        <span className="text-bb-cream font-semibold mr-1">$</span>
                         <input
                           type="text"
                           inputMode="decimal"
@@ -613,13 +613,13 @@ function FlyersContent() {
                               if (idx === receiptItems.length - 1) addRow();
                             }
                           }}
-                          className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                          className="w-full text-right font-semibold text-bb-cream bg-transparent placeholder:text-slate-500 focus:outline-none"
                         />
                       </div>
                     </div>
                     <button
                       onClick={() => removeRow(idx)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                      className="p-2 text-bb-muted hover:text-bb-red hover:bg-bb-red/10 rounded-xl transition cursor-pointer"
                       aria-label="Close"
                       title="Remove"
                     >
@@ -630,7 +630,7 @@ function FlyersContent() {
               </div>
               <button
                 onClick={addRow}
-                className="mt-3 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                className="mt-3 text-bb-cream hover:text-bb-gold font-semibold cursor-pointer"
               >
                 + Add Item
               </button>
@@ -638,10 +638,10 @@ function FlyersContent() {
           </div>
 
           {/* Save Button */}
-          <div className="w-full bg-white p-5 md:flex md:justify-end">
+          <div className="w-full bg-bb-panel p-5 md:flex md:justify-end">
             <button
               onClick={saveReceipt}
-              className="w-full md:w-auto md:px-16 bg-indigo-600 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+              className="w-full md:w-auto md:px-16 bg-bb-gold text-bb-navy px-4 py-3 rounded-2xl text-base font-semibold hover:brightness-110 transition cursor-pointer"
             >
               Save Flyer Prices
             </button>

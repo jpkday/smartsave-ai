@@ -31,11 +31,11 @@ export default function StoreModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-5 max-w-md w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-bb-cream">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -51,11 +51,11 @@ export default function StoreModal({
               </svg>
               <span>Swap Store</span>
             </h3>
-            <p className="text-sm text-gray-600 mt-1">{itemName}</p>
+            <p className="text-sm text-bb-muted mt-1">{itemName}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl"
+            className="text-bb-muted hover:text-bb-cream cursor-pointer text-xl"
             title="Close"
             aria-label="Close"
           >
@@ -73,14 +73,14 @@ export default function StoreModal({
                   onClose();
                 }}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                  currentPreference === 'AUTO' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
+                  currentPreference === 'AUTO' ? 'border-bb-gold bg-bb-gold/10' : 'border-bb-line bg-bb-raised hover:bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-800">Auto (cheapest)</span>
-                  <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">{storeOptions[0].store}</span>
+                  <span className="font-semibold text-bb-cream">Auto (cheapest)</span>
+                  <span className="text-xs bg-white/5 border border-bb-line text-bb-muted px-2 py-1 rounded-full">{storeOptions[0].store}</span>
                 </div>
-                <span className="font-bold text-gray-800">{formatMoney(storeOptions[0].price)}</span>
+                <span className="font-bold text-bb-cream">{formatMoney(storeOptions[0].price)}</span>
               </button>
             )}
 
@@ -97,18 +97,18 @@ export default function StoreModal({
                     onClose();
                   }}
                   className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition text-left ${
-                    isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:bg-gray-50'
+                    isSelected ? 'border-bb-gold bg-bb-gold/10' : 'border-bb-line bg-bb-raised hover:bg-white/5'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800">{store}</span>
+                    <span className="font-semibold text-bb-cream">{store}</span>
                     {isBestPrice && (
-                      <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
+                      <span className="text-xs bg-bb-green/10 text-bb-green px-2 py-1 rounded-full">
                         Best Price
                       </span>
                     )}
                   </div>
-                  <span className="font-bold text-gray-800">{formatMoney(price)}</span>
+                  <span className="font-bold text-bb-cream">{formatMoney(price)}</span>
                 </button>
               );
             })}
@@ -116,8 +116,8 @@ export default function StoreModal({
 
           {/* Stores without prices - now swappable! */}
           {storesWithoutPrice.length > 0 && (
-            <div className="pt-3 border-t-2 border-dashed border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-600 mb-2">
+            <div className="pt-3 border-t-2 border-dashed border-bb-line">
+              <h4 className="text-sm font-semibold text-bb-muted mb-2">
                 {storeOptions.length === 0 ? "Select a Store:" : "Other Favorite Stores:"}
               </h4>
               <div className="space-y-2">
@@ -127,7 +127,7 @@ export default function StoreModal({
                     <div
                       key={store}
                       className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 border-dashed transition text-left ${
-                        isSelected ? 'border-indigo-400 bg-indigo-50 font-bold' : 'border-gray-200 hover:bg-gray-100'
+                        isSelected ? 'border-bb-gold bg-bb-gold/10 font-bold' : 'border-bb-line hover:bg-white/5'
                       }`}
                     >
                       <div
@@ -137,7 +137,7 @@ export default function StoreModal({
                           onClose();
                         }}
                       >
-                        <span className="text-gray-800">{store}</span>
+                        <span className="text-bb-cream">{store}</span>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export default function StoreModal({
                             onClose();
                           }}
                           className={`p-2 rounded-lg transition ${
-                            isSelected ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                            isSelected ? 'bg-bb-gold text-bb-navy' : 'text-bb-muted hover:text-bb-gold hover:bg-white/5'
                           }`}
                           title={isSelected ? 'Currently Selected' : 'Swap to this store'}
                         >
@@ -160,7 +160,7 @@ export default function StoreModal({
                           onClick={() => {
                             onOpenEditModalForPrice(itemName, store);
                           }}
-                          className="text-indigo-600 hover:bg-indigo-100 p-2 rounded-full transition"
+                          className="text-bb-gold hover:bg-white/5 p-2 rounded-full transition"
                           title="Add Price"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

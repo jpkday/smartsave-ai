@@ -2,15 +2,22 @@
 
 /* build beautiful palette */
 @theme {
-  --color-bb-navy: #0e1b2a;
-  --color-bb-panel: #13243a;
-  --color-bb-cream: #ece6da;
-  --color-bb-gold: #c9a96e;
+  --color-bb-navy: #0e1b2a;    /* page background */
+  --color-bb-panel: #13243a;   /* cards / panels */
+  --color-bb-raised: #1a2e48;  /* rows, inputs, hover inside panels */
+  --color-bb-line: rgb(255 255 255 / 0.08); /* borders, dividers */
+  --color-bb-cream: #ece6da;   /* primary text */
+  --color-bb-muted: #94a3b8;   /* secondary text */
+  --color-bb-gold: #c9a96e;    /* the one accent: active state, primary action */
+  --color-bb-green: #7fd1a4;   /* money saved, positive change */
+  --color-bb-red: #e58a7b;     /* price up, destructive */
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0e1b2a;
+  --foreground: #ece6da;
+  /* Native controls (date pickers, select menus, scrollbars) render in dark mode */
+  color-scheme: dark;
 }
 
 .dark {

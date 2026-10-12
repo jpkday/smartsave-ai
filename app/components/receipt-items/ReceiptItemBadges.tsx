@@ -48,22 +48,22 @@ export default function ReceiptItemBadges({
     <div className={containerClass}>
       {/* SKU Match Badge */}
       {showSkuMatch && (
-        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-blue-100 text-blue-700">
+        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-white/5 border border-bb-line text-bb-muted">
           SKU Match
         </span>
       )}
 
       {/* SKU Value */}
       {sku && (
-        <div className="text-[14px] text-gray-400 font-mono">
+        <div className="text-[14px] text-bb-muted font-mono">
           SKU: {sku}
         </div>
       )}
 
       {/* OCR Correction Indicator */}
       {showOcrCorrection && (
-        <div className="text-xs text-orange-600 flex items-center gap-1">
-          <span className="text-[8px] px-1 py-0.5 rounded bg-orange-100 text-orange-700 font-bold">
+        <div className="text-xs text-bb-gold flex items-center gap-1">
+          <span className="text-[8px] px-1 py-0.5 rounded bg-bb-gold/10 text-bb-gold font-bold">
             FIX
           </span>
           → {ocrCorrectedName}
@@ -72,8 +72,8 @@ export default function ReceiptItemBadges({
 
       {/* Weight Estimation */}
       {estimatedWeight && pricePerLb && (
-        <div className="text-xs text-amber-700 flex items-center gap-1">
-          <span className="text-[8px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">
+        <div className="text-xs text-bb-muted flex items-center gap-1">
+          <span className="text-[8px] px-1 py-0.5 rounded bg-white/5 text-bb-muted font-bold">
             WT
           </span>
           ~{estimatedWeight.toFixed(2)}lbs
@@ -82,14 +82,14 @@ export default function ReceiptItemBadges({
 
       {/* Tax Badge */}
       {isTaxed && taxAmount && taxAmount > 0 && (
-        <span className="text-[12px] px-1 py-0.5 rounded bg-red-100 text-red-600 font-bold">
+        <span className="text-[12px] px-1 py-0.5 rounded bg-white/5 text-bb-muted font-bold">
           +${taxAmount.toFixed(2)} T
         </span>
       )}
 
       {/* Discount Badge */}
       {discountApplied !== undefined && discountApplied > 0 && (
-        <span className="text-[14px] px-1 py-0.5 rounded bg-green-100 text-green-700 font-bold">
+        <span className="text-[14px] px-1 py-0.5 rounded bg-bb-green/10 text-bb-green font-bold">
           -${discountApplied.toFixed(2)}
         </span>
       )}
@@ -98,8 +98,8 @@ export default function ReceiptItemBadges({
       {confidence && (
         <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
           confidence === 'high'
-            ? 'bg-green-100 text-green-700'
-            : 'bg-purple-100 text-purple-700'
+            ? 'bg-bb-green/10 text-bb-green'
+            : 'bg-bb-gold/10 text-bb-gold'
         }`}>
           {confidence === 'high' ? 'Exact' : 'Fuzzy'}
         </span>

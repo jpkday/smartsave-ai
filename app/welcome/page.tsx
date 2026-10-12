@@ -148,7 +148,7 @@ export default function WelcomePage() {
     if (loading) {
         return (
             <div className="min-h-screen app-bg flex items-center justify-center p-6">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-bb-gold border-t-transparent"></div>
             </div>
         );
     }
@@ -156,19 +156,17 @@ export default function WelcomePage() {
     return (
         <div className="min-h-screen app-bg">
             <div className="max-w-2xl mx-auto px-4 py-12">
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-700">
+                <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-700">
                     {/* Hero Banner */}
-                    <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-6 md:p-10 text-center text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 -mr-10 -mt-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                        <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-32 h-32 bg-indigo-900/20 rounded-full blur-2xl"></div>
+                    <div className="border-b border-bb-line p-6 md:p-10 text-center text-bb-cream relative overflow-hidden">
 
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-md shadow-inner">
-                            <span className="text-3xl animate-bounce">✨</span>
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
+                            <span className="text-3xl">✨</span>
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight drop-shadow-md">
+                        <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight">
                             Welcome to SmartSaveAI!
                         </h1>
-                        <p className="text-lg md:text-xl text-blue-50 opacity-90 max-w-xl mx-auto font-medium">
+                        <p className="text-lg md:text-xl text-bb-muted max-w-xl mx-auto font-medium">
                             We&apos;re glad you&apos;re here. Let&apos;s build your first shopping list and start saving you money.
                         </p>
                     </div>
@@ -176,7 +174,7 @@ export default function WelcomePage() {
                     <div className="p-6 md:p-10 space-y-10">
                         {/* Search Section */}
                         <div className="max-w-2xl mx-auto">
-                            <h2 className="text-sm font-black text-indigo-500 uppercase tracking-[0.2em] mb-3 text-center">
+                            <h2 className="text-sm font-black text-bb-gold uppercase tracking-[0.2em] mb-3 text-center">
                                 Step 1: What do you need today?
                             </h2>
                             <div className="relative">
@@ -184,7 +182,7 @@ export default function WelcomePage() {
                                     <input
                                         type="text"
                                         placeholder="Search e.g. 'Eggs', 'Milk'..."
-                                        className="flex-1 px-6 py-4 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 text-gray-800 text-xl shadow-md bg-gray-50 transition-all font-semibold outline-none"
+                                        className="flex-1 px-6 py-4 border border-bb-line rounded-2xl bg-bb-raised text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50 text-xl transition-all font-semibold"
                                         value={newItem}
                                         onChange={(e) => handleInputChange(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && addItemToDb(newItem)}
@@ -193,22 +191,22 @@ export default function WelcomePage() {
                                     <button
                                         disabled={!newItem.trim() || isAdding}
                                         onClick={() => addItemToDb(newItem)}
-                                        className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-indigo-700 hover:shadow-indigo-100 shadow-lg active:scale-95 transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="bg-bb-gold text-bb-navy px-8 py-4 rounded-2xl font-black hover:brightness-110 active:scale-95 transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isAdding ? 'Adding...' : 'Add'}
                                     </button>
                                 </div>
 
                                 {showAutocomplete && (
-                                    <div className="absolute z-10 w-full mt-3 bg-white border border-gray-100 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                                    <div className="absolute z-10 w-full mt-3 bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-hidden animate-in fade-in zoom-in duration-200">
                                         {autocompleteItems.map((item) => (
                                             <button
                                                 key={item}
                                                 onClick={() => addItemToDb(item)}
-                                                className="w-full text-left px-8 py-5 hover:bg-indigo-50 cursor-pointer border-b border-gray-50 last:border-b-0 text-gray-800 font-bold transition-colors flex items-center justify-between group"
+                                                className="w-full text-left px-8 py-5 hover:bg-white/5 cursor-pointer border-b border-bb-line last:border-b-0 text-bb-cream font-bold transition-colors flex items-center justify-between group"
                                             >
                                                 {item}
-                                                <span className="opacity-0 group-hover:opacity-100 text-indigo-500 text-sm">Add Item +</span>
+                                                <span className="opacity-0 group-hover:opacity-100 text-bb-gold text-sm">Add Item +</span>
                                             </button>
                                         ))}
                                     </div>
@@ -218,7 +216,7 @@ export default function WelcomePage() {
 
                         {/* Suggestions Grid */}
                         <div className="max-w-4xl mx-auto">
-                            <h2 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-6 text-center">
+                            <h2 className="text-sm font-black text-bb-muted uppercase tracking-[0.2em] mb-6 text-center">
                                 Or start with the essentials
                             </h2>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -226,39 +224,38 @@ export default function WelcomePage() {
                                     <button
                                         key={name}
                                         onClick={() => addItemToDb(name)}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-50 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50/50 transition-all group shadow-sm hover:shadow-lg cursor-pointer active:scale-95 relative overflow-hidden"
+                                        className="flex flex-col items-center justify-center p-4 bg-white/[0.03] border border-bb-line rounded-2xl hover:border-bb-gold/50 hover:bg-white/5 transition-all group cursor-pointer active:scale-95 relative overflow-hidden"
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-indigo-500/0 group-hover:to-indigo-500/5 transition-all"></div>
                                         <span className="text-4xl mb-2 group-hover:scale-110 transition-transform duration-300 transform-gpu">
                                             {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
                                         </span>
-                                        <span className="text-sm font-extrabold text-gray-800 text-center">{name.split(' (')[0]}</span>
+                                        <span className="text-sm font-extrabold text-bb-cream text-center">{name.split(' (')[0]}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Educational Footer */}
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 pt-10 border-t border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 pt-10 border-t border-bb-line">
                             <div className="flex gap-4 items-center">
-                                <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-sm">1</div>
+                                <div className="w-10 h-10 bg-bb-raised border border-bb-line text-bb-gold rounded-xl flex items-center justify-center font-black text-xl shrink-0">1</div>
                                 <div>
-                                    <h4 className="text-lg font-black text-gray-800">Build your List</h4>
-                                    <p className="text-base text-gray-500 font-medium leading-relaxed">Add everything you need. We&apos;ll keep track of it all.</p>
+                                    <h4 className="text-lg font-black text-bb-cream">Build your List</h4>
+                                    <p className="text-base text-bb-muted font-medium leading-relaxed">Add everything you need. We&apos;ll keep track of it all.</p>
                                 </div>
                             </div>
                             <div className="flex gap-4 items-center">
-                                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-sm">2</div>
+                                <div className="w-10 h-10 bg-bb-raised border border-bb-line text-bb-gold rounded-xl flex items-center justify-center font-black text-xl shrink-0">2</div>
                                 <div>
-                                    <h4 className="text-lg font-black text-gray-800">Compare Prices</h4>
-                                    <p className="text-base text-gray-500 font-medium leading-relaxed">We automatically find the cheapest stores for every item.</p>
+                                    <h4 className="text-lg font-black text-bb-cream">Compare Prices</h4>
+                                    <p className="text-base text-bb-muted font-medium leading-relaxed">We automatically find the cheapest stores for every item.</p>
                                 </div>
                             </div>
                             <div className="flex gap-4 items-center">
-                                <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-sm">3</div>
+                                <div className="w-10 h-10 bg-bb-raised border border-bb-line text-bb-gold rounded-xl flex items-center justify-center font-black text-xl shrink-0">3</div>
                                 <div>
-                                    <h4 className="text-lg font-black text-gray-800">Save Automatically</h4>
-                                    <p className="text-base text-gray-500 font-medium leading-relaxed">Most families save over 20% on every trip with SmartSave.</p>
+                                    <h4 className="text-lg font-black text-bb-cream">Save Automatically</h4>
+                                    <p className="text-base text-bb-muted font-medium leading-relaxed">Most families save over 20% on every trip with SmartSave.</p>
                                 </div>
                             </div>
                         </div>

@@ -598,15 +598,15 @@ function HistoryContent() {
       <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
 
         {/* Filters - Desktop: Item then Store */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
+        <div className="hidden md:block bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6 mb-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
+              <label className="block text-sm font-semibold text-bb-cream mb-2">Select Item</label>
               <div className="relative search-autocomplete-container">
                 <input
                   type="text"
                   placeholder="Search items..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => {
@@ -618,16 +618,16 @@ function HistoryContent() {
 
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
                       const isSelected = selectedItemId === item.id;
                       return (
                         <button
                           key={item.id}
                           onClick={() => selectItemFromSearch(item.id, item.name)}
-                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
-                            ? 'bg-indigo-50 text-blue-700 font-semibold'
-                            : 'hover:bg-gray-50 text-gray-800'
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-bb-line last:border-b-0 ${isSelected
+                            ? 'bg-bb-gold/10 text-bb-gold font-semibold'
+                            : 'hover:bg-white/5 text-bb-cream'
                             }`}
                         >
                           {item.name} {isSelected && '✓'}
@@ -639,7 +639,7 @@ function HistoryContent() {
               </div>
               {selectedItemId && (
                 <div className="mt-2">
-                  <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
+                  <span className="inline-flex items-center gap-2 bg-bb-gold text-bb-navy px-5 py-2.5 rounded-2xl text-base font-semibold">
                     {selectedItemName}
                     <button
                       onClick={() => {
@@ -653,7 +653,7 @@ function HistoryContent() {
                           console.error('Failed to clear localStorage:', err);
                         }
                       }}
-                      className="hover:bg-indigo-700 rounded-2xl px-2 py-1"
+                      className="hover:bg-bb-navy/10 rounded-2xl px-2 py-1"
                     >
                       ✕
                     </button>
@@ -662,7 +662,7 @@ function HistoryContent() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
+              <label className="block text-sm font-semibold text-bb-cream mb-2">Filter by Store</label>
               <select
                 value={selectedStoreId}
                 onChange={(e) => {
@@ -674,7 +674,7 @@ function HistoryContent() {
                     console.error('Failed to save to localStorage:', err);
                   }
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream font-semibold bg-bb-raised"
               >
                 <option value="All">All Stores</option>
                 {stores.map((store, idx) => (
@@ -688,10 +688,10 @@ function HistoryContent() {
         </div>
 
         {/* Filters - Mobile: Store then Item */}
-        <div className="md:hidden bg-white rounded-2xl shadow-lg p-4 mb-6">
+        <div className="md:hidden bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 mb-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Store</label>
+              <label className="block text-sm font-semibold text-bb-cream mb-2">Filter by Store</label>
               <select
                 value={selectedStoreId}
                 onChange={(e) => {
@@ -703,7 +703,7 @@ function HistoryContent() {
                     console.error('Failed to save to localStorage:', err);
                   }
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white"
+                className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream font-semibold bg-bb-raised"
               >
                 <option value="All">All Stores</option>
                 {stores.map((store, idx) => (
@@ -714,12 +714,12 @@ function HistoryContent() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Item</label>
+              <label className="block text-sm font-semibold text-bb-cream mb-2">Select Item</label>
               <div className="relative search-autocomplete-container">
                 <input
                   type="text"
                   placeholder="Search items..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                  className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => {
@@ -731,16 +731,16 @@ function HistoryContent() {
 
                 {/* Autocomplete dropdown */}
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
                       const isSelected = selectedItemId === item.id;
                       return (
                         <button
                           key={item.id}
                           onClick={() => selectItemFromSearch(item.id, item.name)}
-                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${isSelected
-                            ? 'bg-indigo-50 text-blue-700 font-semibold'
-                            : 'hover:bg-gray-50 text-gray-800'
+                          className={`w-full text-left px-4 py-3 cursor-pointer border-b border-bb-line last:border-b-0 ${isSelected
+                            ? 'bg-bb-gold/10 text-bb-gold font-semibold'
+                            : 'hover:bg-white/5 text-bb-cream'
                             }`}
                         >
                           {item.name} {isSelected && '✓'}
@@ -752,7 +752,7 @@ function HistoryContent() {
               </div>
               {selectedItemId && (
                 <div className="mt-3">
-                  <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl text-base font-semibold">
+                  <span className="inline-flex items-center gap-2 bg-bb-gold text-bb-navy px-5 py-2.5 rounded-2xl text-base font-semibold">
                     {selectedItemName}
                     <button
                       onClick={() => {
@@ -766,7 +766,7 @@ function HistoryContent() {
                           console.error('Failed to clear localStorage:', err);
                         }
                       }}
-                      className="hover:bg-indigo-700 rounded-2xl px-2 py-1"
+                      className="hover:bg-bb-navy/10 rounded-2xl px-2 py-1"
                     >
                       ✕
                     </button>
@@ -779,25 +779,25 @@ function HistoryContent() {
 
         {/* History Display */}
         {!selectedItemId ? (
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-            <p className="text-gray-500 text-base md:text-lg">Select an item above to view price history</p>
+          <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 md:p-12 text-center">
+            <p className="text-bb-muted text-base md:text-lg">Select an item above to view price history</p>
           </div>
         ) : loading ? (
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-            <p className="text-gray-500 text-base md:text-lg">Loading...</p>
+          <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 md:p-12 text-center">
+            <p className="text-bb-muted text-base md:text-lg">Loading...</p>
           </div>
         ) : selectedStoreId === 'All' ? (
           // Show grouped by store (All Stores view)
           priceHistory.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-              <p className="text-gray-500 text-base md:text-lg">No price history found for {selectedItemName}</p>
-              <p className="text-gray-400 text-sm mt-2">Select a specific store to add your first price entry</p>
+            <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 md:p-12 text-center">
+              <p className="text-bb-muted text-base md:text-lg">No price history found for {selectedItemName}</p>
+              <p className="text-bb-muted text-sm mt-2">Select a specific store to add your first price entry</p>
             </div>
           ) : (
             <div className="space-y-4">
               {Object.entries(groupedHistory).sort(([a], [b]) => a.localeCompare(b)).map(([store, records]) => (
-                <div key={store} className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">{store}</h2>
+                <div key={store} className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6">
+                  <h2 className="text-xl font-bold text-bb-cream mb-4">{store}</h2>
                   <div className="space-y-3">
                     {records.map((record, idx) => {
                       const prevRecord = records[idx + 1];
@@ -807,9 +807,9 @@ function HistoryContent() {
                       return (
                         <div key={record.id}>
                           <div className="flex justify-between items-center gap-3">
-                            <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
+                            <div className="flex-1 flex justify-between items-center p-3 bg-bb-raised rounded-2xl">
                               <div>
-                                <p className="font-semibold text-gray-800">
+                                <p className="font-semibold text-bb-cream">
                                   {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -817,16 +817,16 @@ function HistoryContent() {
                                   })}
                                 </p>
                                 {change && (
-                                  <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                  <p className={`text-sm ${change.direction === 'up' ? 'text-bb-red' : 'text-bb-green'}`}>
                                     {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
                                   </p>
                                 )}
                               </div>
-                              <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                              <span className="text-2xl font-bold text-bb-cream">${parseFloat(record.price).toFixed(2)}</span>
                             </div>
                             <button
                               onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                              className="text-red-600 hover:text-red-800 cursor-pointer"
+                              className="text-bb-muted hover:text-bb-red cursor-pointer"
                               title="Delete entry"
                             >
                               🗑️
@@ -836,7 +836,7 @@ function HistoryContent() {
                             <div className="mt-2 flex justify-end">
                               <button
                                 onClick={() => confirmPrice(record.price, record.store_id || record.store)}
-                                className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-2xl font-semibold text-sm transition cursor-pointer flex items-center gap-1"
+                                className="bg-bb-gold text-bb-navy hover:brightness-110 px-4 py-3 rounded-2xl font-semibold text-sm transition cursor-pointer flex items-center gap-1"
                                 title="Confirm this price for today"
                               >
                                 Confirm Price
@@ -856,35 +856,39 @@ function HistoryContent() {
           <div className="space-y-6">
             {/* Price Graph - Shows if there's any data */}
             {priceHistory.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold text-bb-cream mb-4">
                   Price Over Time
                 </h2>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 12, fill: '#94a3b8' }}
+                      stroke="#94a3b8"
                       angle={-45}
                       textAnchor="end"
                       height={60}
                     />
                     <YAxis
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 12, fill: '#94a3b8' }}
+                      stroke="#94a3b8"
                       domain={[0, 'dataMax + 1']}
                       tickFormatter={(value) => `$${value.toFixed(2)}`}
                     />
                     <Tooltip
                       formatter={(value: number | undefined) => value !== undefined ? [`$${value.toFixed(2)}`, 'Price'] : ['', '']}
-                      labelStyle={{ color: '#1f2937' }}
+                      contentStyle={{ backgroundColor: '#13243a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#ece6da' }}
+                      itemStyle={{ color: '#ece6da' }}
+                      labelStyle={{ color: '#ece6da' }}
                     />
                     <Line
                       type="linear"
                       dataKey="price"
-                      stroke="#14b8a6"
+                      stroke="#c9a96e"
                       strokeWidth={3}
-                      dot={{ fill: '#14b8a6', r: 6 }}
+                      dot={{ fill: '#c9a96e', r: 6 }}
                       activeDot={{ r: 8 }}
                       connectNulls={false}
                     />
@@ -895,8 +899,8 @@ function HistoryContent() {
 
             {/* Timeline List - Shows existing data or helpful message */}
             {priceHistory.length > 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold text-bb-cream mb-4">
                   {selectedItemName} at {stores.find(s => s.id === selectedStoreId)?.name || 'Unknown Store'}
                 </h2>
                 <div className="space-y-3">
@@ -908,9 +912,9 @@ function HistoryContent() {
                     return (
                       <div key={record.id}>
                         <div className="flex justify-between items-center gap-3">
-                          <div className="flex-1 flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
+                          <div className="flex-1 flex justify-between items-center p-3 bg-bb-raised rounded-2xl">
                             <div>
-                              <p className="font-semibold text-gray-800">
+                              <p className="font-semibold text-bb-cream">
                                 {parseLocalDate(record.recorded_date).toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
@@ -918,16 +922,16 @@ function HistoryContent() {
                                 })}
                               </p>
                               {change && (
-                                <p className={`text-sm ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                                <p className={`text-sm ${change.direction === 'up' ? 'text-bb-red' : 'text-bb-green'}`}>
                                   {change.direction === 'up' ? '⬆️' : '⬇️'} ${change.amount.toFixed(2)} ({change.percent}%)
                                 </p>
                               )}
                             </div>
-                            <span className="text-2xl font-bold text-gray-800">${parseFloat(record.price).toFixed(2)}</span>
+                            <span className="text-2xl font-bold text-bb-cream">${parseFloat(record.price).toFixed(2)}</span>
                           </div>
                           <button
                             onClick={() => deletePriceEntry(record.id, record.recorded_date, record.price)}
-                            className="text-red-600 hover:text-red-800 cursor-pointer"
+                            className="text-bb-muted hover:text-bb-red cursor-pointer"
                             title="Delete entry"
                           >
                             🗑️
@@ -937,7 +941,7 @@ function HistoryContent() {
                           <div className="mt-2 flex justify-end">
                             <button
                               onClick={() => confirmPrice(record.price)}
-                              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-3 rounded-2xl font-semibold transition cursor-pointer"
+                              className="bg-bb-gold text-bb-navy hover:brightness-110 px-4 py-3 rounded-2xl font-semibold transition cursor-pointer"
                               title="Confirm this price for today"
                             >
                               Confirm Price
@@ -950,53 +954,53 @@ function HistoryContent() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center">
-                <p className="text-gray-500 text-base md:text-lg">No price history yet for {selectedItemName} at {stores.find(s => s.id === selectedStoreId)?.name}</p>
-                <p className="text-gray-400 text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
+              <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 md:p-12 text-center">
+                <p className="text-bb-muted text-base md:text-lg">No price history yet for {selectedItemName} at {stores.find(s => s.id === selectedStoreId)?.name}</p>
+                <p className="text-bb-muted text-sm mt-2">Add your first entry below to start tracking prices! 📊</p>
               </div>
             )}
 
             {/* Add Price Entry Widget - At bottom */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Add Latest Price</h2>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6">
+              <h2 className="text-xl font-bold text-bb-cream mb-2">Add Latest Price</h2>
+              <p className="text-sm text-bb-muted mb-4">
                 Adding price for: <span className="font-semibold">{selectedItemName}</span> at <span className="font-semibold">{stores.find(s => s.id === selectedStoreId)?.name}</span>
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Price</label>
-                  <div className="flex items-center border border-gray-300 rounded-2xl px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-                    <span className="text-gray-800 font-semibold mr-1">$</span>
+                  <label className="block text-sm font-semibold text-bb-cream mb-2">Price</label>
+                  <div className="flex items-center bg-bb-raised border border-bb-line rounded-2xl px-3 py-3 focus-within:border-bb-gold/50 focus-within:ring-2 focus-within:ring-bb-gold/50">
+                    <span className="text-bb-cream font-semibold mr-1">$</span>
                     <input
                       type="text"
                       inputMode="decimal"
                       placeholder="0.00"
                       value={newPrice}
                       onChange={(e) => handlePriceChange(e.target.value)}
-                      className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+                      className="w-full text-right font-semibold text-bb-cream bg-transparent placeholder:text-slate-500 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                  <label className="block text-sm font-semibold text-bb-cream mb-2">Date</label>
                   <input
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold"
+                    className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Unit</label>
+                  <label className="block text-sm font-semibold text-bb-cream mb-2">Unit</label>
                   <div className="grid grid-cols-3 gap-1">
                     {['each', 'lb', 'oz'].map(u => (
                       <button
                         key={u}
                         onClick={() => setSelectedItemUnit(u)}
                         className={`py-3 text-xs font-bold rounded-2xl border transition-all ${selectedItemUnit === u
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-300'
+                          ? 'bg-bb-gold text-bb-navy border-bb-gold'
+                          : 'bg-transparent text-bb-muted border-bb-line hover:text-bb-cream'
                           }`}
                       >
                         {u}
@@ -1007,7 +1011,7 @@ function HistoryContent() {
                 <div className="flex items-end">
                   <button
                     onClick={addPriceEntry}
-                    className="w-full bg-indigo-600 text-white px-4 py-3 rounded-2xl font-semibold hover:bg-teal-600 transition cursor-pointer"
+                    className="w-full bg-bb-gold text-bb-navy px-4 py-3 rounded-2xl font-semibold hover:brightness-110 transition cursor-pointer"
                   >
                     Add Price
                   </button>
@@ -1034,8 +1038,8 @@ export default function History() {
     <Suspense fallback={
       <div className="min-h-screen app-bg p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <p className="text-gray-500 text-lg">Loading...</p>
+          <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 text-center">
+            <p className="text-bb-muted text-lg">Loading...</p>
           </div>
         </div>
       </div>

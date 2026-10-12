@@ -368,15 +368,15 @@ export default function TripsPage() {
       <div className="max-w-5xl mx-auto px-2 md:px-8 pt-6">
         {/* Time Range Selector */}
         {hasAnyTrips && (
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="inline-flex flex-wrap gap-1 mb-6 bg-white/5 border border-bb-line rounded-xl p-1">
             {[7, 14, 30, 60].map(days => (
               <button
                 key={days}
                 onClick={() => setDaysToShow(days)}
-                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border hover:shadow-lg transform hover:scale-105 active:scale-95 cursor-pointer text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer text-center min-w-[5.5rem] ${days === 60 ? 'hidden md:block' : ''
                   } ${daysToShow === days
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                    : 'bg-white text-slate-600 hover:bg-indigo-50 border-slate-200'
+                    ? 'bg-bb-gold text-bb-navy font-semibold'
+                    : 'text-bb-muted hover:text-bb-cream'
                   }`}
               >
                 {days} days
@@ -386,50 +386,50 @@ export default function TripsPage() {
         )}
 
         {(loading || householdLoading) ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
-            <LoadingSpinner message="Loading Trips..." color="border-indigo-600" textColor="text-slate-500" />
+          <div className="bg-bb-panel rounded-2xl border border-bb-line p-12 text-center">
+            <LoadingSpinner message="Loading Trips..." color="border-bb-gold" textColor="text-bb-muted" />
           </div>
         ) : !hasAnyTrips ? (
           <div className="px-4 py-12 md:py-20 text-center">
-            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 max-w-2xl mx-auto shadow-xl border border-slate-100">
+            <div className="bg-bb-panel rounded-2xl p-8 max-w-2xl mx-auto border border-bb-line">
               <div className="text-6xl mb-6">🧾</div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">Your Shopping History</h2>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              <h2 className="text-3xl font-bold text-bb-cream mb-4">Your Shopping History</h2>
+              <p className="text-lg text-bb-muted mb-8 leading-relaxed">
                 Track every trip across multiple stores, compare prices, and watch your savings grow.
                 When you finish shopping in the app, your receipts will be saved here automatically.
               </p>
 
               <div className="grid md:grid-cols-3 gap-6 mb-8 text-left">
-                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
                   <span className="text-2xl mb-2 block">📝</span>
-                  <h3 className="font-bold text-indigo-900 mb-1">Digital Receipts</h3>
-                  <p className="text-sm text-indigo-800">Never lose a receipt again.</p>
+                  <h3 className="font-bold text-bb-cream mb-1">Digital Receipts</h3>
+                  <p className="text-sm text-bb-muted">Never lose a receipt again.</p>
                 </div>
-                <div className="bg-teal-50 p-4 rounded-xl border border-teal-100">
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
                   <span className="text-2xl mb-2 block">💵</span>
-                  <h3 className="font-bold text-teal-900 mb-1">Price Tracking</h3>
-                  <p className="text-sm text-teal-800">Know exactly what you paid.</p>
+                  <h3 className="font-bold text-bb-cream mb-1">Price Tracking</h3>
+                  <p className="text-sm text-bb-muted">Know exactly what you paid.</p>
                 </div>
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
                   <span className="text-2xl mb-2 block">🕵️‍♀️</span>
-                  <h3 className="font-bold text-amber-900 mb-1">Smart Analysis</h3>
-                  <p className="text-sm text-amber-800">See spending by category.</p>
+                  <h3 className="font-bold text-bb-cream mb-1">Smart Analysis</h3>
+                  <p className="text-sm text-bb-muted">See spending by category.</p>
                 </div>
               </div>
 
               <Link
                 href="/list"
-                className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white text-lg font-bold px-8 py-4 rounded-2xl hover:bg-indigo-700 hover:scale-105 transition shadow-lg w-full md:w-auto"
+                className="inline-flex items-center justify-center gap-2 bg-bb-gold text-bb-navy text-lg font-bold px-8 py-4 rounded-2xl hover:brightness-110 transition w-full md:w-auto"
               >
                 Start a New Trip
               </Link>
             </div>
           </div>
         ) : trips.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
+          <div className="bg-bb-panel rounded-2xl border border-bb-line p-12 text-center">
             <div className="text-6xl mb-4">📅</div>
-            <p className="text-slate-600 text-lg font-medium">No trips found in the last {daysToShow} days</p>
-            <p className="text-slate-400 text-sm mt-2">Try selecting a longer time range above.</p>
+            <p className="text-bb-muted text-lg font-medium">No trips found in the last {daysToShow} days</p>
+            <p className="text-bb-muted text-sm mt-2">Try selecting a longer time range above.</p>
           </div>
         ) : (
           <>
@@ -438,30 +438,30 @@ export default function TripsPage() {
               const filteredTrips = trips.filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter);
               return (
                 <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                    <div className="text-3xl font-bold text-indigo-500">{filteredTrips.length}</div>
-                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Trips</div>
+                  <div className="col-span-1 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
+                    <div className="text-3xl font-bold text-bb-cream">{filteredTrips.length}</div>
+                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Trips</div>
                   </div>
-                  <div className="col-span-1 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                    <div className="text-3xl font-bold text-purple-600">
+                  <div className="col-span-1 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
+                    <div className="text-3xl font-bold text-bb-cream">
                       {filteredTrips.reduce((sum, t) => sum + t.itemCount, 0)}
                     </div>
-                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Items</div>
+                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Items</div>
                   </div>
-                  <div className="col-span-2 bg-white rounded-2xl shadow-lg border border-slate-100 p-4 hover:shadow-md transition-shadow duration-200 text-right">
-                    <div className="text-3xl font-bold text-emerald-600">
+                  <div className="col-span-2 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
+                    <div className="text-3xl font-bold text-bb-cream">
                       {formatMoney(filteredTrips.reduce((sum, t) => sum + t.totalCost, 0))}
                     </div>
-                    <div className="text-xs font-medium text-slate-500 tracking-wide mt-1">Total Spend</div>
+                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Total Spend</div>
                   </div>
                 </div>
               );
             })()}
 
             {/* Category Breakdown */}
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
-              <div className="bg-gradient-to-r from-indigo-500 to-indigo-500 px-6 md:px-8 py-4">
-                <h2 className="text-lg font-bold text-white">Spending by Category</h2>
+            <div className="bg-bb-panel border border-bb-line rounded-2xl overflow-hidden mb-4">
+              <div className="border-b border-bb-line px-6 md:px-8 py-4">
+                <h2 className="text-lg font-semibold text-bb-cream">Spending by Category</h2>
               </div>
               <div className="p-4 md:p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -493,10 +493,10 @@ export default function TripsPage() {
                         <button
                           key={catId}
                           onClick={() => openCategoryModal(catId)}
-                          className={`rounded-xl p-3 border transition-all duration-200 transform hover:scale-105 hover:shadow-md text-right cursor-pointer ${color}`}
+                          className={`rounded-xl p-3 border transition-colors duration-200 hover:bg-white/5 text-right cursor-pointer ${color}`}
                         >
-                          <div className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-75">{name}</div>
-                          <div className="text-2xl font-bold">{formatMoney(total)}</div>
+                          <div className="text-xs font-semibold uppercase tracking-wider mb-2 text-bb-muted">{name}</div>
+                          <div className="text-2xl font-bold text-bb-cream">{formatMoney(total)}</div>
                         </button>
                       );
                     });
@@ -523,9 +523,9 @@ export default function TripsPage() {
                   <>
                     <button
                       onClick={() => setSelectedStoreFilter('All')}
-                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-md active:scale-95 cursor-pointer text-center ${selectedStoreFilter === 'All'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-200'
+                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer text-center ${selectedStoreFilter === 'All'
+                        ? 'bg-bb-gold text-bb-navy font-semibold border border-bb-gold'
+                        : 'border border-bb-line text-bb-muted hover:text-bb-cream hover:bg-white/5'
                         }`}
                     >
                       All Stores
@@ -534,9 +534,9 @@ export default function TripsPage() {
                       <button
                         key={store}
                         onClick={() => setSelectedStoreFilter(store)}
-                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-md active:scale-95 cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
-                          ? 'bg-indigo-600 text-white shadow-md'
-                          : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-200'
+                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
+                          ? 'bg-bb-gold text-bb-navy font-semibold border border-bb-gold'
+                          : 'border border-bb-line text-bb-muted hover:text-bb-cream hover:bg-white/5'
                           }`}
                       >
                         {store}
@@ -564,38 +564,38 @@ export default function TripsPage() {
                   });
 
                   return (
-                    <div key={trip.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div key={trip.id} className="bg-bb-panel border border-bb-line rounded-2xl overflow-hidden">
                       {/* Trip header - clickable */}
                       <button
                         onClick={() => toggleTrip(trip.id)}
-                        className="w-full bg-gradient-to-r from-teal-500 to-teal-600 p-4 md:p-5 hover:from-teal-600 hover:to-teal-700 cursor-pointer transition"
+                        className="w-full p-4 md:p-5 hover:bg-white/5 cursor-pointer transition"
                       >
                         <div className="flex justify-between items-start">
                           <div className="text-left">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-white text-xl">{isExpanded ? '▼' : '▶'}</span>
-                              <h3 className="text-xl md:text-2xl font-bold text-white">{trip.store}</h3>
+                              <span className="text-bb-muted text-xl">{isExpanded ? '▼' : '▶'}</span>
+                              <h3 className="text-xl md:text-2xl font-bold text-bb-cream">{trip.store}</h3>
                               {!trip.ended_at && (
-                                <span className="text-xs bg-white text-teal-600 px-2 py-1 rounded-full font-semibold">
+                                <span className="text-xs bg-bb-gold/10 text-bb-gold border border-bb-gold/30 px-2 py-1 rounded-full font-semibold">
                                   In Progress
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-teal-100 ml-8">{formatDate(trip.started_at)}</p>
-                            <p className="text-s text-indigo-600 mt-1 ml-8 text-left"><b>{trip.duration}</b></p>
+                            <p className="text-sm text-bb-muted ml-8">{formatDate(trip.started_at)}</p>
+                            <p className="text-s text-bb-muted mt-1 ml-8 text-left"><b>{trip.duration}</b></p>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl md:text-3xl font-bold text-white">
+                            <p className="text-2xl md:text-3xl font-bold text-bb-cream">
                               {trip.totalCost > 0 ? formatMoney(trip.totalCost) : '—'}
                             </p>
-                            <p className="text-sm text-teal-100">{trip.itemCount} items</p>
+                            <p className="text-sm text-bb-muted">{trip.itemCount} items</p>
                           </div>
                         </div>
                       </button>
 
                       {/* Trip items - collapsible */}
                       {isExpanded && trip.events.length > 0 && (
-                        <div className="border-t border-gray-200">
+                        <div className="border-t border-bb-line">
                           {/* Scrollable items section */}
                           <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
                             {categoryIds.map(categoryId => {
@@ -613,21 +613,21 @@ export default function TripsPage() {
 
                               return (
                                 <div key={categoryId} className="mb-4 last:mb-0">
-                                  <div className={`flex items-center justify-between py-2 mb-2 -mx-4 md:-mx-5 px-4 md:px-5 ${categoryColor} bg-opacity-25`}>
-                                    <h4 className="text-sm font-bold text-gray-800 uppercase">
+                                  <div className={`flex items-center justify-between py-2 mb-2 -mx-4 md:-mx-5 px-4 md:px-5 ${categoryColor} border-y`}>
+                                    <h4 className="text-xs font-bold text-bb-muted uppercase tracking-wider">
                                       {categoryName}
                                     </h4>
-                                    <span className="text-sm font-bold text-gray-800">
+                                    <span className="text-sm font-bold text-bb-cream">
                                       {formatMoney(categorySubtotal)}
                                     </span>
                                   </div>
                                   <div className="space-y-2">
                                     {events.map((event, idx) => (
-                                      <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                      <div key={idx} className="flex justify-between items-center py-2 border-b border-bb-line last:border-b-0">
                                         <div className="flex-1">
-                                          <span className="text-gray-800 font-medium">{event.item_name}</span>
+                                          <span className="text-bb-cream font-medium">{event.item_name}</span>
                                           {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
-                                            <span className="text-gray-500 text-sm ml-2">
+                                            <span className="text-bb-muted text-sm ml-2">
                                               × {event.quantity}{event.unit && (event.unit === 'lb' || event.unit === 'oz') ? ` ${event.unit}` : ''}
                                             </span>
                                           )}
@@ -635,17 +635,17 @@ export default function TripsPage() {
                                         <div className="text-right">
                                           {event.price ? (
                                             <>
-                                              <p className="font-semibold text-gray-800">
+                                              <p className="font-semibold text-bb-cream">
                                                 {formatMoney(event.price * event.quantity)}
                                               </p>
                                               {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
-                                                <p className="text-xs text-gray-500">
+                                                <p className="text-xs text-bb-muted">
                                                   {formatMoney(event.price)} {event.is_weighted || (event.unit && (event.unit === 'lb' || event.unit === 'oz')) ? `/${event.unit || 'lb'}` : 'each'}
                                                 </p>
                                               )}
                                             </>
                                           ) : (
-                                            <p className="text-gray-400 text-sm">No price</p>
+                                            <p className="text-slate-600 text-sm">No price</p>
                                           )}
                                         </div>
                                       </div>
@@ -658,10 +658,10 @@ export default function TripsPage() {
 
                           {/* Trip total - fixed at bottom, outside scroll container */}
                           {trip.totalCost > 0 && (
-                            <div className="bg-white border-t-2 border-gray-300 px-4 md:px-5 py-4">
+                            <div className="bg-white/[0.03] border-t border-bb-line px-4 md:px-5 py-4">
                               <div className="flex justify-between items-center">
-                                <span className="text-lg font-bold text-gray-800">Total</span>
-                                <span className="text-2xl font-bold text-teal-600">{formatMoney(trip.totalCost)}</span>
+                                <span className="text-lg font-bold text-bb-cream">Total</span>
+                                <span className="text-2xl font-bold text-bb-cream">{formatMoney(trip.totalCost)}</span>
                               </div>
                             </div>
                           )}
@@ -675,21 +675,21 @@ export default function TripsPage() {
         )}
         {/* Category Detail Modal */}
         {categoryModalOpen && selectedCategory !== null && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col min-h-0">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-w-md w-full max-h-[80vh] flex flex-col min-h-0">
               {/* Header - Fixed */}
-              <div className="flex justify-between items-start p-6 pb-4 border-b border-gray-200">
+              <div className="flex justify-between items-start p-6 pb-4 border-b border-bb-line">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">
+                  <h3 className="text-xl font-bold text-bb-cream">
                     {getCategoryName(selectedCategory)} Items
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-bb-muted mt-1">
                     Last {daysToShow} days
                   </p>
                 </div>
                 <button
                   onClick={closeCategoryModal}
-                  className="text-gray-400 hover:text-gray-600 text-2xl cursor-pointer"
+                  className="text-bb-muted hover:text-bb-cream text-2xl cursor-pointer"
                   aria-label="Close"
                 >
                   ✖
@@ -720,7 +720,7 @@ export default function TripsPage() {
 
                 if (categoryItems.length === 0) {
                   return (
-                    <p className="text-gray-500 text-center py-8">
+                    <p className="text-bb-muted text-center py-8">
                       No items in this category
                     </p>
                   );
@@ -740,21 +740,21 @@ export default function TripsPage() {
                           <button
                             key={idx}
                             onClick={() => handleEditItem(item)}
-                            className={`w-full text-left p-3 rounded-xl border hover:shadow-md transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer ${getCategoryColorById(selectedCategory)}`}
+                            className={`w-full text-left p-3 rounded-xl border bg-white/[0.03] border-bb-line text-bb-cream hover:bg-white/5 transition-colors cursor-pointer`}
                           >
                             <div className="flex justify-between items-start mb-1">
                               <span className="font-semibold flex items-center gap-2">
-                                {favoritedIds.has(item.item_id) && <span className="text-yellow-500">⭐</span>}
+                                {favoritedIds.has(item.item_id) && <span>⭐</span>}
                                 {item.item_name}
                                 {item.quantity > 1 && (
-                                  <span className="text-sm ml-1 opacity-75">× {item.quantity}</span>
+                                  <span className="text-sm ml-1 text-bb-muted">× {item.quantity}</span>
                                 )}
                               </span>
                               <span className="font-bold">
                                 {item.price ? formatMoney(item.price * item.quantity) : '—'}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs opacity-75">
+                            <div className="flex items-center gap-2 text-xs text-bb-muted">
                               <span>{item.store}</span>
                               <span>•</span>
                               <span>
@@ -764,19 +764,19 @@ export default function TripsPage() {
                                 })}
                               </span>
                               <span>•</span>
-                              <span className="text-blue-600 font-bold uppercase tracking-wider md:hidden">Tap to Edit</span>
+                              <span className="text-bb-gold font-bold uppercase tracking-wider md:hidden">Tap to Edit</span>
                             </div>
                           </button>
                         ))}
                       </div>
                     </div>
                     {/* Total - Fixed at Bottom */}
-                    <div className={`shrink-0 p-4 border-t-2 bg-white ${getCategoryColorById(selectedCategory)}`}>
+                    <div className={`shrink-0 p-4 border-t bg-bb-raised border-bb-line text-bb-cream rounded-b-2xl`}>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold">Category Total</span>
                         <span className="text-2xl font-bold">{formatMoney(total)}</span>
                       </div>
-                      <p className="text-xs opacity-75 mt-1 text-right">
+                      <p className="text-xs text-bb-muted mt-1 text-right">
                         {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'items'}
                       </p>
                     </div>

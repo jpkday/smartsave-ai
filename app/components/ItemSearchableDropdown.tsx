@@ -157,7 +157,7 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                 <input
                     ref={inputRef}
                     type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    className="w-full px-3 py-2 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream placeholder:text-slate-500"
                     placeholder={placeholder}
                     value={query}
                     onChange={(e) => {
@@ -173,7 +173,7 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                 {query && (
                     <button
                         onClick={handleClear}
-                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-bb-muted hover:text-bb-cream"
                     >
                         <XMarkIcon className="h-4 w-4" />
                     </button>
@@ -181,7 +181,7 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
             </div>
 
             {isOpen && (query.trim().length > 0 || filteredItems.length > 0) && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto scrollbar-hide">
+                <div className="absolute z-10 w-full mt-1 bg-bb-panel text-bb-cream border border-bb-line rounded-2xl shadow-lg max-h-60 overflow-y-auto scrollbar-hide">
                     <div>
                         {filteredItems.map((item, index) => {
                             const isFav = favoritedIds.has(item.id);
@@ -194,10 +194,10 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                                         e.preventDefault(); // Prevent blur
                                         handleSelect(item.id, item.name);
                                     }}
-                                    className={`w-full text-left px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2 ${selectedIndex === index ? 'bg-blue-50' : ''
+                                    className={`w-full text-left px-4 py-3 cursor-pointer border-b border-bb-line last:border-b-0 text-bb-cream flex items-center gap-2 ${selectedIndex === index ? 'bg-bb-raised' : ''
                                         }`}
                                 >
-                                    {isFav && <span className="text-yellow-500 text-lg">⭐</span>}
+                                    {isFav && <span className="text-bb-gold text-lg">⭐</span>}
                                     <span>{item.name}</span>
                                 </button>
                             );
@@ -212,7 +212,7 @@ const ItemSearchableDropdown = forwardRef<ItemSearchableDropdownHandle, ItemSear
                                     e.preventDefault();
                                     handleSelect('__new__', query.trim());
                                 }}
-                                className={`w-full text-left px-4 py-3 cursor-pointer text-blue-600 font-bold flex items-center gap-2 ${selectedIndex === filteredItems.length ? 'bg-blue-50' : ''
+                                className={`w-full text-left px-4 py-3 cursor-pointer text-bb-gold font-bold flex items-center gap-2 ${selectedIndex === filteredItems.length ? 'bg-bb-raised' : ''
                                     }`}
                             >
                                 <PlusIcon className="w-4 h-4" />

@@ -235,25 +235,25 @@ export default function SkuManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen app-bg">
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="mb-6">
           <Link
             href="/"
-            className="text-blue-600 hover:text-blue-700 text-sm mb-2 inline-block"
+            className="text-bb-muted hover:text-bb-cream text-sm mb-2 inline-block"
           >
             ← Back to Home
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">SKU Management</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-bb-cream">SKU Management</h1>
+          <p className="text-bb-muted mt-1">
             Map store SKUs to items for future receipt scanning
           </p>
         </div>
 
         {/* Store Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-bb-panel rounded-lg shadow-sm border border-bb-line p-6 mb-6">
+          <label className="block text-sm font-medium text-bb-cream mb-2">
             Select Store
           </label>
           <select
@@ -266,7 +266,7 @@ export default function SkuManagement() {
               setExistingSku(null);
               setMessage(null); // Clear the success/error message
             }}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
           >
             <option value="">Choose a store...</option>
             {stores.map((store) => (
@@ -279,15 +279,15 @@ export default function SkuManagement() {
 
         {/* Entry Form */}
         {selectedStoreId && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-bb-panel rounded-lg shadow-sm border border-bb-line p-6 mb-6">
+            <h2 className="text-lg font-semibold text-bb-cream mb-4">
               Add SKU Mapping
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Item Search */}
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-bb-cream mb-2">
                   Search Item
                 </label>
                 <input
@@ -299,13 +299,13 @@ export default function SkuManagement() {
                     setSelectedItem(null);
                   }}
                   placeholder="Start typing item name..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                   disabled={isSubmitting}
                 />
 
                 {/* Search Results Dropdown */}
                 {searchResults.length > 0 && !selectedItem && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-bb-panel border border-bb-line rounded-lg shadow-sm max-h-60 overflow-y-auto">
                     {searchResults.map((item) => (
                       <button
                         key={item.id}
@@ -315,13 +315,13 @@ export default function SkuManagement() {
                           setSearchQuery("");
                           setSearchResults([]);
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                        className="w-full text-left px-4 py-2 hover:bg-white/5 border-b border-bb-line last:border-b-0"
                       >
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-bb-cream">
                           {item.name}
                         </div>
                         {item.category && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-bb-muted">
                             {item.category}
                           </div>
                         )}
@@ -334,10 +334,10 @@ export default function SkuManagement() {
               {/* SKU Input */}
               {selectedItem && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-bb-cream mb-2">
                     Store SKU
                     {existingSku && (
-                      <span className="ml-2 text-sm text-red-600 font-normal">
+                      <span className="ml-2 text-sm text-bb-red font-normal">
                         (Override existing SKU)
                       </span>
                     )}
@@ -347,7 +347,7 @@ export default function SkuManagement() {
                     value={skuValue}
                     onChange={(e) => setSkuValue(e.target.value)}
                     placeholder="Enter SKU number..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                     disabled={isSubmitting}
                     autoFocus
                   />
@@ -359,7 +359,7 @@ export default function SkuManagement() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !skuValue.trim()}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition-colors"
+                  className="w-full bg-bb-gold text-bb-navy hover:brightness-110 disabled:opacity-50 font-semibold py-3 rounded-lg transition-colors"
                 >
                   {isSubmitting ? "Saving..." : "Save SKU Mapping"}
                 </button>
@@ -370,8 +370,8 @@ export default function SkuManagement() {
             {message && (
               <div
                 className={`mt-4 p-3 rounded-lg ${message.type === "success"
-                    ? "bg-green-50 text-green-700 border border-green-200"
-                    : "bg-red-50 text-red-700 border border-red-200"
+                    ? "bg-bb-green/10 text-bb-green border border-bb-green/30"
+                    : "bg-bb-red/10 text-bb-red border border-bb-red/30"
                   }`}
               >
                 {message.text}
@@ -382,8 +382,8 @@ export default function SkuManagement() {
 
         {/* Existing Mappings */}
         {selectedStoreId && existingMappings.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-bb-panel rounded-lg shadow-sm border border-bb-line p-6">
+            <h2 className="text-lg font-semibold text-bb-cream mb-4">
               Existing SKU Mappings ({existingMappings.length})
             </h2>
 
@@ -391,16 +391,16 @@ export default function SkuManagement() {
               {existingMappings.map((mapping) => (
                 <div
                   key={mapping.id}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-3 border border-bb-line rounded-lg hover:bg-white/5"
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-bb-cream">
                       {mapping.items?.name || 'Unknown Item'}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-bb-muted">
                       SKU: {mapping.store_sku}
                       {mapping.items?.category && (
-                        <span className="ml-2 text-gray-400">
+                        <span className="ml-2 text-bb-muted">
                           • {mapping.items.category}
                         </span>
                       )}
@@ -408,7 +408,7 @@ export default function SkuManagement() {
                   </div>
                   <button
                     onClick={() => handleDeleteMapping(mapping.id)}
-                    className="ml-4 text-red-600 hover:text-red-700 text-sm font-medium"
+                    className="ml-4 text-bb-red hover:opacity-80 text-sm font-medium"
                   >
                     Delete
                   </button>
@@ -420,7 +420,7 @@ export default function SkuManagement() {
 
         {/* Empty State */}
         {selectedStoreId && existingMappings.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+          <div className="bg-bb-panel rounded-lg shadow-sm border border-bb-line p-8 text-center text-bb-muted">
             No SKU mappings yet for this store. Add one above!
           </div>
         )}

@@ -19,7 +19,7 @@ import {
   PhotoIcon
 } from '@heroicons/react/24/solid';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = ['#c9a96e', '#7fd1a4', '#7aa2d6', '#d4a5a5', '#a3b18a', '#94a3b8'];
 
 type FrequentItem = {
   item_name: string;
@@ -334,52 +334,51 @@ export default function InsightsPage() {
 
         {(loading || householdLoading) ? (
           <div className="px-2 sm:px-4 md:px-0">
-            <div className="py-20 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 items-center justify-center">
-              <LoadingSpinner message="Loading Insights..." color="border-indigo-600" textColor="text-slate-500" />
+            <div className="py-20 bg-bb-panel rounded-2xl border border-bb-line items-center justify-center">
+              <LoadingSpinner message="Loading Insights..." color="border-bb-gold" textColor="text-bb-muted" />
             </div>
           </div>
         ) : !householdCode ? (
           <div className="px-2 sm:px-4 md:px-0">
-            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-              <p className="text-gray-600">Please set your household code to view insights.</p>
+            <div className="bg-bb-panel border border-bb-line rounded-2xl p-8 text-center">
+              <p className="text-bb-muted">Please set your household code to view insights.</p>
             </div>
           </div>
         ) : (frequentItems.filter(i => i.purchase_count > 1).length === 0 && priceTrends.length === 0 && spendByStore.length === 0) ? (
           <div className="px-4 py-12 md:py-20 text-center">
-            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 max-w-2xl mx-auto shadow-xl border border-white/50">
+            <div className="bg-bb-panel rounded-2xl p-8 max-w-2xl mx-auto border border-bb-line">
               <div className="flex justify-center mb-6">
-                <ChartBarIcon className="h-20 w-20 text-gray-800" />
+                <ChartBarIcon className="h-20 w-20 text-bb-gold" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">Unlock Your Spending Insights</h2>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              <h2 className="text-3xl font-bold text-bb-cream mb-4">Unlock Your Spending Insights</h2>
+              <p className="text-lg text-bb-muted mb-8 leading-relaxed">
                 As you shop and track prices, we'll analyze your data to help you save more.
                 Here's what you'll see here soon:
               </p>
 
               <div className="grid md:grid-cols-3 gap-6 mb-8 text-left">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <ShoppingCartIcon className="h-8 w-8 text-blue-600 mb-2" />
-                  <h3 className="font-bold text-blue-900 mb-1">Top Items</h3>
-                  <p className="text-sm text-blue-800">See what you buy most often.</p>
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
+                  <ShoppingCartIcon className="h-8 w-8 text-bb-muted mb-2" />
+                  <h3 className="font-bold text-bb-cream mb-1">Top Items</h3>
+                  <p className="text-sm text-bb-muted">See what you buy most often.</p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-                  <ArrowTrendingDownIcon className="h-8 w-8 text-green-600 mb-2" />
-                  <h3 className="font-bold text-green-900 mb-1">Price Drops</h3>
-                  <p className="text-sm text-green-800">Catch items getting cheaper.</p>
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
+                  <ArrowTrendingDownIcon className="h-8 w-8 text-bb-muted mb-2" />
+                  <h3 className="font-bold text-bb-cream mb-1">Price Drops</h3>
+                  <p className="text-sm text-bb-muted">Catch items getting cheaper.</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                  <CurrencyDollarIcon className="h-8 w-8 text-purple-600 mb-2" />
-                  <h3 className="font-bold text-purple-900 mb-1">Spending</h3>
-                  <p className="text-sm text-purple-800">Track your habits over time.</p>
+                <div className="bg-white/[0.03] p-4 rounded-xl border border-bb-line">
+                  <CurrencyDollarIcon className="h-8 w-8 text-bb-muted mb-2" />
+                  <h3 className="font-bold text-bb-cream mb-1">Spending</h3>
+                  <p className="text-sm text-bb-muted">Track your habits over time.</p>
                 </div>
               </div>
 
               <Link
                 href="/receipts?scan=true"
-                className="inline-flex items-center justify-center gap-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-lg font-bold px-10 py-5 rounded-3xl hover:bg-blue-700 hover:scale-105 transition shadow-2xl w-full md:w-auto overflow-hidden group relative"
+                className="inline-flex items-center justify-center gap-3 bg-bb-gold text-bb-navy text-lg font-bold px-10 py-5 rounded-2xl hover:brightness-110 transition w-full md:w-auto overflow-hidden group relative"
               >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <PhotoIcon className="h-8 w-8 text-blue-100" />
+                <PhotoIcon className="h-8 w-8" />
                 <span>{isMobile ? 'Snap a Receipt' : 'Upload a Receipt'}</span>
               </Link>
             </div>
@@ -390,16 +389,16 @@ export default function InsightsPage() {
 
 
             {/* Global Filters */}
-            <div className="flex bg-white/50 backdrop-blur-sm rounded-2xl p-2 mb-8 items-center justify-between shadow-sm border border-white/20">
-              <span className="text-sm font-bold text-gray-600 ml-3 uppercase tracking-wider">Analysis period</span>
-              <div className="flex bg-gray-100/80 p-1 rounded-xl">
+            <div className="flex bg-bb-panel rounded-2xl p-2 mb-8 items-center justify-between border border-bb-line">
+              <span className="text-sm font-bold text-bb-muted ml-3 uppercase tracking-wider">Analysis period</span>
+              <div className="flex bg-white/5 border border-bb-line p-1 rounded-xl">
                 {([7, 14, 30, 60] as const).map((days) => (
                   <button
                     key={days}
                     onClick={() => setTimeRange(days)}
                     className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all ${timeRange === days
-                      ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
-                      : 'text-gray-500 hover:text-gray-900'
+                      ? 'bg-bb-gold text-bb-navy font-semibold'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     {days}d
@@ -410,16 +409,16 @@ export default function InsightsPage() {
 
             {/* AI Savings Coach */}
             {recommendations.length > 0 && (
-              <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl shadow-xl p-6 mb-8 text-white">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8 text-bb-cream">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <SparklesIcon className="h-6 w-6 text-yellow-300 animate-pulse" />
+                  <SparklesIcon className="h-6 w-6 text-bb-gold" />
                   AI Savings Coach
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {recommendations.map((rec) => (
-                    <div key={rec.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 hover:bg-white/20 transition">
-                      <h3 className="font-bold text-yellow-200 text-sm mb-1 uppercase tracking-wide">{rec.title}</h3>
-                      <p className="text-sm leading-relaxed text-white/90">{rec.message}</p>
+                    <div key={rec.id} className="bg-bb-raised border border-bb-line rounded-xl p-4 hover:bg-white/5 transition">
+                      <h3 className="font-bold text-bb-cream text-sm mb-1 uppercase tracking-wide">{rec.title}</h3>
+                      <p className="text-sm leading-relaxed text-bb-muted">{rec.message}</p>
                     </div>
                   ))}
                 </div>
@@ -428,25 +427,25 @@ export default function InsightsPage() {
 
             {/* Spend by Store Chart */}
             {spendByStore.length > 0 && (
-              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                    <CurrencyDollarIcon className="h-6 w-6 text-purple-600" />
+                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                    <CurrencyDollarIcon className="h-6 w-6 text-bb-muted" />
                     Spend by Store
                   </h2>
-                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
                 </div>
                 <div className="flex flex-col md:flex-row items-center gap-8">
                   {/* Ranked List */}
                   <div className="w-full md:w-1/3">
                     <ul className="space-y-3">
                       {spendByStore.map((store, index) => (
-                        <li key={store.name} className="flex justify-between items-center text-base border-b border-gray-100 pb-2 last:border-0">
+                        <li key={store.name} className="flex justify-between items-center text-base border-b border-bb-line pb-2 last:border-0">
                           <div className="flex items-center gap-2 font-medium">
-                            <span className="w-5 text-gray-400">{index + 1}.</span>
-                            <span style={{ color: COLORS[index % COLORS.length] }}>{store.name}</span>
+                            <span className="w-5" style={{ color: COLORS[index % COLORS.length] }}>{index + 1}.</span>
+                            <span className="text-bb-cream">{store.name}</span>
                           </div>
-                          <span className="font-bold" style={{ color: COLORS[index % COLORS.length] }}>
+                          <span className="font-bold text-bb-cream">
                             ${store.value.toFixed(2)}
                           </span>
                         </li>
@@ -465,6 +464,7 @@ export default function InsightsPage() {
                           innerRadius={isMobile ? 50 : 60}
                           outerRadius={isMobile ? 70 : 80}
                           paddingAngle={5}
+                          stroke="#13243a"
                           dataKey="value"
                           label={({ name, value }) => isMobile ? name : `${name}: $${value.toFixed(2)}`}
                           labelLine={!isMobile}
@@ -473,7 +473,11 @@ export default function InsightsPage() {
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value: number | undefined) => value !== undefined ? `$${value.toFixed(2)}` : ''} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#13243a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.75rem', color: '#ece6da' }}
+                          itemStyle={{ color: '#ece6da' }}
+                          labelStyle={{ color: '#94a3b8' }}
+                          formatter={(value: number | undefined) => value !== undefined ? `$${value.toFixed(2)}` : ''} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -482,13 +486,13 @@ export default function InsightsPage() {
             )}
 
             {/* Most Purchased Items */}
-            <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
+            <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <ShoppingCartIcon className="h-6 w-6 text-blue-600" />
+                <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                  <ShoppingCartIcon className="h-6 w-6 text-bb-muted" />
                   Frequently Purchased
                 </h2>
-                <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
               </div>
               {frequentItems.filter(item => item.purchase_count > 1).length > 0 ? (
                 <div className="max-h-64 overflow-y-auto space-y-3 custom-scrollbar pr-2">
@@ -500,32 +504,32 @@ export default function InsightsPage() {
                       return (
                         <div
                           key={item.item_id}
-                          className={`flex items-center justify-between border p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ${categoryStyle}`}
+                          className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
                         >
                           <div className="flex-1">
                             <Link
                               href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                              className="hover:text-blue-600 hover:underline"
+                              className="hover:text-bb-gold hover:underline"
                             >
-                              <p className="font-medium opacity-90">{item.item_name}</p>
+                              <p className="font-medium text-bb-cream">{item.item_name}</p>
                             </Link>
-                            <p className="text-sm opacity-70">
+                            <p className="text-sm text-bb-muted">
                               Avg paid: ${parseFloat(item.avg_price_paid).toFixed(2)}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold opacity-90">
+                            <p className="text-2xl font-bold text-bb-cream">
                               {item.purchase_count}
                             </p>
-                            <p className="text-xs opacity-70">times</p>
+                            <p className="text-xs text-bb-muted">times</p>
                           </div>
                         </div>
                       );
                     })}
                 </div>
               ) : (
-                <div className="bg-gray-50/50 rounded-2xl p-6 text-center border-2 border-dashed border-gray-100">
-                  <p className="text-gray-500 font-medium italic">
+                <div className="bg-white/[0.03] rounded-2xl p-6 text-center border-2 border-dashed border-bb-line">
+                  <p className="text-bb-muted font-medium italic">
                     {frequentItems.length === 0
                       ? `No items purchased in the last ${timeRange} days.`
                       : `No items were purchased more than once in the last ${timeRange} days.`
@@ -537,13 +541,13 @@ export default function InsightsPage() {
 
             {/* Price Decreases */}
             {priceDecreases.length > 0 && (
-              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
                 <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                    <ArrowTrendingDownIcon className="h-6 w-6 text-green-600" />
+                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                    <ArrowTrendingDownIcon className="h-6 w-6 text-bb-green" />
                     Prices Going Down
                   </h2>
-                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
                 </div>
                 <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                   {priceDecreases.map((item, idx) => {
@@ -551,21 +555,21 @@ export default function InsightsPage() {
                     return (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between border p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ${categoryStyle}`}
+                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
                       >
                         <div className="flex-1">
                           <Link
                             href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                            className="hover:text-blue-600 hover:underline"
+                            className="hover:text-bb-gold hover:underline"
                           >
-                            <p className="font-medium opacity-90">{item.item_name}</p>
+                            <p className="font-medium text-bb-cream">{item.item_name}</p>
                           </Link>
-                          <p className="text-sm opacity-70">
+                          <p className="text-sm text-bb-muted">
                             {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-green-600">
+                          <p className="text-xl font-bold text-bb-green">
                             {Math.round(parseFloat(item.pct_change))}%
                           </p>
                         </div>
@@ -578,13 +582,13 @@ export default function InsightsPage() {
 
             {/* Price Increases */}
             {priceIncreases.length > 0 && (
-              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
                 <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                    <ArrowTrendingUpIcon className="h-6 w-6 text-red-600" />
+                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                    <ArrowTrendingUpIcon className="h-6 w-6 text-bb-red" />
                     Prices Going Up
                   </h2>
-                  <p className="text-sm text-gray-500 font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
                 </div>
                 <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                   {priceIncreases.map((item, idx) => {
@@ -592,21 +596,21 @@ export default function InsightsPage() {
                     return (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between border p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ${categoryStyle}`}
+                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
                       >
                         <div className="flex-1">
                           <Link
                             href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                            className="hover:text-blue-600 hover:underline"
+                            className="hover:text-bb-gold hover:underline"
                           >
-                            <p className="font-medium opacity-90">{item.item_name}</p>
+                            <p className="font-medium text-bb-cream">{item.item_name}</p>
                           </Link>
-                          <p className="text-sm opacity-70">
+                          <p className="text-sm text-bb-muted">
                             {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-red-600">
+                          <p className="text-xl font-bold text-bb-red">
                             +{Math.round(parseFloat(item.pct_change))}%
                           </p>
                         </div>
@@ -619,9 +623,9 @@ export default function InsightsPage() {
 
             {/* No Changes / No Favorites Message */}
             {priceDecreases.length === 0 && priceIncreases.length === 0 && (
-              <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <ChartBarIcon className="h-6 w-6 text-gray-600" />
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
+                <h2 className="text-xl font-semibold text-bb-cream mb-2 flex items-center gap-2">
+                  <ChartBarIcon className="h-6 w-6 text-bb-muted" />
                   Price Trends
                 </h2>
 
@@ -632,14 +636,14 @@ export default function InsightsPage() {
                    Usually trends will be empty if strict filtering is on and list is empty.
                    Let's assume if trends are empty but we have data in the system, it's a filter issue.
                 */}
-                <div className="bg-gray-50/50 rounded-2xl p-6 text-center border-2 border-dashed border-gray-100 mt-4">
-                  <p className="text-gray-500 mb-3">
+                <div className="bg-white/[0.03] rounded-2xl p-6 text-center border-2 border-dashed border-bb-line mt-4">
+                  <p className="text-bb-muted mb-3">
                     No significant price changes found in your <strong>Favorite Stores</strong> for the last {timeRange} days.
                   </p>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-bb-muted mb-4">
                     Tip: Make sure you have selected your favorite stores on the home page.
                   </p>
-                  <Link href="/" className="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-semibold text-sm">
+                  <Link href="/" className="inline-flex items-center justify-center px-4 py-2 border border-bb-line bg-transparent text-bb-cream rounded-lg hover:bg-white/5 transition font-semibold text-sm">
                     Manage Favorite Stores
                   </Link>
                 </div>

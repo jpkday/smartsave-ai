@@ -667,8 +667,8 @@ function ItemsContent() {
         key={item.id}
         className={
           isFavorite
-            ? 'w-full flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 transition'
-            : 'w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition'
+            ? 'w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-bb-line hover:bg-white/5 transition'
+            : 'w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-bb-line hover:bg-white/5 transition'
         }
       >
         <button
@@ -680,13 +680,13 @@ function ItemsContent() {
           disabled={viewFilter === 'HIDDEN'}
           className={
             isFavorite
-              ? `text-2xl leading-none flex-shrink-0 px-1 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
-              : `text-2xl leading-none flex-shrink-0 px-1 text-gray-300 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              ? `text-2xl leading-none flex-shrink-0 px-1 text-bb-gold ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              : `text-2xl leading-none flex-shrink-0 px-1 text-slate-600 hover:text-bb-gold ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
           }
           aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
           title={viewFilter === 'HIDDEN' ? 'Unhide item to favorite' : (isFavorite ? 'Remove from Favorites' : 'Add to Favorites')}
         >
-          {isFavorite ? '⭐' : '☆'}
+          {isFavorite ? '★' : '☆'}
         </button>
 
         <button
@@ -694,15 +694,15 @@ function ItemsContent() {
           onClick={() => openModal(item)}
           className="flex-1 text-left min-w-0"
         >
-          <div className="font-medium text-gray-800 truncate">{item.name}</div>
-          <div className="text-xs text-gray-500">Tap to edit</div>
+          <div className="font-medium text-bb-cream truncate">{item.name}</div>
+          <div className="text-xs text-bb-muted">Tap to edit</div>
         </button>
 
         {(viewFilter === 'ALL' || viewFilter === 'FAVORITES') && (
           <button
             type="button"
             onClick={(e) => toggleHidden(item.id, e)}
-            className={hiddenIds.has(item.id) ? "p-2 text-red-600 hover:text-red-700" : "p-2 text-gray-400 hover:text-red-500"}
+            className={hiddenIds.has(item.id) ? "p-2 text-bb-red hover:opacity-80" : "p-2 text-bb-muted hover:text-bb-red"}
             title={hiddenIds.has(item.id) ? "Unhide item" : "Hide item"}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -714,7 +714,7 @@ function ItemsContent() {
           <button
             type="button"
             onClick={(e) => toggleHidden(item.id, e)}
-            className="p-2 text-gray-400 hover:text-green-500"
+            className="p-2 text-bb-muted hover:text-bb-green"
             title="Unhide item"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -737,8 +737,8 @@ function ItemsContent() {
         ref={isEditing ? editRowRef : null}
         className={
           isFavorite
-            ? 'w-full flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200'
-            : 'w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100'
+            ? 'w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-bb-line'
+            : 'w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-bb-line'
         }
       >
         <button
@@ -747,13 +747,13 @@ function ItemsContent() {
           disabled={inlineSaving || viewFilter === 'HIDDEN'}
           className={
             isFavorite
-              ? `text-2xl leading-none flex-shrink-0 px-1 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
-              : `text-2xl leading-none flex-shrink-0 px-1 text-gray-300 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              ? `text-2xl leading-none flex-shrink-0 px-1 text-bb-gold ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
+              : `text-2xl leading-none flex-shrink-0 px-1 text-slate-600 hover:text-bb-gold ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`
           }
           aria-label={isFavorite ? 'Unfavorite item' : 'Favorite item'}
           title={viewFilter === 'HIDDEN' ? 'Unhide item to favorite' : (isFavorite ? 'Remove from Favorites' : 'Add to Favorites')}
         >
-          {isFavorite ? '⭐' : '☆'}
+          {isFavorite ? '★' : '☆'}
         </button>
 
         <div className="flex-1 min-w-0">
@@ -767,13 +767,13 @@ function ItemsContent() {
                   if (e.key === 'Enter') commitInlineEdit();
                   if (e.key === 'Escape') cancelInlineEdit();
                 }}
-                className="flex-1 px-2 py-1 border border-blue-500 rounded text-base focus:ring-2 focus:ring-blue-200"
+                className="flex-1 px-2 py-1 border border-bb-gold rounded text-base text-bb-cream focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={commitInlineEdit}
-                className="text-green-600 font-semibold cursor-pointer text-lg"
+                className="text-bb-green font-semibold cursor-pointer text-lg"
                 disabled={inlineSaving}
                 title="Save"
               >
@@ -782,12 +782,12 @@ function ItemsContent() {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2 min-w-0">
-              <span className="font-medium text-gray-800 text-base truncate">
+              <span className="font-medium text-bb-cream text-base truncate">
                 {item.name}
                 <button
                   type="button"
                   onClick={() => startInlineEdit(item.name)}
-                  className="ml-2 text-gray-400 hover:text-blue-600 cursor-pointer"
+                  className="ml-2 text-bb-muted hover:text-bb-cream cursor-pointer"
                   title="Edit"
                   disabled={inlineSaving}
                 >
@@ -800,7 +800,7 @@ function ItemsContent() {
                   <button
                     type="button"
                     onClick={(e) => toggleHidden(item.id, e)}
-                    className={hiddenIds.has(item.id) ? "text-red-600 hover:text-red-700 p-2" : "text-gray-300 hover:text-red-500 p-2"}
+                    className={hiddenIds.has(item.id) ? "text-bb-red hover:opacity-80 p-2" : "text-slate-600 hover:text-bb-red p-2"}
                     title={hiddenIds.has(item.id) ? "Unhide item" : "Hide item"}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -812,7 +812,7 @@ function ItemsContent() {
                   <button
                     type="button"
                     onClick={(e) => toggleHidden(item.id, e)}
-                    className="text-gray-300 hover:text-green-500 p-2"
+                    className="text-slate-600 hover:text-bb-green p-2"
                     title="Unhide item"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -826,7 +826,7 @@ function ItemsContent() {
                   <button
                     type="button"
                     onClick={() => deleteItem(item)}
-                    className={`text-red-600 hover:text-red-800 cursor-pointer text-xl p-2 flex-shrink-0 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    className={`text-bb-muted hover:text-bb-red cursor-pointer text-xl p-2 flex-shrink-0 ${viewFilter === 'HIDDEN' ? 'opacity-30 cursor-not-allowed' : ''}`}
                     title={viewFilter === 'HIDDEN' ? 'Unhide item before deleting' : 'Delete item'}
                     disabled={inlineSaving || viewFilter === 'HIDDEN'}
                   >
@@ -867,14 +867,14 @@ function ItemsContent() {
 
 
           {/* Alphabet Filter */}
-          <div className="bg-white rounded-2xl shadow-lg p-3 md:p-4 mb-4">
-            <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center">
+          <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-3 md:p-4 mb-4">
+            <div className="flex flex-wrap gap-1 md:gap-1.5 justify-center bg-white/5 border border-bb-line rounded-xl p-1">
               <button
                 type="button"
                 onClick={() => setFilterLetter('All')}
                 className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === 'All'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-bb-gold text-bb-navy font-semibold'
+                  : 'text-bb-muted hover:text-bb-cream'
                   }`}
               >
                 All
@@ -888,8 +888,8 @@ function ItemsContent() {
                     type="button"
                     onClick={() => toggleLetter(letter)}
                     className={`px-2.5 py-1.5 md:px-3 md:py-1 rounded text-sm md:text-base font-semibold cursor-pointer transition ${filterLetter === letter
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-bb-gold text-bb-navy font-semibold'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     {letter}
@@ -901,8 +901,8 @@ function ItemsContent() {
           {/* SEARCH ITEMS MODAL */}
 
           <div className="-mx-3 sm:mx-0 px-3 sm:px-0 pt-2 pb-0">
-            <div className="bg-white rounded-xl shadow-lg p-3">
-              <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Search Items</div>
+            <div className="bg-bb-panel border border-bb-line rounded-xl shadow-sm p-3">
+              <div className="text-lg sm:text-xl font-semibold text-bb-cream mb-2">Search Items</div>
 
               <div className="relative autocomplete-container">
                 <div className="flex gap-2">
@@ -912,19 +912,19 @@ function ItemsContent() {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addItem()}
                     placeholder="Search or add new item"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream"
                   />
                   <button
                     type="button"
                     onClick={addItem}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 transition whitespace-nowrap"
+                    className="bg-bb-gold text-bb-navy px-4 py-2 rounded-2xl font-semibold hover:brightness-110 transition whitespace-nowrap"
                   >
                     Add
                   </button>
                 </div>
 
                 {showAutocomplete && autocompleteItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-bb-panel border border-bb-line rounded-2xl shadow-sm max-h-60 overflow-y-auto">
                     {autocompleteItems.slice(0, 10).map((item) => {
                       const itemData = items.find((i) => i.name === item);
                       const isFavorite = itemData ? favoritedIds.has(itemData.id) : false;
@@ -933,9 +933,9 @@ function ItemsContent() {
                           key={item}
                           type="button"
                           onClick={() => selectFromAutocomplete(item)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 text-gray-800 flex items-center gap-2"
+                          className="w-full text-left px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-bb-line last:border-b-0 text-bb-cream flex items-center gap-2"
                         >
-                          {isFavorite && <span className="text-yellow-500 text-lg">⭐</span>}
+                          {isFavorite && <span className="text-bb-gold text-lg">★</span>}
                           {item}
                         </button>
                       );
@@ -944,7 +944,7 @@ function ItemsContent() {
                 )}
               </div>
 
-              <div className="mt-2 text-xs text-gray-500 flex justify-between">
+              <div className="mt-2 text-xs text-bb-muted flex justify-between">
                 <span>
                   {inputValue.trim() && !itemExists
                     ? `"${inputValue}" will be added as a new item`
@@ -957,18 +957,18 @@ function ItemsContent() {
           </div>
 
           {/* ALL ITEMS MODAL */}
-          <div className="bg-white rounded-xl shadow-lg p-3 pt-2 sm:p-4">
+          <div className="bg-bb-panel border border-bb-line rounded-xl shadow-sm p-3 pt-2 sm:p-4">
             {loading ? (
-              <div className="text-gray-600 text-sm">Loading items…</div>
+              <div className="text-bb-muted text-sm">Loading items…</div>
             ) : (
               <>
                 {/* View Filters (Moved Here) - Styled like List Build Mode */}
-                <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-4 gap-1 mb-4 bg-white/5 border border-bb-line rounded-xl p-1">
                   <button
                     onClick={() => setViewFilter('PANTRY')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'PANTRY'
-                      ? 'bg-green-600 text-white border-green-600 shadow-md transform scale-105'
-                      : 'bg-white text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300'
+                    className={`py-1.5 rounded-lg transition text-sm font-semibold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'PANTRY'
+                      ? 'bg-bb-gold text-bb-navy'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -978,9 +978,9 @@ function ItemsContent() {
                   </button>
                   <button
                     onClick={() => setViewFilter('FAVORITES')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'FAVORITES'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-md transform scale-105'
-                      : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+                    className={`py-1.5 rounded-lg transition text-sm font-semibold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'FAVORITES'
+                      ? 'bg-bb-gold text-bb-navy'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -990,9 +990,9 @@ function ItemsContent() {
                   </button>
                   <button
                     onClick={() => setViewFilter('HIDDEN')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'HIDDEN'
-                      ? 'bg-gray-400 text-white border-gray-400 shadow-md transform scale-105'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                    className={`py-1.5 rounded-lg transition text-sm font-semibold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'HIDDEN'
+                      ? 'bg-bb-gold text-bb-navy'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1002,9 +1002,9 @@ function ItemsContent() {
                   </button>
                   <button
                     onClick={() => setViewFilter('ALL')}
-                    className={`py-1.5 rounded-2xl border transition text-sm font-bold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'ALL'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                      : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                    className={`py-1.5 rounded-lg transition text-sm font-semibold truncate cursor-pointer flex items-center justify-center gap-2 ${viewFilter === 'ALL'
+                      ? 'bg-bb-gold text-bb-navy'
+                      : 'text-bb-muted hover:text-bb-cream'
                       }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1013,11 +1013,11 @@ function ItemsContent() {
                     Explore All
                   </button>
                 </div>
-                <div className="mb-4 border-b border-gray-100"></div>
+                <div className="mb-4 border-b border-bb-line"></div>
 
                 {/* List Header / Stats */}
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                  <h2 className="text-lg sm:text-xl font-semibold text-bb-cream">
                     {viewFilter === 'HIDDEN' ? 'Hidden Items' : viewFilter === 'FAVORITES' ? 'Favorite Items' : viewFilter === 'PANTRY' ? 'My Pantry' : 'All Items'}
                   </h2>
                   <div className="flex items-center gap-2">
@@ -1027,12 +1027,12 @@ function ItemsContent() {
                           setInputValue('');
                           setFilterLetter('All');
                         }}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer animate-in fade-in slide-in-from-right-2 duration-200"
+                        className="text-xs font-bold text-bb-muted hover:text-bb-cream cursor-pointer animate-in fade-in slide-in-from-right-2 duration-200"
                       >
                         Reset Search
                       </button>
                     )}
-                    <span className="text-xs text-gray-500">{filtered.length} shown</span>
+                    <span className="text-xs text-bb-muted">{filtered.length} shown</span>
                   </div>
                 </div>
 
@@ -1040,37 +1040,37 @@ function ItemsContent() {
                 {filtered.length === 0 && (
                   <>
                     {viewFilter === 'PANTRY' && !inputValue && filterLetter === 'All' ? (
-                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
-                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full text-green-600">
+                      <div className="py-12 px-4 text-center bg-bb-raised rounded-2xl border-2 border-dashed border-bb-line mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-full text-bb-muted">
                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">Your Pantry is Empty</h3>
-                        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                        <h3 className="text-xl font-bold text-bb-cream mb-2">Your Pantry is Empty</h3>
+                        <p className="text-bb-muted mb-8 max-w-sm mx-auto">
                           Start shopping and uploading receipts to build your personal pantry of items you've purchased!
                         </p>
                       </div>
                     ) : viewFilter === 'FAVORITES' && !inputValue && filterLetter === 'All' ? (
-                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
-                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full text-amber-600">
+                      <div className="py-12 px-4 text-center bg-bb-raised rounded-2xl border-2 border-dashed border-bb-line mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-full text-bb-muted">
                           <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">No Favorites Yet</h3>
-                        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+                        <h3 className="text-xl font-bold text-bb-cream mb-2">No Favorites Yet</h3>
+                        <p className="text-bb-muted mb-8 max-w-sm mx-auto">
                           Tap the star icon on any item to save it here for quick access later!
                         </p>
 
                         <div className="space-y-4">
-                          <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Popular Suggestions</p>
+                          <p className="text-sm font-semibold text-bb-muted uppercase tracking-wider">Popular Suggestions</p>
                           <div className="flex flex-wrap justify-center gap-2">
                             {DEFAULT_ITEMS.map((name) => (
                               <button
                                 key={name}
                                 onClick={() => handleSuggestionClick(name)}
-                                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm cursor-pointer"
+                                className="px-4 py-2 bg-bb-panel border border-bb-line rounded-xl text-sm font-medium text-bb-cream hover:border-bb-gold/50 hover:bg-white/5 transition-all cursor-pointer"
                               >
                                 ⭐ {name}
                               </button>
@@ -1079,19 +1079,19 @@ function ItemsContent() {
                         </div>
                       </div>
                     ) : viewFilter === 'HIDDEN' && !inputValue && filterLetter === 'All' ? (
-                      <div className="py-12 px-4 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mt-2">
-                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full text-gray-500">
+                      <div className="py-12 px-4 text-center bg-bb-raised rounded-2xl border-2 border-dashed border-bb-line mt-2">
+                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-bb-raised rounded-full text-bb-muted">
                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                           </svg>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-2">No Hidden Items</h3>
-                        <p className="text-gray-500 max-w-sm mx-auto">
+                        <h3 className="text-xl font-bold text-bb-cream mb-2">No Hidden Items</h3>
+                        <p className="text-bb-muted max-w-sm mx-auto">
                           Not into soda? Don&apos;t have a dog? Hide it. Remove items from your list without deleting them.
                         </p>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-500 italic py-4 text-center">
+                      <div className="text-sm text-bb-muted italic py-4 text-center">
                         {viewFilter === 'HIDDEN'
                           ? "No hidden items found matching your search."
                           : "No items found."}
@@ -1154,7 +1154,7 @@ function ItemsContent() {
 
 export default function ItemsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-bb-muted">Loading...</div>}>
       <ItemsContent />
     </Suspense>
   );

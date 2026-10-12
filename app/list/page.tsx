@@ -2048,14 +2048,14 @@ export default function ShoppingList() {
     const percentInt = Math.round(percentAboveMin);
 
     if (currentPrice === minPrice) {
-      return { label: 'Best Price', mobileLabel: 'Best Price', emoji: '✅', color: 'text-green-600' };
+      return { label: 'Best Price', mobileLabel: 'Best Price', emoji: '✅', color: 'text-bb-green' };
     }
 
     if (percentAboveMin <= 10) {
-      return { label: `Close Enough (${percentInt}% more)`, mobileLabel: `Close Enough (${percentInt}% more)`, emoji: '➖', color: 'text-yellow-600' };
+      return { label: `Close Enough (${percentInt}% more)`, mobileLabel: `Close Enough (${percentInt}% more)`, emoji: '➖', color: 'text-bb-gold' };
     }
 
-    return { label: `Skip This One (${percentInt}% more)`, mobileLabel: `Skip (${percentInt}% more)`, emoji: '❌', color: 'text-red-600' };
+    return { label: `Skip This One (${percentInt}% more)`, mobileLabel: `Skip (${percentInt}% more)`, emoji: '❌', color: 'text-bb-red' };
   };
 
   const calculateBestStore = () => {
@@ -2393,11 +2393,11 @@ export default function ShoppingList() {
 
       {/* Analyzing Loading Indicator */}
       {isAnalyzingPhoto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-teal-600"></div>
-            <p className="text-lg font-semibold text-gray-900">Analyzing price tag...</p>
-            <p className="text-sm text-gray-600">This may take a few seconds</p>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-bb-panel border border-bb-line rounded-2xl p-8 shadow-sm flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-bb-gold"></div>
+            <p className="text-lg font-semibold text-bb-cream">Analyzing price tag...</p>
+            <p className="text-sm text-bb-muted">This may take a few seconds</p>
           </div>
         </div>
       )}

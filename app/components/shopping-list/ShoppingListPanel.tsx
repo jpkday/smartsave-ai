@@ -140,7 +140,7 @@ export default function ShoppingListPanel({
 }: ShoppingListPanelProps) {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 py-12">
+      <div className="bg-bb-panel rounded-2xl shadow-sm border border-bb-line py-12">
         <LoadingSpinner message="Loading Shopping List..." />
       </div>
     );
@@ -148,15 +148,15 @@ export default function ShoppingListPanel({
 
   if (listItems.length === 0) {
     return (
-      <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-teal-600 to-emerald-500 p-8 md:p-12 text-center text-white">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
+      <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-8 md:p-12 text-center text-bb-cream border-b border-bb-line">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 border border-bb-line rounded-full mb-4">
             <span className="text-3xl">🛒</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold mb-2 leading-tight">
             Your shopping list is empty
           </h2>
-          <p className="text-base text-teal-50 opacity-90 max-w-2xl mx-auto font-medium">
+          <p className="text-base text-bb-muted max-w-2xl mx-auto font-medium">
             Add items below to start comparing prices and saving money.
           </p>
         </div>
@@ -181,11 +181,11 @@ export default function ShoppingListPanel({
             {suggestionData.staples.length > 0 ? (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Your Usuals</h3>
+                  <h3 className="text-lg font-bold text-bb-cream uppercase tracking-wider">Your Usuals</h3>
                   {favorites.length > 0 && (
                     <button
                       onClick={onAddFavorites}
-                      className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-bb-gold font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
                     >
                       ⭐ Add all Favorites
                     </button>
@@ -196,10 +196,10 @@ export default function ShoppingListPanel({
                     <button
                       key={item.item_id}
                       onClick={() => onSelectItem(item.item_name)}
-                      className="flex flex-col items-start p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all shadow-sm hover:shadow-md cursor-pointer active:scale-95 text-left"
+                      className="flex flex-col items-start p-4 bg-bb-raised border border-bb-line rounded-2xl hover:border-bb-gold/50 hover:bg-white/5 transition-all cursor-pointer active:scale-95 text-left"
                     >
-                      <span className="text-sm font-bold text-gray-800 line-clamp-1">{item.item_name}</span>
-                      <span className="text-xs text-gray-400 mt-1">
+                      <span className="text-sm font-bold text-bb-cream line-clamp-1">{item.item_name}</span>
+                      <span className="text-xs text-bb-muted mt-1">
                         {`Bought ${item.times_purchased}× · last ${new Date(item.last_purchase + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
                       </span>
                     </button>
@@ -209,11 +209,11 @@ export default function ShoppingListPanel({
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wider">Common Items</h3>
+                  <h3 className="text-lg font-bold text-bb-cream uppercase tracking-wider">Common Items</h3>
                   {favorites.length > 0 && (
                     <button
                       onClick={onAddFavorites}
-                      className="text-amber-600 font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-bb-gold font-bold text-sm hover:underline cursor-pointer flex items-center gap-1"
                     >
                       ⭐ Add all Favorites
                     </button>
@@ -224,12 +224,12 @@ export default function ShoppingListPanel({
                     <button
                       key={name}
                       onClick={() => onSelectItem(name)}
-                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-teal-400 hover:bg-teal-50 transition-all group shadow-sm hover:shadow-md cursor-pointer active:scale-95"
+                      className="flex flex-col items-center justify-center p-4 bg-bb-raised border border-bb-line rounded-2xl hover:border-bb-gold/50 hover:bg-white/5 transition-all group cursor-pointer active:scale-95"
                     >
                       <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
                         {name.includes('Milk') ? '🥛' : name.includes('Eggs') ? '🥚' : name.includes('Cheese') ? '🧀' : name.includes('Apple') ? '🍎' : name.includes('Chicken') ? '🍗' : name.includes('Beef') ? '🥩' : name.includes('Bread') ? '🍞' : name.includes('Butter') ? '🧈' : '🛒'}
                       </span>
-                      <span className="text-xs font-bold text-gray-700 text-center line-clamp-1">{name.split(' (')[0]}</span>
+                      <span className="text-xs font-bold text-bb-cream text-center line-clamp-1">{name.split(' (')[0]}</span>
                     </button>
                   ))}
                 </div>
@@ -297,17 +297,17 @@ export default function ShoppingListPanel({
   return (
     <>
       {/* SHOPPING LIST HEADER */}
-      <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6 md:mb-0 md:sticky md:top-[84px] md:max-h-[calc(100vh-100px)] md:flex md:flex-col">
+      <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6 mb-6 md:mb-0 md:sticky md:top-[84px] md:max-h-[calc(100vh-100px)] md:flex md:flex-col">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-            Shopping List <span className="text-xl text-gray-500 font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
+          <h2 className="text-xl md:text-2xl font-bold text-bb-cream">
+            Shopping List <span className="text-xl text-bb-muted font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
           </h2>
           <div className="flex gap-2 items-center">
             {/* Camera Scan button */}
             {isMobile && mobileMode === 'store' && (
               <button
                 onClick={onOpenPricePhotoCapture}
-                className="bg-teal-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-teal-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
+                className="border border-bb-line text-bb-cream px-4 py-2 rounded-2xl font-semibold hover:bg-white/5 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
                 title="Scan price tag"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -321,8 +321,8 @@ export default function ShoppingListPanel({
             <button
               onClick={onToggleShowPriority}
               className={`text-sm px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
-                ? 'bg-red-100 text-red-700 border border-red-200'
-                : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'
+                ? 'bg-bb-red/10 text-bb-red border border-bb-red/30'
+                : 'bg-transparent text-bb-muted border border-bb-line hover:bg-white/5 hover:text-bb-cream'
                 }`}
               title="Show Urgent Items Only"
             >
@@ -334,7 +334,7 @@ export default function ShoppingListPanel({
             {listItems.some((i) => i.checked) && (
               <button
                 onClick={onToggleShowChecked}
-                className="text-xs text-gray-600 hover:text-gray-800 font-semibold cursor-pointer"
+                className="text-xs text-bb-muted hover:text-bb-cream font-semibold cursor-pointer"
               >
                 {showCheckedItems ? 'Hide Checked' : 'Show Checked'}
               </button>
@@ -453,17 +453,17 @@ export default function ShoppingListPanel({
           {/* Third: Items without price data */}
           {itemsWithoutPrice.length > 0 && (
             <div>
-              <h3 className="text-lg font-bold text-gray-700 mb-2 flex items-center gap-2 justify-between">
+              <h3 className="text-lg font-bold text-bb-cream mb-2 flex items-center gap-2 justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-gray-400 text-white px-3 py-1 rounded-full text-sm">No Price Data</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="bg-white/5 border border-bb-line text-bb-muted px-3 py-1 rounded-full text-sm">No Price Data</span>
+                  <span className="text-sm text-bb-muted">
                     {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
                   </span>
                 </div>
               </h3>
 
               {/* Group items by category */}
-              <div className="rounded-2xl border-2 border-gray-300 bg-white shadow-sm p-3 space-y-4">
+              <div className="rounded-2xl border border-bb-line bg-bb-panel shadow-sm p-3 space-y-4">
                 {Object.entries(
                   itemsWithoutPrice.reduce((acc: Record<number, typeof itemsWithoutPrice>, item) => {
                     const catId = item.category_id !== null && item.category_id !== undefined ? item.category_id : -1;
@@ -513,12 +513,12 @@ export default function ShoppingListPanel({
 
           {showPriorityOnly && displayItems.length === 0 && (
             <div className="mt-1 pt-1">
-              <div className="py-12 px-6 text-center rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200">
-                <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <div className="py-12 px-6 text-center rounded-2xl bg-white/[0.03] border-2 border-dashed border-bb-line">
+                <svg className="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5h13l-3 4 3 4H3" />
                 </svg>
-                <p className="text-xl font-bold text-gray-700 mb-2">No flagged items found</p>
-                <p className="text-base text-gray-500 max-w-sm mx-auto">Flag important items so they don't get buried or forgotten.</p>
+                <p className="text-xl font-bold text-bb-cream mb-2">No flagged items found</p>
+                <p className="text-base text-bb-muted max-w-sm mx-auto">Flag important items so they don't get buried or forgotten.</p>
               </div>
             </div>
           )}
@@ -526,23 +526,23 @@ export default function ShoppingListPanel({
         </div>
 
         {/* TOTAL - always visible */}
-        <div className="sticky bottom-0 -mx-4 md:mx-0 -mb-4 md:mb-0 px-4 md:px-0 py-3 md:pb-0 mt-3 bg-white border-t border-gray-200 rounded-b-2xl flex justify-between items-center">
+        <div className="sticky bottom-0 -mx-4 md:mx-0 -mb-4 md:mb-0 px-4 md:px-0 py-3 md:pb-0 mt-3 bg-bb-panel border-t border-bb-line rounded-b-2xl flex justify-between items-center">
           <div>
-            <span className="text-lg font-bold text-gray-800">Total</span>
+            <span className="text-lg font-bold text-bb-cream">Total</span>
             {unpricedCount > 0 && (
-              <span className="ml-2 text-sm text-gray-500">
+              <span className="ml-2 text-sm text-bb-muted">
                 + {unpricedCount} {unpricedCount === 1 ? 'item' : 'items'} without price
               </span>
             )}
           </div>
-          <span className="text-2xl font-bold text-teal-600">{formatMoney(listTotal)}</span>
+          <span className="text-2xl font-bold text-bb-gold">{formatMoney(listTotal)}</span>
         </div>
       </div>
 
       {/* Quick Add to List Widget (Mobile-Store mode only) */}
       {(isMobile && mobileMode === 'store') && (
-        <div className="bg-white rounded-2xl shadow-lg p-4">
-          <h2 className="text-xl font-semibold mb-1 text-gray-800">Quick Add to List</h2>
+        <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4">
+          <h2 className="text-xl font-semibold mb-1 text-bb-cream">Quick Add to List</h2>
 
           <SearchItemInput
             value={newItem}

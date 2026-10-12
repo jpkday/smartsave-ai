@@ -86,12 +86,12 @@ export default function HouseholdSelector({
   if (!showModal) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-        <h2 className="text-xl font-semibold mb-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-bb-panel text-bb-cream border border-bb-line rounded-lg shadow-sm p-6 max-w-md w-full">
+        <h2 className="text-xl font-semibold mb-4 text-bb-cream">
           {initialCode ? 'Change Beta Code' : 'Welcome to the SmartSaveAI beta!'}
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-bb-muted mb-4">
           {initialCode ? 'Enter a new four character code:' : 'Enter your four character code to get started:'}
         </p>
 
@@ -106,16 +106,16 @@ export default function HouseholdSelector({
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           placeholder="A1B2"
           maxLength={4}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-2 uppercase text-center text-2xl font-mono tracking-widest"
+          className="w-full px-4 py-3 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50 rounded-lg mb-2 uppercase text-center text-2xl font-mono tracking-widest"
         />
 
 
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {error && <p className="text-bb-red text-sm mb-4">{error}</p>}
 
         <button
           onClick={handleSubmit}
           disabled={inputCode.length < 4}
-          className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+          className="w-full bg-bb-gold text-bb-navy font-semibold px-4 py-3 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue
         </button>

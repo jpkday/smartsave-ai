@@ -461,13 +461,13 @@ export default function Stores() {
       </div>
 
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-6">
 
           {/* Add Store Button */}
           <div className="mb-6 flex justify-end">
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg flex items-center gap-2"
+              className="bg-bb-gold text-bb-navy px-6 py-3 rounded-2xl font-bold hover:brightness-110 transition shadow-sm flex items-center gap-2"
             >
               <span className="text-xl">+</span> Add New Store
             </button>
@@ -475,13 +475,13 @@ export default function Stores() {
 
           {/* Add Store Modal */}
           {isAddModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Add New Store</h2>
+                  <h2 className="text-2xl font-bold text-bb-cream">Add New Store</h2>
                   <button
                     onClick={() => setIsAddModalOpen(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition"
+                    className="p-2 text-bb-muted hover:text-bb-cream rounded-full hover:bg-white/5 transition"
                   >
                     ✕
                   </button>
@@ -489,39 +489,39 @@ export default function Stores() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">Name</label>
                     <input
                       type="text"
                       value={newStore}
                       onChange={(e) => setNewStore(e.target.value)}
                       placeholder="(e.g. Costco)"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-gray-800 font-semibold transition bg-gray-50 focus:bg-white"
+                      className="w-full px-4 py-3 border-2 border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-4 focus:ring-bb-gold/30 placeholder:text-slate-500 text-bb-cream font-semibold transition bg-bb-raised focus:bg-bb-raised"
                       autoFocus
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">Location</label>
                     <input
                       type="text"
                       value={newLocation}
                       onChange={(e) => setNewLocation(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addStore()}
                       placeholder="(e.g. King of Prussia)"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-gray-800 font-semibold transition bg-gray-50 focus:bg-white"
+                      className="w-full px-4 py-3 border-2 border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-4 focus:ring-bb-gold/30 placeholder:text-slate-500 text-bb-cream font-semibold transition bg-bb-raised focus:bg-bb-raised"
                     />
                   </div>
 
                   <div className="pt-4 flex gap-3">
                     <button
                       onClick={() => setIsAddModalOpen(false)}
-                      className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition"
+                      className="flex-1 py-3 border border-bb-line text-bb-cream bg-transparent font-bold hover:bg-white/5 rounded-xl transition"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={addStore}
-                      className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                      className="flex-1 py-3 bg-bb-gold text-bb-navy font-bold rounded-xl hover:brightness-110 transition shadow-sm"
                     >
                       Save Store
                     </button>
@@ -534,22 +534,22 @@ export default function Stores() {
           {/* Favorited Stores Section */}
           {favoritedStores.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">⭐ Your Stores</h2>
+              <h2 className="text-xl font-bold text-bb-cream mb-3">⭐ Your Stores</h2>
               {favoritedStores.length > 1 && (
-                <p className="text-sm text-gray-500 mb-3">Use arrows to reorder your favorite stores</p>
+                <p className="text-sm text-bb-muted mb-3">Use arrows to reorder your favorite stores</p>
               )}
               <div className="space-y-2">
                 {favoritedStores.map((store, index) => (
                   <div key={store.id} className="editing-row">
                     {editingId === store.id ? (
-                      <div className="flex flex-col sm:flex-row gap-2 p-3 bg-blue-50 rounded-2xl border-2 border-blue-300">
+                      <div className="flex flex-col sm:flex-row gap-2 p-3 bg-bb-raised rounded-2xl border-2 border-bb-gold/40">
                         <div className="flex gap-2 flex-1">
                           <input
                             type="text"
                             value={editingValue}
                             onChange={(e) => setEditingValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold min-w-0"
+                            className="flex-1 px-3 py-2 border border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream font-semibold min-w-0"
                             autoFocus
                             placeholder="Store Name"
                           />
@@ -559,19 +559,19 @@ export default function Stores() {
                             onChange={(e) => setEditingLocation(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
                             placeholder="Location (opt)"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 min-w-0"
+                            className="flex-1 px-3 py-2 border border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream min-w-0"
                           />
                         </div>
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => saveEdit(store.id)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer"
+                            className="px-4 py-2 bg-bb-gold text-bb-navy rounded-xl font-semibold hover:brightness-110 transition cursor-pointer"
                           >
                             ✓
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition cursor-pointer"
+                            className="px-4 py-2 border border-bb-line bg-transparent text-bb-cream rounded-xl font-semibold hover:bg-white/5 transition cursor-pointer"
                           >
                             ✕
                           </button>
@@ -579,7 +579,7 @@ export default function Stores() {
                       </div>
                     ) : (
                       <>
-                      <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 transition">
+                      <div className="flex items-center gap-2 p-3 bg-bb-raised rounded-2xl border-2 border-bb-line hover:border-bb-gold/40 transition">
                         {/* Up/Down Arrows */}
                         {favoritedStores.length > 1 && (
                           <div className="flex flex-col gap-0.5">
@@ -588,8 +588,8 @@ export default function Stores() {
                               disabled={index === 0}
                               className={`p-1 rounded transition ${
                                 index === 0
-                                  ? 'text-gray-200 cursor-not-allowed'
-                                  : 'text-gray-400 hover:text-gray-600 hover:bg-yellow-100 cursor-pointer'
+                                  ? 'text-white/10 cursor-not-allowed'
+                                  : 'text-bb-muted hover:text-bb-cream hover:bg-white/5 cursor-pointer'
                               }`}
                               title="Move up"
                             >
@@ -602,8 +602,8 @@ export default function Stores() {
                               disabled={index === favoritedStores.length - 1}
                               className={`p-1 rounded transition ${
                                 index === favoritedStores.length - 1
-                                  ? 'text-gray-200 cursor-not-allowed'
-                                  : 'text-gray-400 hover:text-gray-600 hover:bg-yellow-100 cursor-pointer'
+                                  ? 'text-white/10 cursor-not-allowed'
+                                  : 'text-bb-muted hover:text-bb-cream hover:bg-white/5 cursor-pointer'
                               }`}
                               title="Move down"
                             >
@@ -617,16 +617,16 @@ export default function Stores() {
                         {/* Favorite Star */}
                         <button
                           onClick={() => toggleFavorite(store.id, store.is_favorite || false)}
-                          className="text-2xl leading-none flex-shrink-0 cursor-pointer text-yellow-500 hover:scale-110 transition-transform"
+                          className="text-2xl leading-none flex-shrink-0 cursor-pointer text-bb-gold hover:scale-110 transition-transform"
                         >
-                          ⭐
+                          ★
                         </button>
 
                         {/* Store Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-800 truncate">{store.name}</div>
+                          <div className="font-bold text-bb-cream truncate">{store.name}</div>
                           {store.location && (
-                            <div className="text-sm text-gray-500 truncate">{store.location}</div>
+                            <div className="text-sm text-bb-muted truncate">{store.location}</div>
                           )}
                         </div>
 
@@ -636,14 +636,14 @@ export default function Stores() {
                             <>
                               <button
                                 onClick={() => startEdit(store)}
-                                className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
+                                className="p-2 text-bb-muted hover:text-bb-cream transition cursor-pointer"
                                 title="Edit"
                               >
                                 <PencilIcon />
                               </button>
                               <button
                                 onClick={() => deleteStore(store.id, store.name)}
-                                className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
+                                className="p-2 text-bb-muted hover:text-bb-red transition cursor-pointer text-xl leading-none"
                                 title="Delete"
                               >
                                 🗑️
@@ -653,7 +653,7 @@ export default function Stores() {
                           {/* Expand/Collapse for category ordering */}
                           <button
                             onClick={() => toggleStoreExpanded(store.id)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 transition cursor-pointer"
+                            className="p-2 text-bb-muted hover:text-bb-cream transition cursor-pointer"
                             title={expandedStoreId === store.id ? "Hide categories" : "Customize category order"}
                           >
                             <svg
@@ -670,8 +670,8 @@ export default function Stores() {
 
                       {/* Expanded Category Order Section */}
                       {expandedStoreId === store.id && (
-                        <div className="mt-2 ml-8 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
-                          <p className="text-xs text-indigo-600 font-semibold mb-2">
+                        <div className="mt-2 ml-8 p-3 bg-white/[0.03] rounded-xl border border-bb-line">
+                          <p className="text-xs text-bb-muted uppercase tracking-wider font-semibold mb-2">
                             Category Order for {store.name}
                           </p>
                           {storeCategoryOrders[store.id] ? (
@@ -679,7 +679,7 @@ export default function Stores() {
                               {storeCategoryOrders[store.id].map((cat, catIndex) => (
                                 <div
                                   key={cat.categoryId}
-                                  className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-indigo-100"
+                                  className="flex items-center gap-2 p-2.5 bg-bb-raised rounded-lg border border-bb-line"
                                 >
                                   {/* Up/Down arrows for category */}
                                   <div className="flex flex-col gap-0.5">
@@ -688,8 +688,8 @@ export default function Stores() {
                                       disabled={catIndex === 0}
                                       className={`p-0.5 rounded transition ${
                                         catIndex === 0
-                                          ? 'text-gray-200 cursor-not-allowed'
-                                          : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 cursor-pointer'
+                                          ? 'text-white/10 cursor-not-allowed'
+                                          : 'text-bb-muted hover:text-bb-cream hover:bg-white/5 cursor-pointer'
                                       }`}
                                       title="Move up"
                                     >
@@ -702,8 +702,8 @@ export default function Stores() {
                                       disabled={catIndex === storeCategoryOrders[store.id].length - 1}
                                       className={`p-0.5 rounded transition ${
                                         catIndex === storeCategoryOrders[store.id].length - 1
-                                          ? 'text-gray-200 cursor-not-allowed'
-                                          : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 cursor-pointer'
+                                          ? 'text-white/10 cursor-not-allowed'
+                                          : 'text-bb-muted hover:text-bb-cream hover:bg-white/5 cursor-pointer'
                                       }`}
                                       title="Move down"
                                     >
@@ -720,7 +720,7 @@ export default function Stores() {
                               ))}
                             </div>
                           ) : (
-                            <div className="text-sm text-gray-500">Loading categories...</div>
+                            <div className="text-sm text-bb-muted">Loading categories...</div>
                           )}
                         </div>
                       )}
@@ -735,19 +735,19 @@ export default function Stores() {
           {/* Other Stores Section */}
           {otherStores.length > 0 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-3">All Stores</h2>
+              <h2 className="text-xl font-bold text-bb-cream mb-3">All Stores</h2>
               <div className="space-y-2">
                 {otherStores.map(store => (
                   <div key={store.id} className="editing-row">
                     {editingId === store.id ? (
-                      <div className="flex flex-col sm:flex-row gap-2 p-3 bg-blue-50 rounded-2xl border-2 border-blue-300">
+                      <div className="flex flex-col sm:flex-row gap-2 p-3 bg-bb-raised rounded-2xl border-2 border-bb-gold/40">
                         <div className="flex gap-2 flex-1">
                           <input
                             type="text"
                             value={editingValue}
                             onChange={(e) => setEditingValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold min-w-0"
+                            className="flex-1 px-3 py-2 border border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream font-semibold min-w-0"
                             autoFocus
                             placeholder="Store Name"
                           />
@@ -757,37 +757,37 @@ export default function Stores() {
                             onChange={(e) => setEditingLocation(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && saveEdit(store.id)}
                             placeholder="Location (opt)"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 min-w-0"
+                            className="flex-1 px-3 py-2 border border-bb-line rounded-xl focus:border-bb-gold/50 focus:outline-none focus:ring-2 bg-bb-raised focus:ring-bb-gold/50 placeholder:text-slate-500 text-bb-cream min-w-0"
                           />
                         </div>
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => saveEdit(store.id)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition cursor-pointer"
+                            className="px-4 py-2 bg-bb-gold text-bb-navy rounded-xl font-semibold hover:brightness-110 transition cursor-pointer"
                           >
                             ✓
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition cursor-pointer"
+                            className="px-4 py-2 border border-bb-line bg-transparent text-bb-cream rounded-xl font-semibold hover:bg-white/5 transition cursor-pointer"
                           >
                             ✕
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border-2 border-gray-200 hover:border-gray-300 transition">
+                      <div className="flex items-center gap-3 p-3 bg-bb-raised rounded-2xl border-2 border-bb-line hover:border-bb-gold/40 transition">
                         <button
                           onClick={() => toggleFavorite(store.id, store.is_favorite || false)}
-                          className="text-2xl leading-none flex-shrink-0 cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors"
+                          className="text-2xl leading-none flex-shrink-0 cursor-pointer text-slate-600 hover:text-bb-gold transition-colors"
                         >
                           ☆
                         </button>
 
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-800 truncate">{store.name}</div>
+                          <div className="font-bold text-bb-cream truncate">{store.name}</div>
                           {store.location && (
-                            <div className="text-sm text-gray-500 truncate">{store.location}</div>
+                            <div className="text-sm text-bb-muted truncate">{store.location}</div>
                           )}
                         </div>
 
@@ -796,14 +796,14 @@ export default function Stores() {
                             <>
                               <button
                                 onClick={() => startEdit(store)}
-                                className="p-2 text-gray-400 hover:text-blue-600 transition cursor-pointer"
+                                className="p-2 text-bb-muted hover:text-bb-cream transition cursor-pointer"
                                 title="Edit"
                               >
                                 <PencilIcon />
                               </button>
                               <button
                                 onClick={() => deleteStore(store.id, store.name)}
-                                className="p-2 text-gray-400 hover:text-red-600 transition cursor-pointer text-xl leading-none"
+                                className="p-2 text-bb-muted hover:text-bb-red transition cursor-pointer text-xl leading-none"
                                 title="Delete"
                               >
                                 🗑️
@@ -820,7 +820,7 @@ export default function Stores() {
           )}
 
           {stores.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-bb-muted">
               Loading stores...
             </div>
           )}

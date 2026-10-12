@@ -892,7 +892,7 @@ function ReceiptsContent() {
   }, 0);
 
   return (
-    <div className="min-h-screen app-bg pb-20 md:pb-0">
+    <div className="min-h-screen app-bg text-bb-cream pb-20 md:pb-0">
       <div className="sticky top-0 z-50 app-header w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3">
           <div className="flex justify-between items-center">
@@ -910,15 +910,15 @@ function ReceiptsContent() {
       </div>
 
       <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
-        <div className="bg-white rounded-2xl shadow-lg p-3">
+        <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-3">
           {/* Desktop Header */}
           <div className="hidden md:block mb-2 px-3 pt-2">
-            <h1 className="text-2xl font-bold text-gray-800">Add Receipt</h1>
+            <h1 className="text-2xl font-bold text-bb-cream">Add Receipt</h1>
           </div>
 
           {/* Scan Receipt Button */}
-          <div className="w-full bg-white p-3 mb-2 md:hidden">
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4 bg-blue-50">
+          <div className="w-full bg-bb-panel p-3 mb-2 md:hidden">
+            <div className="border border-bb-line rounded-2xl p-4 bg-bb-raised">
               <div className="flex flex-col items-center justify-center gap-4">
 
                 <div className="w-full">
@@ -926,7 +926,7 @@ function ReceiptsContent() {
                     <button
                       onClick={() => setIsCaptureModalOpen(true)}
                       disabled={scanning}
-                      className="aspect-square bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:scale-[1.02] transition flex flex-col items-center justify-center gap-2 p-2"
+                      className="aspect-square bg-bb-gold text-bb-navy rounded-2xl font-semibold hover:brightness-110 transition flex flex-col items-center justify-center gap-2 p-2"
                     >
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       <span className="text-sm">Scan Receipt</span>
@@ -935,9 +935,9 @@ function ReceiptsContent() {
                     <button
                       onClick={() => galleryInputRef.current?.click()}
                       disabled={scanning}
-                      className="aspect-square bg-white border-2 border-blue-100 text-blue-600 rounded-2xl font-bold shadow-sm hover:bg-blue-50 transition flex flex-col items-center justify-center gap-2 p-2"
+                      className="aspect-square bg-transparent border border-bb-line text-bb-cream rounded-2xl font-bold hover:bg-white/5 transition flex flex-col items-center justify-center gap-2 p-2"
                     >
-                      <PhotoIcon className="w-10 h-10 text-blue-500" />
+                      <PhotoIcon className="w-10 h-10 text-bb-muted" />
                       <span className="text-sm">Upload from Gallery</span>
                     </button>
                   </div>
@@ -950,7 +950,7 @@ function ReceiptsContent() {
                     className="hidden"
                   />
 
-                  <p className="text-xs text-blue-700 mt-2 text-center w-full">
+                  <p className="text-xs text-bb-muted mt-2 text-center w-full">
                     Upload an image or PDF — we'll extract items automatically.
                   </p>
                 </div>
@@ -963,7 +963,7 @@ function ReceiptsContent() {
               <div className="mt-4 text-center">
                 <button
                   onClick={() => setShowManualMobile(true)}
-                  className="text-blue-600 font-semibold text-sm hover:underline flex items-center justify-center gap-1 mx-auto"
+                  className="text-bb-muted font-semibold text-sm hover:text-bb-cream hover:underline flex items-center justify-center gap-1 mx-auto"
                 >
                   <PlusIcon className="w-4 h-4" />
                   Add manually instead
@@ -972,24 +972,24 @@ function ReceiptsContent() {
             )}
           </div>
 
-          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
+          <div className={`w-full bg-bb-panel p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
+            <div className="border border-bb-line rounded-2xl shadow-sm p-4">
 
               {/* Store and Date Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-semibold text-gray-700">Store</label>
+                    <label className="block text-sm font-semibold text-bb-cream">Store</label>
                     {/* Desktop Upload Button */}
                     <div className="hidden md:flex items-center gap-2">
                       <button
                         onClick={() => setIsCaptureModalOpen(true)}
                         disabled={scanning}
-                        className="text-xs font-bold text-blue-600 hover:text-indigo-600 flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
+                        className="text-xs font-bold text-bb-muted hover:text-bb-cream flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
                       >
                         {scanning ? (
                           <>
-                            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="w-3 h-3 border-2 border-bb-gold border-t-transparent rounded-full animate-spin" />
                             Analyzing...
                           </>
                         ) : (
@@ -1004,7 +1004,7 @@ function ReceiptsContent() {
                   <select
                     value={selectedStoreId}
                     onChange={(e) => setSelectedStoreId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                    className="w-full px-4 py-3 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold cursor-pointer"
                   >
                     <option value="">Select</option>
                     {stores.map((s, idx) => (
@@ -1015,14 +1015,14 @@ function ReceiptsContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2">
+                  <label className="text-sm font-semibold text-bb-cream mb-2">
                     Date & Time of Purchase
                   </label>
                   <input
                     type="datetime-local"
                     value={tripEndLocal}
                     onChange={(e) => setTripEndLocal(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold cursor-pointer"
+                    className="w-full px-4 py-3 bg-bb-raised border border-bb-line rounded-2xl focus:outline-none focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold cursor-pointer"
                   />
                 </div>
               </div>
@@ -1030,29 +1030,29 @@ function ReceiptsContent() {
           </div>
 
           {/* Create past trip toggle */}
-          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
-            <div className="border border-slate-200 rounded-2xl shadow-md p-4">
+          <div className={`w-full bg-bb-panel p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
+            <div className="border border-bb-line rounded-2xl shadow-sm p-4">
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={createPastTrip}
                   onChange={(e) => setCreatePastTrip(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 cursor-pointer"
+                  className="w-5 h-5 rounded border-bb-line accent-[#c9a96e] cursor-pointer"
                 />
-                <span className="text-s font-semibold text-gray-700">
+                <span className="text-s font-semibold text-bb-cream">
                   Save Receipt to your Recent Trips
                 </span>
               </label>
-              <p className="text-s text-gray-500 mt-2">
+              <p className="text-s text-bb-muted mt-2">
                 Use this to track purchases made outside the app.
               </p>
             </div>
           </div>
 
           {/* Items Table */}
-          <div className={`w-full bg-white p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
-            <div className="border border-slate-200 rounded-2xl shadow-sm p-4">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">Items</h2>
+          <div className={`w-full bg-bb-panel p-3 ${(showManualMobile ? '' : 'hidden md:block')}`}>
+            <div className="border border-bb-line rounded-2xl shadow-sm p-4">
+              <h2 className="text-xl font-bold text-bb-cream mb-3">Items</h2>
               <div className="space-y-3">
                 {receiptItems.map((ri, idx) => (
                   <ReceiptItemCard
@@ -1096,7 +1096,7 @@ function ReceiptsContent() {
               </div>
               <button
                 onClick={addRow}
-                className="mt-3 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                className="mt-3 text-bb-cream hover:text-bb-gold font-semibold cursor-pointer"
               >
                 + Add Item
               </button>
@@ -1104,18 +1104,18 @@ function ReceiptsContent() {
           </div>
 
           {/* Total & Save */}
-          <div className={`w-full bg-white p-5 ${(showManualMobile ? '' : 'hidden md:block')}`}>
-            <div className="border-t pt-4 mb-6">
+          <div className={`w-full bg-bb-panel p-5 ${(showManualMobile ? '' : 'hidden md:block')}`}>
+            <div className="border-t border-bb-line pt-4 mb-6">
               <div className="flex justify-between items-center">
-                <span className="text-xl font-bold text-gray-800">Total:</span>
-                <span className="text-2xl font-bold text-gray-800">${total.toFixed(2)}</span>
+                <span className="text-xl font-bold text-bb-cream">Total:</span>
+                <span className="text-2xl font-bold text-bb-cream">${total.toFixed(2)}</span>
               </div>
             </div>
 
             <div className="md:flex md:justify-end">
               <button
                 onClick={saveReceipt}
-                className="w-full md:w-auto md:px-16 bg-orange-500 text-white px-4 py-3 rounded-2xl text-base font-semibold hover:bg-indigo-700 transition cursor-pointer"
+                className="w-full md:w-auto md:px-16 bg-bb-gold text-bb-navy px-4 py-3 rounded-2xl text-base font-semibold hover:brightness-110 transition cursor-pointer"
               >
                 Save Receipt
               </button>
@@ -1148,7 +1148,7 @@ function ReceiptsContent() {
       {/* Analyzing Overlay (Visible when processing) */}
       {scanning && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
+          <div className="bg-bb-panel text-bb-cream border border-bb-line rounded-2xl max-w-sm w-full p-8 shadow-sm flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
             <ProcessingLoader progress={scanProgress.current > 0 ? { current: scanProgress.current, total: scanProgress.total || 0 } : null} />
           </div>
         </div>

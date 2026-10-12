@@ -60,11 +60,11 @@ export default function ReceiptItemCard({
       case 'simple':
         return 'flex gap-3 items-center';
       case 'new':
-        return 'rounded-2xl border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 p-4 flex flex-col gap-3 shadow-md hover:shadow-lg transition-all';
+        return 'rounded-2xl border border-bb-line bg-bb-panel p-4 flex flex-col gap-3 transition-all';
       case 'matched':
-        return 'rounded-2xl border-2 p-4 flex flex-col gap-3 shadow-md hover:shadow-lg transition-all border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50';
+        return 'rounded-2xl border p-4 flex flex-col gap-3 transition-all border-bb-line bg-bb-panel';
       case 'confirmed':
-        return 'rounded-2xl border-2 p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-all border-green-200 bg-gradient-to-r from-green-50 to-emerald-50';
+        return 'rounded-2xl border p-3 flex items-center gap-3 transition-all border-bb-green/20 bg-bb-green/5';
     }
   };
 
@@ -72,18 +72,18 @@ export default function ReceiptItemCard({
   if (variant === 'confirmed') {
     return (
       <div className={getCardClassName()}>
-        <CheckCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+        <CheckCircleIcon className="w-6 h-6 text-bb-green flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-gray-800 truncate">{displayName}</div>
+          <div className="font-bold text-bb-cream truncate">{displayName}</div>
           {originalName && (
-            <div className="text-xs text-gray-500 truncate">{originalName}</div>
+            <div className="text-xs text-bb-muted truncate">{originalName}</div>
           )}
         </div>
         {inputs}
         {onEdit && (
           <button
             onClick={onEdit}
-            className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg"
+            className="p-1.5 text-bb-muted hover:text-bb-cream rounded-lg"
             title="Edit"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@ export default function ReceiptItemCard({
         {onRemove && (
           <button
             onClick={onRemove}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
+            className="p-2 text-bb-muted hover:text-bb-red hover:bg-bb-red/10 rounded-xl transition cursor-pointer"
             aria-label="Close"
             title="Remove"
           >
@@ -122,13 +122,13 @@ export default function ReceiptItemCard({
     <div className={getCardClassName()}>
       {/* Row 1: Name & Remove */}
       <div className="flex justify-between items-start">
-        <div className="font-bold text-gray-800 text-lg break-words pr-2 leading-tight" title={originalName || displayName}>
+        <div className="font-bold text-bb-cream text-lg break-words pr-2 leading-tight" title={originalName || displayName}>
           {cleanDisplayName}
         </div>
         {onRemove && (
           <button
             onClick={onRemove}
-            className="p-1 text-gray-300 hover:text-red-500 rounded-lg flex-shrink-0"
+            className="p-1 text-slate-600 hover:text-bb-red rounded-lg flex-shrink-0"
             title="Remove"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,19 +152,19 @@ export default function ReceiptItemCard({
 
       {/* Match Display (for matched variant) */}
       {matchDisplay && (
-        <div className="flex items-center gap-2 bg-white/60 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 bg-bb-raised border border-bb-line rounded-xl px-3 py-2">
           {matchDisplay.confidence === 'high' ? (
-            <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 text-bb-green flex-shrink-0" />
           ) : (
-            <SparklesIcon className="w-5 h-5 text-purple-500 flex-shrink-0" />
+            <SparklesIcon className="w-5 h-5 text-bb-gold flex-shrink-0" />
           )}
-          <span className="font-semibold text-gray-800 truncate flex-1">
+          <span className="font-semibold text-bb-cream truncate flex-1">
             {matchDisplay.matchedName}
           </span>
           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
             matchDisplay.confidence === 'high'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-purple-100 text-purple-700'
+              ? 'bg-bb-green/10 text-bb-green'
+              : 'bg-bb-gold/10 text-bb-gold'
           }`}>
             {matchDisplay.confidence === 'high' ? 'Exact' : 'Fuzzy'}
           </span>
@@ -174,12 +174,12 @@ export default function ReceiptItemCard({
       {/* Card Controls (item selector + action buttons) */}
       {(itemSelector || onConfirm || additionalControls) && (
         <div className="flex items-center gap-2">
-          {variant === 'new' && <PlusIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />}
+          {variant === 'new' && <PlusIcon className="w-5 h-5 text-bb-gold flex-shrink-0" />}
           {itemSelector && <div className="flex-1">{itemSelector}</div>}
           {onConfirm && (
             <button
               onClick={onConfirm}
-              className="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-sm"
+              className="p-2 bg-bb-gold text-bb-navy rounded-xl hover:brightness-110 transition-colors"
               title="Confirm"
             >
               <CheckCircleIcon className="w-5 h-5" />

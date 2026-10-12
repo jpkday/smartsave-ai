@@ -21,28 +21,24 @@ export default function StatusModal({
 
     const config = {
         success: {
-            icon: <CheckCircleIcon className="w-12 h-12 text-green-500" />,
-            bgColor: 'bg-green-50',
-            buttonColor: 'bg-green-600 hover:bg-green-700',
-            borderColor: 'border-green-100'
+            icon: <CheckCircleIcon className="w-12 h-12 text-bb-green" />,
+            bgColor: 'bg-bb-green/10',
+            titleColor: 'text-bb-green'
         },
         error: {
-            icon: <ExclamationCircleIcon className="w-12 h-12 text-red-500" />,
-            bgColor: 'bg-red-50',
-            buttonColor: 'bg-red-600 hover:bg-red-700',
-            borderColor: 'border-red-100'
+            icon: <ExclamationCircleIcon className="w-12 h-12 text-bb-red" />,
+            bgColor: 'bg-bb-red/10',
+            titleColor: 'text-bb-red'
         },
         warning: {
-            icon: <ExclamationCircleIcon className="w-12 h-12 text-yellow-500" />,
-            bgColor: 'bg-yellow-50',
-            buttonColor: 'bg-yellow-600 hover:bg-yellow-700',
-            borderColor: 'border-yellow-100'
+            icon: <ExclamationCircleIcon className="w-12 h-12 text-bb-gold" />,
+            bgColor: 'bg-bb-gold/10',
+            titleColor: 'text-bb-gold'
         },
         info: {
-            icon: <InformationCircleIcon className="w-12 h-12 text-blue-500" />,
-            bgColor: 'bg-blue-50',
-            buttonColor: 'bg-blue-600 hover:bg-blue-700',
-            borderColor: 'border-blue-100'
+            icon: <InformationCircleIcon className="w-12 h-12 text-bb-muted" />,
+            bgColor: 'bg-white/5',
+            titleColor: 'text-bb-cream'
         }
     };
 
@@ -51,7 +47,7 @@ export default function StatusModal({
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
             <div
-                className={`bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl transform animate-in zoom-in-95 duration-200 border-4 ${current.borderColor}`}
+                className={`bg-bb-panel text-bb-cream rounded-2xl max-w-sm w-full p-8 shadow-sm transform animate-in zoom-in-95 duration-200 border border-bb-line`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex flex-col items-center text-center">
@@ -59,17 +55,17 @@ export default function StatusModal({
                         {current.icon}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h3 className={`text-2xl font-bold mb-2 ${current.titleColor}`}>
                         {title}
                     </h3>
 
-                    <p className="text-gray-600 leading-relaxed mb-8">
+                    <p className="text-bb-muted leading-relaxed mb-8">
                         {message}
                     </p>
 
                     <button
                         onClick={onClose}
-                        className={`w-full py-4 rounded-2xl text-white font-bold text-lg transition shadow-lg ${current.buttonColor}`}
+                        className={`w-full py-4 rounded-2xl bg-bb-gold text-bb-navy font-semibold text-lg transition hover:brightness-110`}
                     >
                         Got it!
                     </button>

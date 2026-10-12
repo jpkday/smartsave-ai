@@ -507,30 +507,25 @@ export default function Deals() {
         {/* Deals Grouped by Store */}
         <div className="px-2 sm:px-4 md:px-0">
           {loading ? (
-            <div className="py-20 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 items-center justify-center">
-              <LoadingSpinner message="Loading Deals..." color="border-indigo-600" textColor="text-slate-500" />
+            <div className="py-20 bg-bb-panel rounded-2xl border border-bb-line items-center justify-center">
+              <LoadingSpinner message="Loading Deals..." color="border-bb-gold" textColor="text-bb-muted" />
             </div>
           ) : !hasFavorites ? (
-            <div className="relative overflow-hidden rounded-[2.5rem] p-12 text-center border border-white/20 shadow-2xl">
-              {/* Glassmorphism Background */}
-              <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl z-0"></div>
-              <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-indigo-500/30 rounded-full blur-3xl z-0"></div>
-              <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-emerald-500/30 rounded-full blur-3xl z-0"></div>
-
+            <div className="relative overflow-hidden rounded-2xl p-12 text-center bg-bb-panel border border-bb-line">
               <div className="relative z-10">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-3xl mb-6 backdrop-blur-md shadow-inner border border-white/40">
-                  <span className="text-4xl animate-pulse">💎</span>
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-bb-raised rounded-2xl mb-6 border border-bb-line">
+                  <span className="text-4xl">💎</span>
                 </div>
-                <h2 className="text-4xl font-black text-white mb-4 tracking-tight drop-shadow-sm">
+                <h2 className="text-4xl font-black text-bb-cream mb-4 tracking-tight">
                   Personalize Your Savings
                 </h2>
-                <p className="text-blue-50 text-lg mb-10 max-w-lg mx-auto font-medium leading-relaxed opacity-90">
+                <p className="text-bb-muted text-lg mb-10 max-w-lg mx-auto font-medium leading-relaxed">
                   Add your favorite local stores to unlock exclusive AI-powered insights, historical price tracking, and "Market Low" alerts.
                 </p>
                 <div className="flex justify-center">
                   <Link
                     href="/stores"
-                    className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black shadow-xl hover:bg-indigo-50 hover:scale-105 active:scale-95 transition-all text-lg flex items-center gap-3"
+                    className="bg-bb-gold text-bb-navy px-10 py-4 rounded-2xl font-black hover:brightness-110 active:scale-95 transition-all text-lg flex items-center gap-3"
                   >
                     <BuildingStorefrontIcon className="w-6 h-6" />
                     Manage Stores
@@ -539,14 +534,13 @@ export default function Deals() {
               </div>
             </div>
           ) : visibleGroups.length === 0 ? (
-            <div className="relative overflow-hidden rounded-[2.5rem] p-16 text-center border border-white/20 shadow-2xl">
-              <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl z-0"></div>
+            <div className="relative overflow-hidden rounded-2xl p-16 text-center bg-bb-panel border border-bb-line">
               <div className="relative z-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-4">
-                  <SparklesIcon className="w-8 h-8 text-white/50" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-bb-raised border border-bb-line rounded-full mb-4">
+                  <SparklesIcon className="w-8 h-8 text-bb-muted" />
                 </div>
-                <p className="text-2xl font-bold text-white/90">Curating new deals for you...</p>
-                <p className="text-white/60 text-base mt-3 font-medium">No big savings found yet at your favorited stores.</p>
+                <p className="text-2xl font-bold text-bb-cream">Curating new deals for you...</p>
+                <p className="text-bb-muted text-base mt-3 font-medium">No big savings found yet at your favorited stores.</p>
               </div>
             </div>
           ) : (
@@ -557,33 +551,33 @@ export default function Deals() {
                   .map(({ storeName, storeDeals, totalSavings }) => (
                     <div key={storeName} className="mb-6">
                       {/* Store Header Container */}
-                      <div className="bg-white rounded-t-[2rem] p-6 pb-4 border-b border-gray-100 flex items-center justify-between shadow-sm relative z-10">
+                      <div className="bg-bb-panel rounded-t-2xl p-6 pb-4 border border-bb-line flex items-center justify-between relative z-10">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center border border-yellow-200 text-2xl shadow-sm text-yellow-500">
+                          <div className="w-12 h-12 bg-bb-raised rounded-xl flex items-center justify-center border border-bb-line text-2xl text-bb-muted">
                             <StarIcon className="w-6 h-6" />
                           </div>
                           <div>
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                            <h2 className="text-2xl font-black text-bb-cream tracking-tight">
                               {storeName}
                             </h2>
-                            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <div className="text-xs font-bold text-bb-muted uppercase tracking-wider mt-0.5">
                               {storeDeals.length} Deals Found
                             </div>
                           </div>
                         </div>
-                        <div className="bg-emerald-50 text-emerald-800 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-sm border border-emerald-100">
-                          <div className="bg-white p-2 text-emerald-600 rounded-full shadow-sm">
+                        <div className="bg-bb-green/10 text-bb-green px-5 py-3 rounded-2xl flex items-center gap-3 border border-bb-green/20">
+                          <div className="bg-bb-green/10 p-2 text-bb-green rounded-full">
                             <ShoppingCartIcon className="w-6 h-6" />
                           </div>
                           <div className="flex flex-col items-end text-right">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 leading-none mb-1">Basket Savings</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-bb-green leading-none mb-1">Basket Savings</span>
                             <span className="text-2xl font-black leading-none">${totalSavings.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Deals List */}
-                      <div className="bg-white rounded-b-[2rem] p-4 pt-2 shadow-xl shadow-indigo-900/5 space-y-3">
+                      <div className="bg-bb-panel rounded-b-2xl p-4 pt-4 border border-t-0 border-bb-line space-y-3">
                         {storeDeals.map((deal, idx) => {
                           const badge = getDealBadge(deal.dealQuality);
                           const emoji = getItemEmoji(deal.item_name);
@@ -597,28 +591,28 @@ export default function Deals() {
                                 <div className={`
                                 relative rounded-2xl p-3 sm:p-4 transition-all duration-300 border flex flex-row items-center gap-2 sm:gap-4
                                 ${badge.glow
-                                    ? 'bg-gradient-to-r from-indigo-50/50 to-white border-indigo-100 shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_25px_rgba(99,102,241,0.25)] hover:border-indigo-200'
-                                    : 'bg-white border-gray-50 hover:border-gray-200 hover:bg-gray-50/50 hover:shadow-lg hover:shadow-gray-200/50'
+                                    ? 'bg-bb-raised border-bb-gold/30 hover:border-bb-gold/50'
+                                    : 'bg-white/[0.03] border-bb-line hover:bg-white/5'
                                   }
                               `}>
                                   {/* Left: Name & Rating */}
                                   <div className="flex-1 flex items-center gap-4 min-w-0">
                                     <div className="min-w-0 flex-1">
-                                      <h3 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">
+                                      <h3 className="text-lg font-bold text-bb-cream leading-tight group-hover:text-bb-gold transition-colors truncate">
                                         {deal.item_name}
                                       </h3>
                                       <div className="flex items-center gap-2 mt-1">
                                         <div className="flex">
                                           {[...Array(badge.flames)].map((_, i) => (
-                                            <FireIcon key={i} className={`w-5 h-5 ${badge.glow ? 'text-red-600 animate-pulse' : 'text-orange-500'} drop-shadow-sm`} />
+                                            <FireIcon key={i} className="w-5 h-5 text-bb-gold" />
                                           ))}
                                         </div>
-                                        <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-bb-gold' : 'text-bb-muted'}`}>
                                           {badge.label}
                                         </span>
                                         {deal.timesBought > 0 && (
                                           <span
-                                            className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                            className="text-[10px] font-bold uppercase tracking-wider bg-bb-gold/10 text-bb-gold border border-bb-gold/30 px-1.5 py-0.5 rounded-md whitespace-nowrap"
                                             title={deal.lastBought ? `Last bought ${parseLocalDate(deal.lastBought).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : undefined}
                                           >
                                             You buy this · {deal.timesBought}×
@@ -632,15 +626,15 @@ export default function Deals() {
                                   <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-6 flex-none">
                                     <div className="text-right block">
                                       <div className="flex items-center justify-end gap-1 sm:gap-2">
-                                        <span className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
+                                        <span className="text-lg sm:text-2xl font-black text-bb-cream tracking-tight">
                                           ${deal.price.toFixed(2)}
                                         </span>
-                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg">
+                                        <span className="bg-bb-green/10 text-bb-green text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg">
                                           -{deal.discountPercent.toFixed(0)}%
                                         </span>
                                       </div>
                                       {deal.typicalHighPrice && (
-                                        <div className="text-[10px] sm:text-xs font-medium text-gray-400 line-through hidden sm:block">
+                                        <div className="text-[10px] sm:text-xs font-medium text-bb-muted line-through hidden sm:block">
                                           Was ${deal.typicalHighPrice.toFixed(2)}
                                         </div>
                                       )}
@@ -657,10 +651,10 @@ export default function Deals() {
                                         }
                                       }}
                                       className={`
-                                       w-24 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm cursor-pointer whitespace-nowrap
+                                       w-24 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap
                                        ${deal.isOnList
-                                          ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-red-50 hover:text-red-600 hover:border-red-100'
-                                          : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300'
+                                          ? 'bg-transparent text-bb-muted border border-bb-line hover:bg-bb-red/10 hover:text-bb-red hover:border-bb-red/30'
+                                          : 'bg-bb-gold text-bb-navy font-semibold hover:brightness-110'
                                         }
                                      `}
                                     >
@@ -683,44 +677,44 @@ export default function Deals() {
         {/* Info Legend Card */}
         {!loading && Object.keys(groupedDeals).length > 0 && (
           <div className="px-2 sm:px-4 md:px-0 mt-4 mb-24">
-            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl">
-              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <SparklesIcon className="w-5 h-5 text-indigo-500" />
+            <div className="bg-bb-panel rounded-2xl p-8 border border-bb-line">
+              <h3 className="text-xl font-bold text-bb-cream mb-6 flex items-center gap-2">
+                <SparklesIcon className="w-5 h-5 text-bb-gold" />
                 Understanding Savvy Savings
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
-                    <div className="flex text-red-600 animate-pulse">
+                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
+                    <div className="flex text-bb-gold">
                       <FireIcon className="w-4 h-4" />
                       <FireIcon className="w-4 h-4" />
                       <FireIcon className="w-4 h-4" />
                     </div>
                     Best Price
                   </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">The lowest price point ever recorded for this specific item in our database.</p>
+                  <p className="text-xs text-bb-muted leading-relaxed font-medium">The lowest price point ever recorded for this specific item in our database.</p>
                 </div>
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
-                    <div className="flex text-orange-500">
+                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
+                    <div className="flex text-bb-gold">
                       <FireIcon className="w-4 h-4" />
                       <FireIcon className="w-4 h-4" />
                     </div>
                     Great Deal
                   </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">Pricing that sits in the top 10% of historical savings across all retailers.</p>
+                  <p className="text-xs text-bb-muted leading-relaxed font-medium">Pricing that sits in the top 10% of historical savings across all retailers.</p>
                 </div>
                 <div className="space-y-2">
 
-                  <h4 className="font-bold text-gray-900 text-medium flex items-center gap-2">
-                    <div className="flex text-orange-500">
+                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
+                    <div className="flex text-bb-gold">
                       <FireIcon className="w-4 h-4" />
                     </div>
                     Good Price
                   </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">Reliable savings that beat the typical high-season market pricing.</p>
+                  <p className="text-xs text-bb-muted leading-relaxed font-medium">Reliable savings that beat the typical high-season market pricing.</p>
                 </div>
               </div>
             </div>

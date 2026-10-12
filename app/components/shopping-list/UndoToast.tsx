@@ -23,7 +23,7 @@ export default function UndoToast({
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl">
-      <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-slide-up">
+      <div className="bg-bb-panel border border-bb-line text-bb-cream px-6 py-4 rounded-2xl shadow-sm flex items-center gap-4 animate-slide-up">
         <span className={`flex-1 font-medium ${isSuccess ? 'text-xl font-semibold' : ''}`}>
           {emoji && <span className="text-xl mr-1">{emoji}</span>}
           {message}
@@ -32,7 +32,7 @@ export default function UndoToast({
         {onUndo && (
           <button
             onClick={onUndo}
-            className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
+            className="bg-bb-gold text-bb-navy hover:brightness-110 px-6 py-2 rounded-xl font-semibold transition whitespace-nowrap"
           >
             Undo
           </button>
@@ -40,7 +40,7 @@ export default function UndoToast({
 
         <button
           onClick={onDismiss}
-          className="text-gray-400 hover:text-white text-xl"
+          className="text-bb-muted hover:text-bb-cream text-xl"
           aria-label="Dismiss"
         >
           ✖

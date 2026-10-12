@@ -114,36 +114,36 @@ export default function PriceReviewModal({
         }
     };
 
-    const confidenceColor = extractedData.confidence > 0.9 ? 'text-green-600' :
-        extractedData.confidence > 0.7 ? 'text-yellow-600' : 'text-red-600';
+    const confidenceColor = extractedData.confidence > 0.9 ? 'text-bb-green' :
+        extractedData.confidence > 0.7 ? 'text-bb-gold' : 'text-bb-red';
 
     const priceChange = previousPrice ? ((parseFloat(price) - previousPrice) / previousPrice * 100) : null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-bb-panel text-bb-cream rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-bb-line shadow-sm">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Review Price Data</h2>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h2 className="text-2xl font-bold text-bb-cream">Review Price Data</h2>
+                        <p className="text-sm text-bb-muted mt-1">
                             Verify and edit the extracted information
                         </p>
                     </div>
-                    <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+                    <button onClick={onCancel} className="text-bb-muted hover:text-bb-cream">
                         <XMarkIcon className="w-6 h-6" />
                     </button>
                 </div>
 
                 {/* Confidence Score */}
-                <div className="mb-6 bg-gray-50 rounded-xl p-4">
+                <div className="mb-6 bg-bb-raised rounded-xl p-4">
                     <div className="flex items-center gap-2">
                         {extractedData.confidence > 0.7 ? (
                             <CheckCircleIcon className={`w-5 h-5 ${confidenceColor}`} />
                         ) : (
                             <ExclamationTriangleIcon className={`w-5 h-5 ${confidenceColor}`} />
                         )}
-                        <span className="text-sm font-semibold text-gray-700">
+                        <span className="text-sm font-semibold text-bb-cream">
                             Confidence: <span className={confidenceColor}>{(extractedData.confidence * 100).toFixed(0)}%</span>
                         </span>
                     </div>
@@ -152,10 +152,10 @@ export default function PriceReviewModal({
                 {/* Item Number (Read-only) */}
                 {extractedData.item_number && (
                     <div className="mb-4">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-bb-cream mb-2">
                             Item Number
                         </label>
-                        <div className="bg-gray-100 rounded-xl px-4 py-3 text-gray-600 font-mono">
+                        <div className="bg-bb-raised rounded-xl px-4 py-3 text-bb-muted font-mono">
                             {extractedData.item_number}
                         </div>
                     </div>
@@ -163,31 +163,31 @@ export default function PriceReviewModal({
 
                 {/* Item Name */}
                 <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Item Name <span className="text-red-500">*</span>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">
+                        Item Name <span className="text-bb-red">*</span>
                     </label>
                     <input
                         type="text"
                         value={itemName}
                         onChange={(e) => setItemName(e.target.value)}
-                        className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none"
+                        className="w-full rounded-xl px-4 py-3 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                         placeholder="Enter item name"
                     />
                 </div>
 
                 {/* Price */}
                 <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Price <span className="text-red-500">*</span>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">
+                        Price <span className="text-bb-red">*</span>
                     </label>
                     <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-bb-muted text-lg">$</span>
                         <input
                             type="number"
                             step="0.01"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
-                            className="w-full border-2 border-gray-300 rounded-xl pl-10 pr-4 py-3 focus:border-blue-500 focus:outline-none"
+                            className="w-full rounded-xl pl-10 pr-4 py-3 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                             placeholder="0.00"
                         />
                     </div>
@@ -195,12 +195,12 @@ export default function PriceReviewModal({
                     {/* Price Context */}
                     {previousPrice !== null && (
                         <div className="mt-2 text-sm">
-                            <span className="text-gray-600">
+                            <span className="text-bb-muted">
                                 Previous: ${previousPrice.toFixed(2)}
                                 {daysSinceUpdate !== null && ` (${daysSinceUpdate} days ago)`}
                             </span>
                             {priceChange !== null && (
-                                <span className={`ml-2 font-semibold ${priceChange > 0 ? 'text-red-600' : priceChange < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                                <span className={`ml-2 font-semibold ${priceChange > 0 ? 'text-bb-red' : priceChange < 0 ? 'text-bb-green' : 'text-bb-muted'}`}>
                                     {priceChange > 0 ? '↑' : priceChange < 0 ? '↓' : '='} {Math.abs(priceChange).toFixed(1)}%
                                 </span>
                             )}
@@ -210,74 +210,74 @@ export default function PriceReviewModal({
 
                 {/* Unit Size */}
                 <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">
                         Unit Size
                     </label>
                     <input
                         type="text"
                         value={unitSize}
                         onChange={(e) => setUnitSize(e.target.value)}
-                        className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:outline-none"
+                        className="w-full rounded-xl px-4 py-3 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                         placeholder="e.g., 5 LBS, 6/32 FL OZ"
                     />
                     {extractedData.store_unit_price && (
-                        <p className="mt-2 text-sm text-gray-600">
-                            Store's unit price: <span className="font-semibold text-teal-600">{extractedData.store_unit_price}</span>
+                        <p className="mt-2 text-sm text-bb-muted">
+                            Store's unit price: <span className="font-semibold text-bb-cream">{extractedData.store_unit_price}</span>
                         </p>
                     )}
                 </div>
 
                 {/* Store */}
                 <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Store <span className="text-red-500">*</span>
+                    <label className="block text-sm font-semibold text-bb-cream mb-2">
+                        Store <span className="text-bb-red">*</span>
                     </label>
                     {extractedData.store_match ? (
-                        <div className="bg-green-50 border-2 border-green-200 rounded-xl px-4 py-3">
-                            <p className="font-semibold text-green-800">{extractedData.store_match.name}</p>
-                            <p className="text-xs text-green-600 mt-1">Auto-detected</p>
+                        <div className="bg-bb-raised border border-bb-line rounded-xl px-4 py-3">
+                            <p className="font-semibold text-bb-cream">{extractedData.store_match.name}</p>
+                            <p className="text-xs text-bb-green mt-1">Auto-detected</p>
                         </div>
                     ) : defaultStore ? (
-                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-3">
-                            <p className="font-semibold text-blue-800">{defaultStore.name}</p>
-                            <p className="text-xs text-blue-600 mt-1">From your active trip</p>
+                        <div className="bg-bb-raised border border-bb-line rounded-xl px-4 py-3">
+                            <p className="font-semibold text-bb-cream">{defaultStore.name}</p>
+                            <p className="text-xs text-bb-muted mt-1">From your active trip</p>
                         </div>
                     ) : (
-                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl px-4 py-3">
-                            <p className="text-sm text-yellow-800">Store not recognized. Please select manually.</p>
+                        <div className="bg-bb-gold/10 border border-bb-gold/30 rounded-xl px-4 py-3">
+                            <p className="text-sm text-bb-gold">Store not recognized. Please select manually.</p>
                         </div>
                     )}
                 </div>
 
                 {/* Sale Info */}
-                <div className="mb-6 bg-gray-50 rounded-xl p-4">
+                <div className="mb-6 bg-bb-raised rounded-xl p-4">
                     <label className="flex items-center gap-2">
                         <input
                             type="checkbox"
                             checked={isSale}
                             onChange={(e) => setIsSale(e.target.checked)}
-                            className="w-5 h-5 text-blue-600 rounded"
+                            className="w-5 h-5 accent-[#c9a96e] rounded"
                         />
-                        <span className="font-semibold text-gray-700">This is a sale price</span>
+                        <span className="font-semibold text-bb-cream">This is a sale price</span>
                     </label>
 
                     {isSale && (
                         <div className="mt-4">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className="block text-sm font-semibold text-bb-cream mb-2">
                                 Sale Expiration Date
                             </label>
                             <input
                                 type="date"
                                 value={saleExpiration}
                                 onChange={(e) => setSaleExpiration(e.target.value)}
-                                className="w-full border-2 border-gray-300 rounded-xl px-4 py-2 focus:border-blue-500 focus:outline-none"
+                                className="w-full rounded-xl px-4 py-2 bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                             />
                         </div>
                     )}
 
                     {extractedData.discount_amount && (
-                        <p className="mt-3 text-sm text-gray-600">
-                            Savings: <span className="font-semibold text-green-600">${extractedData.discount_amount.toFixed(2)}</span>
+                        <p className="mt-3 text-sm text-bb-muted">
+                            Savings: <span className="font-semibold text-bb-green">${extractedData.discount_amount.toFixed(2)}</span>
                             {extractedData.original_price && (
                                 <span className="ml-2">(was ${extractedData.original_price.toFixed(2)})</span>
                             )}
@@ -290,14 +290,14 @@ export default function PriceReviewModal({
                     <button
                         onClick={onCancel}
                         disabled={isSubmitting}
-                        className="bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+                        className="border border-bb-line bg-transparent text-bb-cream py-3 rounded-xl font-semibold hover:bg-white/5 transition disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || !itemName || !price || !storeId}
-                        className="bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-bb-gold text-bb-navy py-3 rounded-xl font-semibold hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? 'Saving...' : 'Confirm & Save'}
                     </button>

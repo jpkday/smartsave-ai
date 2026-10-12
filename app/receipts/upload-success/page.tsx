@@ -13,12 +13,12 @@ function SuccessContent() {
     return (
         <main className="max-w-md mx-auto p-4 flex flex-col items-center justify-center pt-20 text-center">
 
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
-                <CheckCircleIcon className="w-12 h-12 text-green-600" />
+            <div className="w-20 h-20 bg-bb-green/10 rounded-full flex items-center justify-center mb-6">
+                <CheckCircleIcon className="w-12 h-12 text-bb-green" />
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Receipt Saved!</h1>
-            <p className="text-gray-500 mb-8">
+            <h1 className="text-2xl font-bold text-bb-cream mb-2">Receipt Saved!</h1>
+            <p className="text-bb-muted mb-8">
                 We&apos;ve processed your receipt and added the items to your pantry history.
             </p>
 
@@ -26,7 +26,7 @@ function SuccessContent() {
                 {tripId && (
                     <button
                         onClick={() => router.push(`/trips/${tripId}`)}
-                        className="w-full py-3 px-4 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-lg"
+                        className="w-full py-3 px-4 bg-bb-gold text-bb-navy rounded-lg font-semibold hover:brightness-110 transition-colors"
                     >
                         View Trip Details
                     </button>
@@ -36,7 +36,7 @@ function SuccessContent() {
                     onClick={() => router.push('/receipts')} // Assuming default receipts page has the "Add" button prominent enough or add /receipts/new if needed. Sticking to Dashboard for safety or restart scan?
                     // Actually, best to go back to Dashboard or Scanner. User asked for "Scan Another".
                     // If /receipts/new doesn't exist, we should check. I'll stick to /receipts for now as it has "Add Receipt" button.
-                    className="w-full py-3 px-4 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 px-4 bg-transparent text-bb-cream border border-bb-line rounded-lg font-semibold hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
                 >
                     <ArrowPathIcon className="w-5 h-5" />
                     Scan Another
@@ -44,7 +44,7 @@ function SuccessContent() {
 
                 <button
                     onClick={() => router.push('/receipts')}
-                    className="w-full py-3 px-4 text-gray-500 text-sm hover:text-gray-700"
+                    className="w-full py-3 px-4 text-bb-muted text-sm hover:text-bb-cream"
                 >
                     Return to Dashboard
                 </button>
@@ -63,13 +63,13 @@ export default function UploadSuccessPage() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen app-bg text-bb-cream pb-20">
             <div className="sticky top-0 z-50 app-header">
                 <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
                     <Header currentPage="Add Receipt" />
                 </div>
             </div>
-            <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+            <Suspense fallback={<div className="p-8 text-center text-bb-muted">Loading...</div>}>
                 <SuccessContent />
             </Suspense>
         </div>

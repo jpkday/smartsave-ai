@@ -38,11 +38,9 @@ export const useCategories = () => {
         return cat ? cat.name : 'Other';
     };
 
-    const getCategoryColorById = (id: number | null | undefined): string => {
-        if (id === null || id === undefined) return 'bg-slate-50 border-slate-200 text-slate-700';
-        const cat = categories.find(c => c.id === id);
-        return cat ? cat.color : 'bg-slate-50 border-slate-200 text-slate-700';
-    };
+    // Categories share one neutral style; per-category colors from the DB are no longer used
+    const getCategoryColorById = (_id: number | null | undefined): string =>
+        'bg-white/[0.03] border-bb-line text-bb-muted';
 
     return { categories, loading, getCategoryName, getCategoryColorById };
 };

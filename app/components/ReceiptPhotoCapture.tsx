@@ -93,21 +93,21 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
             <div
-                className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl transform animate-in zoom-in-95 duration-200 relative"
+                className="bg-bb-panel text-bb-cream border border-bb-line rounded-2xl max-w-lg w-full p-6 shadow-sm transform animate-in zoom-in-95 duration-200 relative"
                 onClick={(e) => e.stopPropagation()}
             >
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition"
+                    className="absolute top-4 right-4 p-2 text-bb-muted hover:text-bb-cream transition"
                 >
                     <XMarkIcon className="w-6 h-6" />
                 </button>
 
-                <h2 className="text-2xl font-bold mb-2 text-gray-900 pr-8">
+                <h2 className="text-2xl font-bold mb-2 text-bb-cream pr-8">
                     <span className="md:hidden">Scan Receipt</span>
                     <span className="hidden md:block">Upload Receipt</span>
                 </h2>
-                <p className="text-gray-600 text-sm mb-6">
+                <p className="text-bb-muted text-sm mb-6">
                     Upload a photo or PDF of your receipt to automatically extract items and prices.
                 </p>
 
@@ -145,9 +145,9 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                                     type="checkbox"
                                     checked={addToTrips}
                                     onChange={(e) => setAddToTrips(e.target.checked)}
-                                    className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                    className="w-4 h-4 rounded border-bb-line accent-[#c9a96e] focus:ring-bb-gold/50 cursor-pointer"
                                 />
-                                <span className="text-xs font-bold text-blue-900/60 group-hover:text-blue-600 transition-colors">
+                                <span className="text-xs font-bold text-bb-muted group-hover:text-bb-cream transition-colors">
                                     Add to Recent Trips
                                 </span>
                             </label>
@@ -156,36 +156,36 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                         {/* Main Camera Option */}
                         <button
                             onClick={() => galleryInputRef.current?.click()}
-                            className="w-full flex flex-col items-center gap-4 p-8 bg-blue-50 border-2 border-blue-100 rounded-2xl hover:bg-blue-100 transition group"
+                            className="w-full flex flex-col items-center gap-4 p-8 bg-bb-raised border border-bb-line rounded-2xl hover:bg-white/5 transition group"
                         >
-                            <div className="bg-blue-600 text-white rounded-full p-4 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="bg-bb-gold text-bb-navy rounded-full p-4 group-hover:scale-110 transition-transform">
                                 <PhotoIcon className="w-10 h-10" />
                             </div>
                             <div className="text-center">
-                                <p className="text-xl font-bold text-blue-900">Upload File</p>
-                                <p className="text-sm text-blue-600 font-medium opacity-80">Image or PDF</p>
+                                <p className="text-xl font-bold text-bb-cream">Upload File</p>
+                                <p className="text-sm text-bb-muted font-medium">Image or PDF</p>
                             </div>
                         </button>
 
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                <div className="w-full border-t border-gray-200"></div>
+                                <div className="w-full border-t border-bb-line"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500 font-medium">OR</span>
+                                <span className="px-2 bg-bb-panel text-bb-muted font-medium">OR</span>
                             </div>
                         </div>
 
                         {/* Gallery Upload Option */}
                         <button
                             onClick={() => cameraInputRef.current?.click()}
-                            className="w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-200 rounded-2xl hover:border-blue-300 hover:bg-gray-50 transition text-gray-700 font-bold"
+                            className="w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed border-bb-line rounded-2xl hover:border-bb-gold/50 hover:bg-white/5 transition text-bb-cream font-bold"
                         >
-                            <CameraIcon className="w-6 h-6 text-blue-500" />
+                            <CameraIcon className="w-6 h-6 text-bb-muted" />
                             Scan Receipt
                         </button>
 
-                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-xs text-amber-800 space-y-2">
+                        <div className="bg-white/[0.03] rounded-xl p-4 border border-bb-line text-xs text-bb-muted space-y-2">
                             <p className="font-bold flex items-center gap-1.5 uppercase tracking-wider">
                                 Tips for Best Results:
                             </p>
@@ -200,15 +200,15 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                 ) : (
                     <div className="space-y-6">
                         {/* Preview */}
-                        <div className="rounded-2xl overflow-hidden border-2 border-gray-100 shadow-md max-h-[50vh] flex items-center justify-center bg-gray-50">
+                        <div className="rounded-2xl overflow-hidden border border-bb-line max-h-[50vh] flex items-center justify-center bg-bb-raised">
                             {isPDF ? (
                                 <div className="flex flex-col items-center gap-4 p-8">
-                                    <div className="bg-red-100 rounded-full p-4">
-                                        <DocumentIcon className="w-16 h-16 text-red-600" />
+                                    <div className="bg-bb-raised rounded-full p-4">
+                                        <DocumentIcon className="w-16 h-16 text-bb-muted" />
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-lg font-bold text-gray-900">PDF Receipt</p>
-                                        <p className="text-sm text-gray-500 truncate max-w-[200px]">{pdfFileName}</p>
+                                        <p className="text-lg font-bold text-bb-cream">PDF Receipt</p>
+                                        <p className="text-sm text-bb-muted truncate max-w-[200px]">{pdfFileName}</p>
                                     </div>
                                 </div>
                             ) : (
@@ -219,7 +219,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                         {/* Trip Data Checkbox - Also right-aligned and no container here */}
                         <div className="flex justify-end">
                             <label className="flex items-center gap-2 select-none group">
-                                <span className="text-xs font-bold text-blue-900/60 group-hover:text-blue-600 transition-colors">
+                                <span className="text-xs font-bold text-bb-muted group-hover:text-bb-cream transition-colors">
                                     Add to Recent Trips
                                 </span>
                                 <input
@@ -227,7 +227,7 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                                     type="checkbox"
                                     checked={addToTrips}
                                     onChange={(e) => setAddToTrips(e.target.checked)}
-                                    className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                    className="w-4 h-4 rounded border-bb-line accent-[#c9a96e] focus:ring-bb-gold/50 cursor-pointer"
                                 />
                             </label>
                         </div>
@@ -236,13 +236,13 @@ export default function ReceiptPhotoCapture({ onImageCaptured, onClose }: Receip
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={handleRetake}
-                                className="py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold text-lg hover:bg-gray-200 transition"
+                                className="py-4 border border-bb-line bg-transparent text-bb-cream rounded-2xl font-bold text-lg hover:bg-white/5 transition"
                             >
                                 Try Again
                             </button>
                             <button
                                 onClick={handleAnalyze}
-                                className="py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition"
+                                className="py-4 bg-bb-gold text-bb-navy rounded-2xl font-semibold text-lg hover:brightness-110 transition"
                             >
                                 Analyze
                             </button>

@@ -142,15 +142,15 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     };
 
     if (loading) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen app-bg flex items-center justify-center">
             <LoadingSpinner message="Loading Trip..." />
         </div>
     );
 
     if (!trip) return (
-        <div className="min-h-screen bg-gray-50 p-8 text-center pt-20">
-            <h1 className="text-xl font-bold text-gray-800">Trip Not Found</h1>
-            <Link href="/trips" className="text-blue-600 mt-4 block">Back to Trips</Link>
+        <div className="min-h-screen app-bg p-8 text-center pt-20">
+            <h1 className="text-xl font-bold text-bb-cream">Trip Not Found</h1>
+            <Link href="/trips" className="text-bb-gold hover:underline mt-4 block">Back to Trips</Link>
         </div>
     );
 
@@ -158,7 +158,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     const categoryIds = Object.keys(groupedEvents).map(Number).sort((a, b) => getCategoryName(a).localeCompare(getCategoryName(b)));
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen app-bg pb-20">
             <div className="sticky top-0 z-50 app-header">
                 <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
                     <Header currentPage="Trip Details" />
@@ -167,27 +167,27 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
             <main className="max-w-3xl mx-auto px-4 pt-6">
                 {/* Back Link */}
-                <Link href="/trips" className="inline-flex items-center text-gray-500 hover:text-gray-900 mb-6">
+                <Link href="/trips" className="inline-flex items-center text-bb-muted hover:text-bb-cream mb-6">
                     <ArrowLeftIcon className="w-4 h-4 mr-1" />
                     Back to History
                 </Link>
 
                 {/* Trip Card */}
-                <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
+                <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-hidden mb-8">
                     {/* Hero Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 md:p-8 text-white">
+                    <div className="border-b border-bb-line p-6 md:p-8 text-bb-cream">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h1 className="text-3xl font-bold mb-2">{trip.store}</h1>
-                                <p className="opacity-90 font-medium flex items-center gap-2">
-                                    <span className="bg-white/20 px-2 py-0.5 rounded text-sm">{formatDate(trip.started_at)}</span>
+                                <p className="text-bb-muted font-medium flex items-center gap-2">
+                                    <span className="bg-bb-raised border border-bb-line px-2 py-0.5 rounded text-sm">{formatDate(trip.started_at)}</span>
                                     <span>•</span>
                                     <span>{trip.duration}</span>
                                 </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-4xl font-bold">{formatMoney(trip.totalCost)}</p>
-                                <p className="opacity-80 mt-1">{trip.itemCount} items</p>
+                                <p className="text-bb-muted mt-1">{trip.itemCount} items</p>
                             </div>
                         </div>
                     </div>
@@ -201,35 +201,35 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
                             const catColor = getCategoryColorById(catId); // e.g. bg-red-100 text-red-800 border-red-200
 
                             return (
-                                <div key={catId} className="border-b border-gray-100 last:border-0">
+                                <div key={catId} className="border-b border-bb-line last:border-0">
                                     {/* Category Header */}
-                                    <div className={`px-6 py-3 flex justify-between items-center ${catColor} bg-opacity-15`}>
-                                        <h3 className="font-bold text-sm uppercase tracking-wide opacity-80">{catName}</h3>
-                                        <span className="font-bold text-sm opacity-80">{formatMoney(catTotal)}</span>
+                                    <div className={`px-6 py-3 flex justify-between items-center ${catColor} border-b`}>
+                                        <h3 className="font-bold text-xs uppercase tracking-wider text-bb-muted">{catName}</h3>
+                                        <span className="font-bold text-sm text-bb-cream">{formatMoney(catTotal)}</span>
                                     </div>
 
                                     {/* Items */}
-                                    <div className="divide-y divide-gray-50">
+                                    <div className="divide-y divide-bb-line">
                                         {catEvents.map((event, idx) => (
-                                            <div key={idx} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                                            <div key={idx} className="px-6 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
                                                 <div>
-                                                    <p className="font-semibold text-gray-900 text-lg">
+                                                    <p className="font-semibold text-bb-cream text-lg">
                                                         {event.item_name}
                                                     </p>
                                                     {event.quantity > 1 && (
-                                                        <p className="text-gray-500 text-sm">Qty: {event.quantity}</p>
+                                                        <p className="text-bb-muted text-sm">Qty: {event.quantity}</p>
                                                     )}
                                                 </div>
                                                 <div className="text-right">
                                                     {event.price ? (
                                                         <>
-                                                            <p className="font-bold text-gray-900">{formatMoney(event.price * event.quantity)}</p>
+                                                            <p className="font-bold text-bb-cream">{formatMoney(event.price * event.quantity)}</p>
                                                             {event.quantity > 1 && (
-                                                                <p className="text-xs text-gray-400">{formatMoney(event.price)}/ea</p>
+                                                                <p className="text-xs text-bb-muted">{formatMoney(event.price)}/ea</p>
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="text-gray-300 italic text-sm">No price</span>
+                                                        <span className="text-slate-600 italic text-sm">No price</span>
                                                     )}
                                                 </div>
                                             </div>

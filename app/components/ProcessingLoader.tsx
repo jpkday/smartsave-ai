@@ -42,24 +42,24 @@ export default function ProcessingLoader({ progress }: ProcessingLoaderProps) {
     return (
         <div className="flex flex-col items-center justify-center p-4">
             {/* Centered Spinner */}
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mb-6"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-bb-gold border-t-transparent mb-6"></div>
 
             {/* Icon and Text Label Below */}
             <div className="flex items-center justify-center gap-2 mb-6 animate-pulse">
-                <CurrentIcon className="w-6 h-6 text-indigo-600" />
-                <span className="font-bold text-gray-800 text-xl">
+                <CurrentIcon className="w-6 h-6 text-bb-muted" />
+                <span className="font-bold text-bb-cream text-xl">
                     {currentMessage.text}
                 </span>
             </div>
             {progress && (
                 <div className="w-full">
-                    <div className="w-full bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
+                    <div className="w-full bg-bb-raised rounded-full h-4 mb-3 overflow-hidden">
                         <div
-                            className="bg-blue-600 h-4 rounded-full transition-all duration-300 ease-out"
+                            className="bg-bb-gold h-4 rounded-full transition-all duration-300 ease-out"
                             style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
                         ></div>
                     </div>
-                    <div className="text-center font-bold text-gray-600 text-sm">
+                    <div className="text-center font-bold text-bb-muted text-sm">
                         {progress.current} / {progress.total} items found
                     </div>
                 </div>

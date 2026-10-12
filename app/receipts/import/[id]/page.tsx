@@ -997,8 +997,8 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
     if (loading) {
         return (
-            <div className="min-h-screen app-bg flex items-center justify-center">
-                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4">
+            <div className="min-h-screen app-bg text-bb-cream flex items-center justify-center">
+                <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 max-w-sm w-full mx-4">
                     <ProcessingLoader progress={loadingProgress} />
                 </div>
             </div>
@@ -1011,23 +1011,23 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
     if (autopilot && !isMasterAdmin) { // Always show overlay if autopilot is engaged
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-xl flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                        <ArrowPathIcon className="w-8 h-8 text-blue-600 animate-spin" />
+            <div className="min-h-screen app-bg text-bb-cream flex items-center justify-center">
+                <div className="bg-bb-panel border border-bb-line rounded-2xl max-w-sm w-full p-8 shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-bb-raised rounded-full flex items-center justify-center mb-6">
+                        <ArrowPathIcon className="w-8 h-8 text-bb-gold animate-spin" />
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Finalizing Receipt...</h2>
-                    <p className="text-sm text-gray-500 mb-6">Saving your items to the pantry.</p>
+                    <h2 className="text-xl font-bold text-bb-cream mb-2">Finalizing Receipt...</h2>
+                    <p className="text-sm text-bb-muted mb-6">Saving your items to the pantry.</p>
 
                     {importProgress && (
                         <div className="w-full space-y-2">
-                            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div className="w-full bg-bb-raised rounded-full h-2 overflow-hidden">
                                 <div
-                                    className="bg-blue-600 h-full transition-all duration-300"
+                                    className="bg-bb-gold h-full transition-all duration-300"
                                     style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
                                 ></div>
                             </div>
-                            <p className="text-xs text-gray-400">{importProgress.status}</p>
+                            <p className="text-xs text-bb-muted">{importProgress.status}</p>
                         </div>
                     )}
                 </div>
@@ -1043,16 +1043,16 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     }
 
     return (
-        <div className="min-h-screen app-bg pb-20">
-            <div className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-                <Link href="/receipts" className="p-2 hover:bg-gray-100 rounded-full">
-                    <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+        <div className="min-h-screen app-bg text-bb-cream pb-20">
+            <div className="app-header px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+                <Link href="/receipts" className="p-2 hover:bg-white/5 rounded-full">
+                    <ArrowLeftIcon className="w-5 h-5 text-bb-muted" />
                 </Link>
-                <h1 className="font-bold text-lg flex-1">Review Receipt</h1>
+                <h1 className="font-bold text-lg flex-1 text-bb-cream">Review Receipt</h1>
                 <button
                     onClick={finalizeImport}
                     disabled={importing || !rows.some(r => r.isConfirmed)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm disabled:opacity-50 shadow-lg shadow-blue-200"
+                    className="bg-bb-gold text-bb-navy px-4 py-2 rounded-lg font-semibold text-sm hover:brightness-110 disabled:opacity-50"
                 >
                     {importing && importProgress
                         ? `${importProgress.current}/${importProgress.total} processed`
@@ -1065,77 +1065,77 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             <div className="max-w-3xl mx-auto p-4">
                 {/* Import Progress Overlay */}
                 {importing && importProgress && (
-                    <div className="bg-white rounded-2xl shadow-xl p-6 mb-4">
+                    <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-6 mb-4">
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                            <span className="font-bold text-gray-800">Importing Receipt...</span>
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-bb-gold border-t-transparent"></div>
+                            <span className="font-bold text-bb-cream">Importing Receipt...</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div className="w-full bg-bb-raised rounded-full h-3 mb-2">
                             <div
-                                className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                                className="bg-bb-gold h-3 rounded-full transition-all duration-300"
                                 style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
                             ></div>
                         </div>
-                        <div className="text-center text-sm text-gray-700 font-semibold">
+                        <div className="text-center text-sm text-bb-cream font-semibold">
                             {importProgress.status}
                         </div>
                     </div>
                 )}
 
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden min-h-[60vh]">
+                <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-hidden min-h-[60vh]">
                     {/* Store & Date Section */}
-                    <div className="p-6 border-b border-gray-100 bg-gray-50/50 space-y-4">
+                    <div className="p-6 border-b border-bb-line bg-white/[0.03] space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Store</label>
+                            <label className="block text-xs font-semibold text-bb-muted uppercase mb-1">Store</label>
                             <select
                                 value={storeId}
                                 onChange={e => setStoreId(e.target.value)}
-                                className="w-full p-2 border rounded-lg bg-white shadow-sm"
+                                className="w-full p-2 rounded-lg bg-bb-raised border border-bb-line text-bb-cream focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                             >
                                 <option value="">Select Store...</option>
                                 {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                             {!storeId && receipt?.ocr_data?.store && (
-                                <p className="mt-1 text-[10px] text-blue-600 font-medium italic">
+                                <p className="mt-1 text-[10px] text-bb-gold font-medium italic">
                                     Store Detected: "{receipt.ocr_data.store}"
                                 </p>
                             )}
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1 text-center">Receipt Total</label>
-                                <div className="p-3 bg-white rounded-xl text-gray-800 font-bold text-lg border border-gray-100 text-center shadow-sm">
+                                <label className="block text-xs font-semibold text-bb-muted uppercase mb-1 text-center">Receipt Total</label>
+                                <div className="p-3 bg-bb-raised rounded-xl text-bb-cream font-bold text-lg border border-bb-line text-center">
                                     ${subtotal.toFixed(2)}
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <label className="block text-xs font-semibold text-purple-400 uppercase mb-1 text-center">Confirmed</label>
-                                <div className="p-3 bg-purple-50 rounded-xl text-purple-700 font-bold text-lg border border-purple-100 text-center shadow-sm">
+                                <label className="block text-xs font-semibold text-bb-muted uppercase mb-1 text-center">Confirmed</label>
+                                <div className="p-3 bg-bb-green/5 rounded-xl text-bb-green font-bold text-lg border border-bb-green/20 text-center">
                                     ${confirmedTotal.toFixed(2)}
                                 </div>
                             </div>
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Date & Time</label>
+                                <label className="block text-xs font-semibold text-bb-muted uppercase mb-1">Date & Time</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="date"
                                         value={ocrDate || receipt?.ocr_data?.date || ''}
                                         onChange={e => setOcrDate(e.target.value)}
-                                        className="flex-1 p-1.5 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm"
+                                        className="flex-1 p-1.5 rounded-lg text-sm [color-scheme:dark] bg-bb-raised border border-bb-line text-bb-cream focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                                     />
                                     <input
                                         type="time"
                                         value={ocrTime || receipt?.ocr_data?.time || ''}
                                         onChange={e => setOcrTime(e.target.value)}
-                                        className="w-24 p-1.5 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm"
+                                        className="w-24 p-1.5 rounded-lg text-sm [color-scheme:dark] bg-bb-raised border border-bb-line text-bb-cream focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                                     />
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Items</label>
-                                <div className="p-2 bg-white rounded-lg text-gray-700 text-sm border border-gray-100 shadow-sm text-center">
+                                <label className="block text-xs font-semibold text-bb-muted uppercase mb-1">Items</label>
+                                <div className="p-2 bg-bb-raised rounded-lg text-bb-cream text-sm border border-bb-line text-center">
                                     {rows.length} found
                                 </div>
                             </div>
@@ -1145,18 +1145,18 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                     {/* Reconciliation List - Grouped Carousel Cards */}
                     <div className="p-4 md:p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Scanned Items</h2>
+                            <h2 className="text-sm font-bold text-bb-muted uppercase tracking-widest">Scanned Items</h2>
                         </div>
 
                         {/* New Items Section */}
                         {rows.filter(r => r.status === 'new' && !r.isConfirmed).length > 0 && (
                             <div className="mb-8">
                                 <div className="flex items-center gap-2 mb-3 px-1">
-                                    <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-sm"></div>
-                                    <h3 className="text-sm font-bold text-yellow-700 uppercase tracking-wider">
+                                    <div className="w-3 h-3 rounded-full bg-bb-gold"></div>
+                                    <h3 className="text-sm font-bold text-bb-cream uppercase tracking-wider">
                                         Add New Items
                                     </h3>
-                                    <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full font-semibold">
+                                    <span className="text-xs text-bb-muted bg-white/5 px-2 py-0.5 rounded-full font-semibold">
                                         {rows.filter(r => r.status === 'new' && !r.isConfirmed).length}
                                     </span>
                                 </div>
@@ -1243,11 +1243,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         {rows.filter(r => r.status === 'matched' && !r.isConfirmed).length > 0 && (
                             <div className="mb-8">
                                 <div className="flex items-center gap-2 mb-3 px-1">
-                                    <div className="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div>
-                                    <h3 className="text-sm font-bold text-purple-700 uppercase tracking-wider">
+                                    <div className="w-3 h-3 rounded-full bg-bb-muted"></div>
+                                    <h3 className="text-sm font-bold text-bb-cream uppercase tracking-wider">
                                         Review Recommendations
                                     </h3>
-                                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-semibold">
+                                    <span className="text-xs text-bb-muted bg-white/5 px-2 py-0.5 rounded-full font-semibold">
                                         {rows.filter(r => r.status === 'matched' && !r.isConfirmed).length}
                                     </span>
                                 </div>
@@ -1338,7 +1338,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                         selectedItemId: undefined,
                                                         selectedItemName: undefined
                                                     })}
-                                                    className="p-2 bg-gray-100 text-gray-500 rounded-xl hover:bg-yellow-100 hover:text-yellow-600 transition-colors"
+                                                    className="p-2 bg-bb-raised text-bb-muted rounded-xl hover:bg-white/5 hover:text-bb-cream transition-colors"
                                                     title="Create as new item"
                                                 >
                                                     <PlusIcon className="w-5 h-5" />
@@ -1354,11 +1354,11 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         {rows.filter(r => r.isConfirmed).length > 0 && (
                             <div className="mb-4">
                                 <div className="flex items-center gap-2 mb-3 px-1">
-                                    <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm"></div>
-                                    <h3 className="text-sm font-bold text-green-700 uppercase tracking-wider">
+                                    <div className="w-3 h-3 rounded-full bg-bb-green"></div>
+                                    <h3 className="text-sm font-bold text-bb-cream uppercase tracking-wider">
                                         Confirmed
                                     </h3>
-                                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-semibold">
+                                    <span className="text-xs text-bb-muted bg-white/5 px-2 py-0.5 rounded-full font-semibold">
                                         {rows.filter(r => r.isConfirmed).length}
                                     </span>
                                 </div>
@@ -1374,15 +1374,15 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                                                     originalName={row.ocrName}
                                                     inputs={
                                                         <div className="text-right flex-shrink-0">
-                                                            <div className="font-bold text-gray-800 flex items-center justify-end gap-1">
+                                                            <div className="font-bold text-bb-cream flex items-center justify-end gap-1">
                                                                 ${displayPrice}
                                                                 {(row.discountApplied || 0) > 0 && (
-                                                                    <span className="text-[8px] px-1 py-0.5 rounded bg-green-100 text-green-700 font-bold">
+                                                                    <span className="text-[8px] px-1 py-0.5 rounded bg-bb-green/10 text-bb-green font-bold">
                                                                         -${(row.discountApplied || 0).toFixed(2)}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${row.status === 'matched' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${row.status === 'matched' ? 'bg-bb-green/10 text-bb-green' : row.status === 'unresolved' ? 'bg-bb-red/10 text-bb-red' : 'bg-bb-gold/10 text-bb-gold'
                                                                 }`}>
                                                                 {row.status === 'matched' ? 'Matched' : 'New'}
                                                             </span>
@@ -1402,7 +1402,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
                         {/* Empty State */}
                         {
                             rows.length === 0 && (
-                                <div className="text-center py-12 text-gray-400">
+                                <div className="text-center py-12 text-bb-muted">
                                     <p>No items found on this receipt</p>
                                 </div>
                             )
@@ -1428,7 +1428,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
             {/* Scanning Overlay with Dynamic Loader */}
             {importing && importProgress && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
+                    <div className="bg-bb-panel border border-bb-line rounded-2xl max-w-sm w-full p-8 shadow-sm flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
                         <ProcessingLoader progress={importProgress ? { current: importProgress.current, total: importProgress.total } : null} />
                     </div>
                 </div>

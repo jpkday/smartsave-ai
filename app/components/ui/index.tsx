@@ -13,13 +13,13 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow-lg p-4 md:p-6 ${className}`}>
+  <div className={`bg-bb-panel border border-bb-line rounded-lg shadow-sm p-4 md:p-6 ${className}`}>
     {children}
   </div>
 );
 
 export const CardHeader: React.FC<CardProps> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow-md p-4 ${className}`}>
+  <div className={`bg-bb-panel border border-bb-line rounded-lg shadow-sm p-4 ${className}`}>
     {children}
   </div>
 );
@@ -33,7 +33,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   children,
   maxWidth = '4xl'
 }) => (
-  <div className="min-h-screen app-bg p-4 md:p-8">
+  <div className="min-h-screen app-bg text-bb-cream p-4 md:p-8">
     <div className={`max-w-${maxWidth} mx-auto`}>
       {children}
     </div>
@@ -58,13 +58,13 @@ export const Badge: React.FC<BadgeProps> = ({
   className = ''
 }) => {
   const colors = {
-    green: 'bg-green-500',
-    blue: 'bg-blue-500',
-    yellow: 'bg-yellow-500',
-    teal: 'bg-teal-500',
-    red: 'bg-red-600',
-    orange: 'bg-orange-600',
-    gray: 'bg-gray-400',
+    green: 'bg-bb-green/10 text-bb-green',
+    blue: 'bg-white/5 text-bb-muted',
+    yellow: 'bg-bb-gold/10 text-bb-gold',
+    teal: 'bg-white/5 text-bb-cream',
+    red: 'bg-bb-red/10 text-bb-red',
+    orange: 'bg-bb-gold/10 text-bb-gold',
+    gray: 'bg-white/5 text-bb-muted',
   };
 
   const sizes = {
@@ -73,7 +73,7 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   return (
-    <span className={`${colors[variant]} text-white ${sizes[size]} rounded-full font-semibold whitespace-nowrap ${className}`}>
+    <span className={`${colors[variant]} ${sizes[size]} rounded-full font-semibold whitespace-nowrap ${className}`}>
       {children}
     </span>
   );
@@ -115,11 +115,11 @@ export const Button: React.FC<ButtonProps> = ({
   type = 'button'
 }) => {
   const variants = {
-    primary: 'bg-blue-600 hover:bg-blue-700',
-    teal: 'bg-teal-500 hover:bg-teal-600',
-    yellow: 'bg-yellow-500 hover:bg-yellow-600',
-    danger: 'bg-red-600 hover:bg-red-800',
-    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
+    primary: 'bg-bb-gold text-bb-navy hover:brightness-110',
+    teal: 'border border-bb-line bg-transparent text-bb-cream hover:bg-white/5',
+    yellow: 'bg-bb-gold text-bb-navy hover:brightness-110',
+    danger: 'text-bb-red border border-bb-red/30 hover:bg-bb-red/10',
+    secondary: 'border border-bb-line bg-transparent text-bb-cream hover:bg-white/5',
   };
 
   const sizes = {
@@ -128,14 +128,12 @@ export const Button: React.FC<ButtonProps> = ({
     lg: 'px-6 py-4 text-lg',
   };
 
-  const baseClasses = variant === 'secondary' ? '' : 'text-white';
-
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${variants[variant]} ${baseClasses} ${sizes[size]} rounded-lg font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`${variants[variant]} ${sizes[size]} rounded-lg font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {children}
     </button>
@@ -162,19 +160,19 @@ export const PriceClassification: React.FC<PriceClassificationProps> = ({
       label: 'Best Price!',
       mobileLabel: 'Best Price!',
       emoji: '✅',
-      color: 'text-green-600'
+      color: 'text-bb-green'
     },
     close: {
       label: 'Close Enough',
       mobileLabel: 'Close Enough',
       emoji: '➖',
-      color: 'text-yellow-600'
+      color: 'text-bb-gold'
     },
     skip: {
       label: 'Skip This One',
       mobileLabel: 'Skip',
       emoji: '❌',
-      color: 'text-red-600'
+      color: 'text-bb-red'
     }
   };
 
@@ -214,7 +212,7 @@ export const CoverageIndicator: React.FC<CoverageIndicatorProps> = ({
   const percentage = ((coverage / total) * 100).toFixed(0);
 
   return (
-    <p className={`text-xs md:text-sm flex items-center gap-1 ${isComplete ? 'text-green-600' : 'text-orange-600'
+    <p className={`text-xs md:text-sm flex items-center gap-1 ${isComplete ? 'text-bb-green' : 'text-bb-gold'
       } ${className}`}>
       <span>
         {coverage}/{total} items ({percentage}% coverage)
@@ -243,7 +241,7 @@ export const FavoriteStar: React.FC<FavoriteStarProps> = ({
   if (!isFavorite) return null;
 
   return (
-    <span className={`text-yellow-500 text-${size} ${className}`}>
+    <span className={`text-bb-gold text-${size} ${className}`}>
       ⭐
     </span>
   );
@@ -283,15 +281,15 @@ export const PriceInput: React.FC<PriceInputProps> = ({
   };
 
   return (
-    <div className={`flex items-center border border-gray-300 rounded-lg px-3 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 ${className}`}>
-      <span className="text-gray-800 font-semibold mr-1">$</span>
+    <div className={`flex items-center bg-bb-raised border border-bb-line rounded-lg px-3 py-3 focus-within:border-bb-gold/50 focus-within:ring-2 focus-within:ring-bb-gold/50 ${className}`}>
+      <span className="text-bb-cream font-semibold mr-1">$</span>
       <input
         type="text"
         placeholder={placeholder}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onKeyPress={onKeyPress}
-        className="w-full text-right font-semibold text-gray-800 focus:outline-none"
+        className="w-full text-right font-semibold text-bb-cream bg-transparent placeholder:text-slate-500 focus:outline-none"
       />
     </div>
   );
@@ -333,9 +331,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className = ''
 }) => (
   <Card className={`text-center ${className}`}>
-    <p className="text-gray-500 text-base md:text-lg mb-4">{title}</p>
+    <p className="text-bb-muted text-base md:text-lg mb-4">{title}</p>
     {message && (
-      <p className="text-sm text-gray-600 mb-4">{message}</p>
+      <p className="text-sm text-bb-muted mb-4">{message}</p>
     )}
     {action && (
       <Button onClick={action.onClick} variant="primary">
@@ -367,15 +365,15 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   className = ''
 }) => (
   <div className={`flex justify-between items-center mb-4 ${className}`}>
-    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+    <h2 className="text-xl md:text-2xl font-bold text-bb-cream">
       {title} {count !== undefined && `(${count})`}
     </h2>
     {action && (
       <button
         onClick={action.onClick}
         className={`${action.variant === 'danger'
-            ? 'text-red-600 hover:text-red-800'
-            : 'text-blue-600 hover:text-blue-800'
+            ? 'text-bb-red hover:brightness-110'
+            : 'text-bb-gold hover:brightness-110'
           } font-semibold cursor-pointer text-sm`}
       >
         {action.label}
@@ -403,12 +401,12 @@ export const ItemRow: React.FC<ItemRowProps> = ({
 }) => {
   const getRowClasses = () => {
     if (isChecked) {
-      return 'bg-gray-100 border-gray-300';
+      return 'bg-bb-raised border-bb-line';
     }
     if (isFavorite) {
-      return 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100';
+      return 'bg-bb-raised border-bb-gold/30 hover:bg-white/5';
     }
-    return 'bg-white border-gray-300 hover:bg-gray-50';
+    return 'bg-bb-panel border-bb-line hover:bg-white/5';
   };
 
   return (
@@ -450,7 +448,7 @@ export const DateAge: React.FC<DateAgeProps> = ({ date, className = '' }) => {
   };
 
   return (
-    <span className={`text-gray-400 ${className}`}>
+    <span className={`text-bb-muted ${className}`}>
       ({getDaysAgo(date)})
     </span>
   );

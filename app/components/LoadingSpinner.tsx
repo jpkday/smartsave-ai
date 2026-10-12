@@ -9,8 +9,8 @@ interface LoadingSpinnerProps {
 export default function LoadingSpinner({
     message,
     size = 'md',
-    color = 'border-indigo-600',
-    textColor = 'text-slate-500'
+    color = 'border-bb-gold',
+    textColor = 'text-bb-muted'
 }: LoadingSpinnerProps & { textColor?: string }) {
     const sizeClasses = {
         sm: 'h-4 w-4 border-2',

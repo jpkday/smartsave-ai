@@ -108,8 +108,8 @@ export default function CategoryGroup({
           categoryId
         )}`}
       >
-        <span className="font-bold text-xs uppercase tracking-wide opacity-70">{getCategoryName(categoryId)}</span>
-        <span className="font-semibold text-xs opacity-70">${categoryTotal.toFixed(2)}</span>
+        <span className="font-semibold text-xs uppercase tracking-wider text-bb-muted">{getCategoryName(categoryId)}</span>
+        <span className="font-semibold text-xs text-bb-cream">${categoryTotal.toFixed(2)}</span>
       </div>
 
       {/* Items */}

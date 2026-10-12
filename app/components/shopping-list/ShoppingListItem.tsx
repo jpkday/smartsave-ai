@@ -86,10 +86,10 @@ export default function ShoppingListItem({
     <div
       className={`flex flex-wrap items-center gap-2 px-2 py-1.5 rounded-lg border transition ${
         item.checked
-          ? 'bg-gray-100 border-gray-300'
+          ? 'bg-white/[0.02] border-bb-line'
           : isFavorite
-            ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-            : 'bg-white border-gray-200 hover:bg-gray-50'
+            ? 'bg-white/[0.03] border-bb-gold/30 hover:bg-white/5'
+            : 'bg-white/[0.03] border-bb-line hover:bg-white/5'
       }`}
     >
       {/* Checkbox */}
@@ -101,7 +101,7 @@ export default function ShoppingListItem({
           if (isCheckboxDisabled) return;
           onToggleChecked(item.id);
         }}
-        className={`w-6 h-6 rounded transition flex-shrink-0 ${
+        className={`w-6 h-6 rounded transition flex-shrink-0 accent-[#c9a96e] [color-scheme:dark] ${
           isCheckboxDisabled ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'
         }`}
       />
@@ -113,16 +113,16 @@ export default function ShoppingListItem({
           <button
             type="button"
             onClick={() => onOpenEdit(item)}
-            className={`font-medium hover:text-teal-600 text-left cursor-pointer ${
-              item.checked ? 'text-gray-500 line-through' : 'text-gray-800'
+            className={`font-medium hover:text-bb-gold text-left cursor-pointer ${
+              item.checked ? 'text-bb-muted line-through' : 'text-bb-cream'
             }`}
           >
             {isDealsItem && (
-              <FireIcon className="w-4 h-4 text-red-500 mr-1 inline-block" title="On sale today!" />
+              <FireIcon className="w-4 h-4 text-bb-gold mr-1 inline-block" title="On sale today!" />
             )}
             {item.item_name}
             {item.quantity > 1 && (
-              <span className="ml-1 font-bold text-indigo-600">
+              <span className="ml-1 font-bold text-bb-cream">
                 (Qty: {item.quantity})
               </span>
             )}
@@ -132,16 +132,16 @@ export default function ShoppingListItem({
         {/* Price Info & Action Buttons */}
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {price > 0 ? (
-            <p className="text-xs text-green-600 min-w-0">
+            <p className="text-xs text-bb-cream min-w-0">
               {formatMoney(price)}{' '}
               {item.quantity > 1 && `× ${item.quantity} = ${formatMoney(price * item.quantity)}`}
               {priceData?.date ? (
-                <span className="text-gray-400 ml-1">({getDaysAgo(priceData.date)}, {effectiveStore})</span>
+                <span className="text-bb-muted ml-1">({getDaysAgo(priceData.date)}, {effectiveStore})</span>
               ) : null}
               {(() => {
                 const unitPrice = getFormattedUnitPrice(item.item_name, price);
                 return unitPrice ? (
-                  <span className="text-teal-600 ml-1">
+                  <span className="text-bb-muted ml-1">
                     • {unitPrice}
                   </span>
                 ) : null;
@@ -150,7 +150,7 @@ export default function ShoppingListItem({
           ) : (
             <button
               onClick={() => onOpenEdit(item, 'price')}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+              className="text-bb-gold text-xs font-semibold hover:underline cursor-pointer transition inline-block"
             >
               Add Price
             </button>
@@ -158,7 +158,7 @@ export default function ShoppingListItem({
           {missingCategory && (
             <button
               onClick={() => onOpenEdit(item, 'category')}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition inline-block"
+              className="text-bb-muted hover:text-bb-cream text-xs font-semibold hover:underline cursor-pointer transition inline-block"
             >
               Add Category
             </button>
@@ -167,11 +167,11 @@ export default function ShoppingListItem({
 
         {/* Active Note Display */}
         {item.active_note && (!item.active_note.store_id || item.active_note.store_id === storeId) && (
-          <div className="mt-1 flex items-start gap-1 p-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+          <div className="mt-1 flex items-start gap-1 p-2 bg-bb-gold/10 border border-bb-gold/20 rounded-lg text-sm text-bb-gold">
             <span className="text-base select-none">⚠️</span>
             <div className="flex-1">
               <span className="font-semibold">{item.active_note.note}</span>
-              <div className="text-xs text-orange-600 flex gap-2 mt-0.5">
+              <div className="text-xs text-bb-gold/80 flex gap-2 mt-0.5">
                 {item.active_note.store_id && (
                   <span>at {Object.keys(storesByName).find(name => storesByName[name] === item.active_note?.store_id) || 'Unknown Store'}</span>
                 )}
@@ -182,7 +182,7 @@ export default function ShoppingListItem({
                     if (!item.active_note) return;
                     onClearNote(item.item_id, item.active_note.id);
                   }}
-                  className="text-orange-700 hover:text-orange-900 underline ml-auto"
+                  className="text-bb-gold hover:text-bb-cream underline ml-auto"
                 >
                   Clear
                 </button>
@@ -202,8 +202,8 @@ export default function ShoppingListItem({
           }}
           className={`cursor-pointer ml-1 transition ${
             item.is_priority
-              ? 'text-red-600 hover:text-red-700'
-              : 'text-gray-300 hover:text-red-400'
+              ? 'text-bb-red hover:brightness-110'
+              : 'text-slate-600 hover:text-bb-red'
           }`}
           title={item.is_priority ? "Unmark Urgent" : "Mark Urgent"}
         >
@@ -217,8 +217,8 @@ export default function ShoppingListItem({
           onClick={() => onOpenStoreModal(item.item_name)}
           className={`cursor-pointer text-xl ml-1 transition ${
             storePrefs[item.item_name] && storePrefs[item.item_name] !== 'AUTO'
-              ? 'text-indigo-600 hover:text-indigo-700'
-              : 'text-gray-300 hover:text-gray-500'
+              ? 'text-bb-gold hover:brightness-110'
+              : 'text-slate-600 hover:text-bb-muted'
           }`}
           title="Swap store"
           aria-label="Swap store"
@@ -236,7 +236,7 @@ export default function ShoppingListItem({
         {/* Remove */}
         <button
           onClick={() => onRemove(item.id)}
-          className="text-gray-600 hover:text-red-500 cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
+          className="text-bb-muted hover:text-bb-red cursor-pointer text-lg font-bold ml-1 transition-colors px-1"
           title="Remove from list"
           aria-label="Remove from list"
         >

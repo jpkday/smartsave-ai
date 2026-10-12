@@ -145,21 +145,21 @@ export default function StoreSection({
     <div
       className={`rounded-2xl ${
         hasActiveTrip
-          ? 'border-2 border-indigo-300 bg-white shadow-sm overflow-hidden'
-          : 'border border-gray-200 bg-white shadow-sm overflow-hidden'
+          ? 'border-2 border-bb-gold/40 bg-bb-panel shadow-sm overflow-hidden'
+          : 'border border-bb-line bg-bb-panel shadow-sm overflow-hidden'
       }`}
     >
       {/* Store Header */}
       <h3
-        className={`text-lg font-bold text-gray-700 flex items-center gap-2 justify-between ${
-          hasActiveTrip ? 'bg-indigo-50 p-3.5 border-b border-indigo-100' : 'bg-gray-50 p-3.5 border-b border-gray-200'
+        className={`text-lg font-bold text-bb-cream flex items-center gap-2 justify-between ${
+          hasActiveTrip ? 'p-3.5 border-b border-bb-line' : 'p-3.5 border-b border-bb-line'
         }`}
       >
         {hasActiveTrip ? (
           // Active trip header
           <>
             <div className="flex items-center gap-3">
-              <span className="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-sm flex items-center shadow-sm">
+              <span className="bg-bb-gold text-bb-navy font-bold px-4 py-1.5 rounded-full text-sm flex items-center">
                 {isPinned && <span className="mr-1.5" title="Pinned to top">📍</span>}
                 {store}
                 <span className="font-bold ml-1">(Active)</span>
@@ -168,16 +168,16 @@ export default function StoreSection({
               {onEndTrip && tripId && storeId && (
                 <button
                   onClick={() => onEndTrip(tripId, storeId)}
-                  className="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                  className="bg-transparent border border-bb-red/30 text-bb-red hover:bg-bb-red/10 text-xs font-bold px-3 py-1.5 rounded-lg transition"
                 >
                   End
                 </button>
               )}
-              <span className="text-sm text-gray-500 font-medium">
+              <span className="text-sm text-bb-muted font-medium">
                 {storeItems.length} {storeItems.length === 1 ? 'item' : 'items'}
               </span>
             </div>
-            <span className="text-xl font-bold text-teal-700">${storeTotal.toFixed(2)}</span>
+            <span className="text-xl font-bold text-bb-cream">${storeTotal.toFixed(2)}</span>
           </>
         ) : (
           // Inactive store header
@@ -188,7 +188,7 @@ export default function StoreSection({
               {isMobile && mobileMode === 'store' && onStartTrip && storeId && (
                 <button
                   onClick={() => onStartTrip(storeId, store)}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-2xl font-semibold hover:bg-indigo-700 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
+                  className="bg-bb-gold text-bb-navy px-4 py-2 rounded-2xl font-semibold hover:brightness-110 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
                   title="Start Trip"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -199,13 +199,13 @@ export default function StoreSection({
               )}
 
               {/* Store name */}
-              <span className="text-lg font-bold text-gray-800">{store}</span>
+              <span className="text-lg font-bold text-bb-cream">{store}</span>
             </div>
 
             {/* Right: Total and item count */}
             <div className="flex flex-col items-end">
-              <span className="text-xl font-bold text-teal-700">${storeTotal.toFixed(2)}</span>
-              <span className="text-sm text-gray-500 font-normal">
+              <span className="text-xl font-bold text-bb-cream">${storeTotal.toFixed(2)}</span>
+              <span className="text-sm text-bb-muted font-normal">
                 ({storeItems.length} {storeItems.length === 1 ? 'item' : 'items'})
               </span>
             </div>

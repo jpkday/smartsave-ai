@@ -96,7 +96,7 @@ function ItemFilter({ items, selectedItem, onSelect, onAddNew }: ItemFilterProps
               e.currentTarget.select();
             }
           }}
-          className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white pr-10"
+          className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold bg-bb-raised placeholder:text-slate-500 focus:outline-none pr-10"
         />
         {query && (
           <button
@@ -104,7 +104,7 @@ function ItemFilter({ items, selectedItem, onSelect, onAddNew }: ItemFilterProps
               e.stopPropagation();
               handleClear();
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-bb-muted hover:text-bb-cream p-1 rounded-full hover:bg-white/5"
           >
             ✕
           </button>
@@ -112,12 +112,12 @@ function ItemFilter({ items, selectedItem, onSelect, onAddNew }: ItemFilterProps
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-60 overflow-y-auto w-full">
+        <div className="absolute z-50 left-0 right-0 mt-2 bg-bb-panel rounded-xl shadow-sm border border-bb-line max-h-60 overflow-y-auto w-full">
           {getDropdownItems().map((item) => (
             <button
               key={item.id}
               onClick={() => handleSelect(item.name)}
-              className={`w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-50 last:border-0 flex justify-between items-center ${selectedItem === item.name ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-gray-700'}`}
+              className={`w-full text-left px-4 py-3 hover:bg-white/5 border-b border-bb-line last:border-0 flex justify-between items-center ${selectedItem === item.name ? 'text-bb-gold bg-bb-gold/10 font-semibold' : 'text-bb-cream'}`}
             >
               {item.name}
               {selectedItem === item.name && <span>✓</span>}
@@ -131,18 +131,18 @@ function ItemFilter({ items, selectedItem, onSelect, onAddNew }: ItemFilterProps
                 onAddNew(query);
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-3 text-blue-600 hover:bg-blue-50 font-bold border-t border-gray-100"
+              className="w-full text-left px-4 py-3 text-bb-gold hover:bg-white/5 font-bold border-t border-bb-line"
             >
               + Add "{query}"
             </button>
           )}
 
           {query && getDropdownItems().length === 0 && items.some(i => i.name.toLowerCase() === query.trim().toLowerCase()) && (
-            <div className="px-4 py-3 text-gray-500 text-sm">Item already exists</div>
+            <div className="px-4 py-3 text-bb-muted text-sm">Item already exists</div>
           )}
 
           {getDropdownItems().length === 0 && !query && (
-            <div className="px-4 py-3 text-gray-500 text-sm">Type to search items...</div>
+            <div className="px-4 py-3 text-bb-muted text-sm">Type to search items...</div>
           )}
         </div>
       )}
@@ -447,7 +447,7 @@ function PricesContent() {
   const getPriceColor = (storeId: string, itemName: string) => {
     const price = prices[`${storeId}-${itemName}`];
     const numPrice = parseFloat(price || '0');
-    return numPrice > 0 ? 'text-gray-800' : 'text-gray-200';
+    return numPrice > 0 ? 'text-bb-cream' : 'text-slate-600';
   };
 
   const getDaysAgo = (storeId: string, itemName: string) => {
@@ -472,19 +472,19 @@ function PricesContent() {
 
   const getCellColor = (storeId: string, itemName: string) => {
     const currentPrice = parseFloat(prices[`${storeId}-${itemName}`] || '0');
-    if (currentPrice === 0) return 'bg-white';
+    if (currentPrice === 0) return 'bg-bb-raised';
 
     const itemPrices = stores.map(s => parseFloat(prices[`${s.id}-${itemName}`] || '0')).filter(p => p > 0);
-    if (itemPrices.length === 0) return 'bg-white';
-    if (itemPrices.length === 1) return 'bg-green-100';
+    if (itemPrices.length === 0) return 'bg-bb-raised';
+    if (itemPrices.length === 1) return 'bg-bb-green/10';
 
     const minPrice = Math.min(...itemPrices);
     const maxPrice = Math.max(...itemPrices);
 
-    if (currentPrice === minPrice && minPrice !== maxPrice) return 'bg-green-100';
-    if (currentPrice === maxPrice && minPrice !== maxPrice) return 'bg-red-100';
+    if (currentPrice === minPrice && minPrice !== maxPrice) return 'bg-bb-green/10';
+    if (currentPrice === maxPrice && minPrice !== maxPrice) return 'bg-bb-red/10';
 
-    return 'bg-white';
+    return 'bg-bb-raised';
   };
 
   // --- Handlers for ItemFilter ---
@@ -525,16 +525,16 @@ function PricesContent() {
               <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-bb-cream">Price Grid</h1>
               <div className="hidden md:flex items-center gap-3 mt-2">
                 {lastSaved && (
-                  <p className="text-xs md:text-sm text-slate-400">Last updated: {lastSaved}</p>
+                  <p className="text-xs md:text-sm text-bb-muted">Last updated: {lastSaved}</p>
                 )}
                 <button
                   onClick={shareLink}
-                  className="relative text-blue-500 hover:text-blue-600 transition cursor-pointer"
+                  className="relative text-bb-muted hover:text-bb-cream transition cursor-pointer"
                   title="Share this page"
                 >
                   <span className="text-base">🔗</span>
                   {showCopied && (
-                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-bb-green text-bb-navy text-xs px-2 py-1 rounded whitespace-nowrap">
                       Copied!
                     </span>
                   )}
@@ -546,8 +546,8 @@ function PricesContent() {
         </div>
 
         {/* Mobile Filter Controls */}
-        <div className="md:hidden mb-4 bg-white rounded-2xl shadow-lg p-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Select Store:</label>
+        <div className="md:hidden mb-4 bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4">
+          <label className="block text-sm font-semibold text-bb-cream mb-2">Select Store:</label>
           <select
             value={selectedStoreId}
             onChange={(e) => {
@@ -559,7 +559,7 @@ function PricesContent() {
                 console.error('Failed to save to localStorage:', err);
               }
             }}
-            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 font-semibold bg-white mb-4"
+            className="w-full px-4 py-3 border border-bb-line rounded-2xl focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 text-bb-cream font-semibold bg-bb-raised focus:outline-none mb-4"
           >
             {stores.map(store => (
               <option key={store.id} value={store.id}>
@@ -568,7 +568,7 @@ function PricesContent() {
             ))}
           </select>
 
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Item:</label>
+          <label className="block text-sm font-semibold text-bb-cream mb-2">Filter Item:</label>
           <ItemFilter
             items={sortedItems}
             selectedItem={selectedItemFilter}
@@ -578,8 +578,8 @@ function PricesContent() {
         </div>
 
         {/* Mobile View - Item List */}
-        <div className="md:hidden bg-white rounded-2xl shadow-lg">
-          <div className="divide-y">
+        <div className="md:hidden bg-bb-panel border border-bb-line rounded-2xl shadow-sm">
+          <div className="divide-y divide-bb-line">
             {filteredItems.map((item, idx) => {
               const currentPrice = parseFloat(prices[`${selectedStoreId}-${item.name}`] || '0');
               const priceDate = pricesDates[`${selectedStoreId}-${item.name}`];
@@ -628,25 +628,25 @@ function PricesContent() {
                             value={editingValue}
                             onChange={(e) => setEditingValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && saveEdit(item)}
-                            className="flex-1 px-2 py-1 border border-blue-500 rounded text-base"
+                            className="flex-1 px-2 py-1 border border-bb-gold rounded text-base bg-bb-raised text-bb-cream focus:outline-none"
                             autoFocus
                           />
                           <button
                             onClick={() => saveEdit(item)}
-                            className="text-green-600 font-semibold cursor-pointer text-lg"
+                            className="text-bb-green font-semibold cursor-pointer text-lg"
                           >
                             ✓
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-800 text-base">
+                          <span className="font-medium text-bb-cream text-base">
                             {selectedItemFilter === 'All' && `${idx + 1}. `}{item.name}
                           </span>
                           <div className="flex gap-2">
                             <button
                               onClick={() => startEdit(item)}
-                              className="text-gray-400 hover:text-blue-600 cursor-pointer p-2"
+                              className="text-bb-muted hover:text-bb-cream cursor-pointer p-2"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -654,7 +654,7 @@ function PricesContent() {
                             </button>
                             <button
                               onClick={() => deleteItem(item)}
-                              className="text-red-600 hover:text-red-800 cursor-pointer text-xl p-2"
+                              className="text-bb-red hover:opacity-80 cursor-pointer text-xl p-2"
                             >
                               🗑️
                             </button>
@@ -663,15 +663,15 @@ function PricesContent() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center p-3 rounded-2xl bg-white">
-                    <span className="text-gray-800 font-bold text-lg mr-2">$</span>
+                  <div className="flex items-center p-3 rounded-2xl bg-white/[0.03]">
+                    <span className="text-bb-cream font-bold text-lg mr-2">$</span>
                     <div className="flex-1">
                       <input
                         type="text"
                         inputMode="decimal"
                         placeholder="0.00"
                         style={{ MozAppearance: 'textfield' }}
-                        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-2xl text-right font-bold text-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(selectedStoreId, item.name)} ${getCellColor(selectedStoreId, item.name)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                        className={`w-full px-4 py-3 border-2 border-bb-line rounded-2xl text-right font-bold text-lg focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 focus:outline-none focus:text-bb-cream ${getPriceColor(selectedStoreId, item.name)} ${getCellColor(selectedStoreId, item.name)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                         value={prices[`${selectedStoreId}-${item.name}`] || ''}
                         onChange={(e) => handlePriceChange(selectedStoreId, item.name, e.target.value)}
                         onBlur={() => handlePriceSave(selectedStoreId, item.name)}
@@ -683,7 +683,7 @@ function PricesContent() {
                         }}
                       />
                       {prices[`${selectedStoreId}-${item.name}`] && parseFloat(prices[`${selectedStoreId}-${item.name}`]) > 0 && (
-                        <div className="text-xs text-gray-500 text-right mt-1">
+                        <div className="text-xs text-bb-muted text-right mt-1">
                           Updated {getDaysAgo(selectedStoreId, item.name)}
                         </div>
                       )}
@@ -692,41 +692,41 @@ function PricesContent() {
 
                   {/* Price Comparison Message */}
                   {currentPrice === 0 ? null : itemPrices.length <= 1 ? (
-                    <div className="mt-3 p-4 rounded-2xl border-2 bg-blue-50 border-blue-300">
-                      <p className="text-sm text-blue-800 font-semibold">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-white/[0.03] border-bb-line">
+                      <p className="text-sm text-bb-muted font-semibold">
                         ℹ️ Only price tracked - add prices from other stores to compare
                       </p>
                     </div>
                   ) : isBest ? (
-                    <div className="mt-3 p-4 rounded-2xl border-2 bg-green-50 border-green-500">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-bb-green/10 border-bb-green/40">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">✅</span>
                         <div className="flex-1">
-                          <p className="text-base font-bold text-green-800">Best Price!</p>
-                          <p className="text-sm text-green-700">Buy now at {currentStoreObj?.name}</p>
-                          {daysAgo && <p className="text-xs text-green-600 mt-1">Updated {daysAgo}</p>}
+                          <p className="text-base font-bold text-bb-green">Best Price!</p>
+                          <p className="text-sm text-bb-green">Buy now at {currentStoreObj?.name}</p>
+                          {daysAgo && <p className="text-xs text-bb-green mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
                     </div>
                   ) : savings <= 0.25 ? (
-                    <div className="mt-3 p-4 rounded-2xl border-2 bg-yellow-50 border-yellow-300">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-bb-gold/10 border-bb-gold/30">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">⚠️</span>
                         <div className="flex-1">
-                          <p className="text-base font-bold text-yellow-800">Close Enough</p>
-                          <p className="text-sm text-yellow-700">{bestPrice.storeName} is only ${savings.toFixed(2)} cheaper</p>
-                          {daysAgo && <p className="text-xs text-yellow-600 mt-1">Updated {daysAgo}</p>}
+                          <p className="text-base font-bold text-bb-gold">Close Enough</p>
+                          <p className="text-sm text-bb-gold">{bestPrice.storeName} is only ${savings.toFixed(2)} cheaper</p>
+                          {daysAgo && <p className="text-xs text-bb-gold mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-3 p-4 rounded-2xl border-2 bg-red-50 border-red-300">
+                    <div className="mt-3 p-4 rounded-2xl border-2 bg-bb-red/10 border-bb-red/30">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">❌</span>
                         <div className="flex-1">
-                          <p className="text-base font-bold text-red-800">Skip This One</p>
-                          <p className="text-sm text-red-700">{bestPrice.storeName} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
-                          {daysAgo && <p className="text-xs text-red-600 mt-1">Updated {daysAgo}</p>}
+                          <p className="text-base font-bold text-bb-red">Skip This One</p>
+                          <p className="text-sm text-bb-red">{bestPrice.storeName} has it for ${bestPrice.price.toFixed(2)} (save ${savings.toFixed(2)})</p>
+                          {daysAgo && <p className="text-xs text-bb-red mt-1">Updated {daysAgo}</p>}
                         </div>
                       </div>
                     </div>
@@ -738,10 +738,10 @@ function PricesContent() {
         </div>
 
         {/* Desktop View - Full Table */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-lg overflow-x-auto">
+        <div className="hidden md:block bg-bb-panel border border-bb-line rounded-2xl shadow-sm overflow-x-auto">
           {/* Desktop Item Filter */}
-          <div className="p-4 border-b bg-gray-50 flex items-center">
-            <label className="inline-block text-sm font-semibold text-gray-700 mr-3">Filter Item:</label>
+          <div className="p-4 border-b border-bb-line bg-bb-raised flex items-center">
+            <label className="inline-block text-sm font-semibold text-bb-cream mr-3">Filter Item:</label>
             <div className="w-80 relative">
               <ItemFilter
                 items={sortedItems}
@@ -753,13 +753,13 @@ function PricesContent() {
           </div>
 
           <table className="w-full">
-            <thead className="bg-blue-600 text-white">
+            <thead className="bg-bb-raised text-bb-cream border-b border-bb-line">
               <tr>
                 <th className="p-4 text-left font-semibold">Item</th>
                 {stores.map(store => (
                   <th key={store.id} className="p-4 text-center font-semibold text-sm">
                     {store.name}
-                    {store.location && <div className="text-xs text-blue-100 font-normal">({store.location})</div>}
+                    {store.location && <div className="text-xs text-bb-muted font-normal">({store.location})</div>}
                   </th>
                 ))}
                 <th className="p-4 text-center font-semibold"></th>
@@ -767,33 +767,33 @@ function PricesContent() {
             </thead>
             <tbody>
               {filteredItems.map((item, idx) => (
-                <tr key={item.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-4 font-medium text-gray-800">
+                <tr key={item.id} className={idx % 2 === 0 ? 'bg-bb-panel border-b border-bb-line' : 'bg-bb-panel border-b border-bb-line'}>
+                  <td className="p-4 font-medium text-bb-cream">
                     {editingItem?.id === item.id ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">{idx + 1}.</span>
+                        <span className="text-bb-muted">{idx + 1}.</span>
                         <input
                           type="text"
                           value={editingValue}
                           onChange={(e) => setEditingValue(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && saveEdit(item)}
-                          className="flex-1 px-2 py-1 border border-blue-500 rounded focus:ring-2 focus:ring-blue-200"
+                          className="flex-1 px-2 py-1 border border-bb-gold rounded bg-bb-raised text-bb-cream focus:outline-none focus:ring-2 focus:ring-bb-gold/50"
                           autoFocus
                         />
                         <button
                           onClick={() => saveEdit(item)}
-                          className="text-green-600 hover:text-green-800 font-semibold cursor-pointer text-sm"
+                          className="text-bb-green hover:opacity-80 font-semibold cursor-pointer text-sm"
                         >
                           ✓
                         </button>
                       </div>
                     ) : (
                       <span>
-                        <span className="text-gray-500 mr-2">{idx + 1}.</span>
+                        <span className="text-bb-muted mr-2">{idx + 1}.</span>
                         {item.name}
                         <button
                           onClick={() => startEdit(item)}
-                          className="ml-2 text-gray-400 hover:text-blue-600 cursor-pointer"
+                          className="ml-2 text-bb-muted hover:text-bb-cream cursor-pointer"
                           title="Edit"
                         >
                           <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -808,13 +808,13 @@ function PricesContent() {
                     <td key={store.id} className="p-4">
                       <div className="flex flex-col items-end justify-center">
                         <div className="flex items-center">
-                          <span className="text-gray-800 font-semibold mr-1">$</span>
+                          <span className="text-bb-cream font-semibold mr-1">$</span>
                           <input
                             type="text"
                             inputMode="decimal"
                             placeholder=""
                             style={{ MozAppearance: 'textfield' }}
-                            className={`w-20 px-2 py-2 border border-gray-300 rounded text-right font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:text-gray-800 ${getPriceColor(store.id, item.name)} ${getCellColor(store.id, item.name)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                            className={`w-20 px-2 py-2 border border-bb-line rounded text-right font-semibold focus:border-bb-gold/50 focus:ring-2 focus:ring-bb-gold/50 focus:outline-none focus:text-bb-cream ${getPriceColor(store.id, item.name)} ${getCellColor(store.id, item.name)} [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                             value={prices[`${store.id}-${item.name}`] || ''}
                             onChange={(e) => handlePriceChange(store.id, item.name, e.target.value)}
                             onBlur={() => handlePriceSave(store.id, item.name)}
@@ -827,7 +827,7 @@ function PricesContent() {
                           />
                         </div>
                         {prices[`${store.id}-${item.name}`] && parseFloat(prices[`${store.id}-${item.name}`]) > 0 && (
-                          <span className="text-xs text-gray-500 mt-1">{getDaysAgo(store.id, item.name)}</span>
+                          <span className="text-xs text-bb-muted mt-1">{getDaysAgo(store.id, item.name)}</span>
                         )}
                       </div>
                     </td>
@@ -835,7 +835,7 @@ function PricesContent() {
                   <td className="p-4 text-center">
                     <button
                       onClick={() => deleteItem(item)}
-                      className="text-red-600 hover:text-red-800 cursor-pointer"
+                      className="text-bb-red hover:opacity-80 cursor-pointer"
                       title="Delete item"
                     >
                       🗑️
@@ -864,8 +864,8 @@ export default function Prices() {
     <Suspense fallback={
       <div className="min-h-screen app-bg p-1 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <p className="text-gray-500 text-lg">Loading...</p>
+          <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-8 text-center">
+            <p className="text-bb-muted text-lg">Loading...</p>
           </div>
         </div>
       </div>

@@ -151,16 +151,16 @@ export default function GlobalItemEditModal({
     };
 
     const getCategoryColorById = (id: number | null) => {
-        if (!id) return 'bg-gray-50 border-gray-200';
+        if (!id) return 'bg-bb-raised border-bb-line';
         const cat = categories.find(c => c.id === id);
-        return cat ? cat.color : 'bg-gray-50 border-gray-200';
+        return cat ? cat.color : 'bg-bb-raised border-bb-line';
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+            <div className="bg-bb-panel text-bb-cream border border-bb-line rounded-2xl shadow-sm p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-start mb-5">
-                    <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <h3 className="text-lg font-extrabold text-bb-cream flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
@@ -168,7 +168,7 @@ export default function GlobalItemEditModal({
                     </h3>
                     <button
                         onClick={onClose}
-                        className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl -mt-1"
+                        className="text-slate-600 hover:text-bb-cream cursor-pointer text-xl -mt-1"
                         aria-label="Close"
                     >
                         ✕
@@ -177,7 +177,7 @@ export default function GlobalItemEditModal({
 
                 <div className="space-y-4">
                     <div
-                        className={`rounded-2xl p-4 border transition-colors ${getCategoryColorById(categoryId)} bg-opacity-10`}
+                        className={`rounded-2xl p-4 border transition-colors ${getCategoryColorById(categoryId)}`}
                     >
                         <div className="space-y-3">
                             {/* Name + Favorite Star */}
@@ -190,14 +190,14 @@ export default function GlobalItemEditModal({
                                             className={
                                                 favorite
                                                     ? 'text-4xl leading-none cursor-pointer'
-                                                    : 'text-4xl leading-none text-gray-300 cursor-pointer'
+                                                    : 'text-4xl leading-none text-slate-600 cursor-pointer'
                                             }
                                             aria-label={favorite ? 'Unfavorite item' : 'Favorite item'}
                                         >
                                             {favorite ? '⭐' : '☆'}
                                         </button>
                                     )}
-                                    <label className="text-sm font-semibold text-gray-700">Item Name</label>
+                                    <label className="text-sm font-semibold text-bb-cream">Item Name</label>
                                 </div>
                                 <div className="mt-1">
                                     <input
@@ -206,7 +206,7 @@ export default function GlobalItemEditModal({
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                        className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 text-base bg-white"
+                                        className="w-full px-3 py-3 rounded-xl text-base bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                                         placeholder="e.g., Grapefruit (ct)"
                                         disabled={saving}
                                     />
@@ -215,14 +215,14 @@ export default function GlobalItemEditModal({
 
                             {/* Category */}
                             <div>
-                                <label className="text-sm font-semibold text-gray-700">Category</label>
+                                <label className="text-sm font-semibold text-bb-cream">Category</label>
                                 <select
                                     value={(categories.find(c => c.id === categoryId)?.name.trim().toLowerCase() === 'other') ? '' : (categoryId ?? '')}
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         setCategoryId(value === '' ? null : parseInt(value, 10));
                                     }}
-                                    className="w-full mt-1 px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-200 bg-white"
+                                    className="w-full mt-1 px-3 py-3 rounded-xl bg-bb-raised border border-bb-line text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50 focus:border-bb-gold/50"
                                     disabled={saving}
                                 >
                                     <option value="">Other</option>
@@ -237,10 +237,10 @@ export default function GlobalItemEditModal({
                     </div>
 
                     {/* Weight & Unit Section */}
-                    <div className="p-4 rounded-2xl border border-gray-100 bg-gray-50">
+                    <div className="p-4 rounded-2xl border border-bb-line bg-bb-raised">
                         <div className="flex items-center justify-between">
                             <div>
-                                <label className="text-sm font-bold text-gray-800">Sold by Weight</label>
+                                <label className="text-sm font-bold text-bb-cream">Sold by Weight</label>
                             </div>
                             <button
                                 type="button"
@@ -255,16 +255,16 @@ export default function GlobalItemEditModal({
                                         setUnit('each');
                                     }
                                 }}
-                                className={`w-14 h-8 rounded-full transition-colors relative ${isWeighted ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                className={`w-14 h-8 rounded-full transition-colors relative ${isWeighted ? 'bg-bb-gold' : 'bg-white/10'}`}
                                 disabled={saving}
                             >
-                                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${isWeighted ? 'left-7' : 'left-1'}`} />
+                                <div className={`absolute top-1 w-6 h-6 bg-bb-cream rounded-full transition-all ${isWeighted ? 'left-7' : 'left-1'}`} />
                             </button>
                         </div>
 
                         {isWeighted && (
                             <div className="mt-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block text-center">Default Unit</label>
+                                <label className="text-xs font-bold text-bb-muted uppercase tracking-widest mb-2 block text-center">Default Unit</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { id: 'lb', label: 'lb' },
@@ -275,8 +275,8 @@ export default function GlobalItemEditModal({
                                             type="button"
                                             onClick={() => setUnit(u.id)}
                                             className={`py-2 text-xs font-bold rounded-xl border transition-all ${unit === u.id
-                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                                                ? 'bg-bb-gold text-bb-navy border-bb-gold font-semibold'
+                                                : 'bg-transparent text-bb-muted border-bb-line hover:text-bb-cream'
                                                 }`}
                                             disabled={saving}
                                         >
@@ -291,14 +291,14 @@ export default function GlobalItemEditModal({
                     <div className="flex justify-end gap-2 mt-6">
                         <button
                             onClick={onClose}
-                            className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-colors"
+                            className="px-6 py-3 rounded-xl border border-bb-line bg-transparent text-bb-cream font-semibold hover:bg-white/5 transition-colors"
                             disabled={saving}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all hover:-translate-y-0.5"
+                            className="px-6 py-3 rounded-xl bg-bb-gold text-bb-navy font-semibold hover:brightness-110 transition-all"
                             disabled={saving}
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
