@@ -516,12 +516,12 @@ function CompareContent() {
 
   return (
     <div className="min-h-screen app-bg">
-      <div className="sticky top-0 z-50 bg-white shadow-lg w-full">
+      <div className="sticky top-0 z-50 app-header w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
             {/* Title - Desktop Only (replaces the old headers) */}
             <div className="hidden md:flex items-center gap-2">
-              <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+              <Link href="/" className="text-xl font-bold text-bb-cream hover:text-bb-gold transition flex items-center gap-2">
                 <span className="text-2xl">ᯓ</span>
                 <span className="hidden sm:inline">SmartSaveAI</span>
               </Link>

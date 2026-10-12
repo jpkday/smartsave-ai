@@ -159,7 +159,11 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            <Header currentPage="Trip Details" />
+            <div className="sticky top-0 z-50 app-header">
+                <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+                    <Header currentPage="Trip Details" />
+                </div>
+            </div>
 
             <main className="max-w-3xl mx-auto px-4 pt-6">
                 {/* Back Link */}

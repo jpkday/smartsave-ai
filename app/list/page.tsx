@@ -2145,10 +2145,10 @@ export default function ShoppingList() {
 
   return (
     <div className="min-h-screen app-bg">
-      <div className="sticky top-0 z-50 bg-white shadow-lg">
+      <div className="sticky top-0 z-50 app-header">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
-            <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600 transition flex items-center gap-2">
+            <Link href="/" className="text-xl font-bold text-bb-cream hover:text-bb-gold transition flex items-center gap-2">
               <span className="text-2xl hidden lg:inline">ᯓ</span>
               <span className="hidden lg:inline">SmartSaveAI</span>
             </Link>
@@ -2159,18 +2159,18 @@ export default function ShoppingList() {
 
       <div className="max-w-5xl mx-auto px-2 md:px-4 py-4">
         {/* Mobile-only mode toggle */}
-        <div className="md:hidden rounded-lg p-2 mb-2">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="md:hidden px-2 pt-1 mb-3">
+          <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
             <button
               onClick={() => setMobileMode('build')}
-              className={`py-2 rounded-lg text-sm cursor-pointer transition ${mobileMode === 'build' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
+              className={`py-2 rounded-lg text-base cursor-pointer transition ${mobileMode === 'build' ? 'bg-bb-gold text-bb-navy font-semibold' : 'text-slate-400 hover:text-bb-cream'
                 }`}
             >
               Build Mode
             </button>
             <button
               onClick={() => setMobileMode('store')}
-              className={`py-2 rounded-lg text-sm cursor-pointer transition ${mobileMode === 'store' ? 'bg-indigo-600 text-white font-bold text-lg' : 'bg-gray-50 text-gray-400 text-base'
+              className={`py-2 rounded-lg text-base cursor-pointer transition ${mobileMode === 'store' ? 'bg-bb-gold text-bb-navy font-semibold' : 'text-slate-400 hover:text-bb-cream'
                 }`}
             >
               Store Mode

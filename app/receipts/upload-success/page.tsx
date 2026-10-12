@@ -64,7 +64,11 @@ export default function UploadSuccessPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            <Header currentPage="Add Receipt" />
+            <div className="sticky top-0 z-50 app-header">
+                <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
+                    <Header currentPage="Add Receipt" />
+                </div>
+            </div>
             <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
                 <SuccessContent />
             </Suspense>

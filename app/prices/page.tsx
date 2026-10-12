@@ -519,13 +519,13 @@ function PricesContent() {
   return (
     <div className="min-h-screen app-bg p-0 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
+        <div className="sticky top-0 z-50 app-header p-4 mb-6">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-gray-800">Price Grid</h1>
+              <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-bb-cream">Price Grid</h1>
               <div className="hidden md:flex items-center gap-3 mt-2">
                 {lastSaved && (
-                  <p className="text-xs md:text-sm text-gray-600">Last updated: {lastSaved}</p>
+                  <p className="text-xs md:text-sm text-slate-400">Last updated: {lastSaved}</p>
                 )}
                 <button
                   onClick={shareLink}

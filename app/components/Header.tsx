@@ -23,21 +23,6 @@ export default function Header({ currentPage }: HeaderProps) {
     { name: 'Favorite Stores', path: '/stores', icon: '🛍️' },
   ];
 
-  const mobileColorByPage: Record<string, string> = {
-    'Home': 'bg-yellow-500 hover:bg-yellow-600',
-    'Shopping List': 'bg-yellow-500 hover:bg-yellow-600',
-    'Insights': 'bg-violet-700 hover:bg-violet-600',
-    'Local Deals': 'bg-red-500 hover:bg-red-600',
-    'Recent Trips': 'bg-lime-500 hover:bg-lime-600',
-    'Add Receipt': 'bg-orange-500 hover:bg-orange-600',
-    'Add Flyer': 'bg-indigo-600 hover:bg-indigo-700',
-    'Favorite Stores': 'bg-pink-500 hover:bg-pink-600',
-    'Favorite Items': 'bg-teal-500 hover:bg-teal-600',
-  };
-
-  const mobileCurrentClass =
-    mobileColorByPage[currentPage] || 'bg-gray-600 hover:bg-gray-700';
-
   const pageIcons: Record<string, React.ReactNode> = {
     'Home': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +86,7 @@ export default function Header({ currentPage }: HeaderProps) {
         {showHome ? (
           <Link
             href="/"
-            className="bg-gray-400 text-white w-14 h-14 rounded-2xl font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+            className="bg-white/5 border border-white/10 text-slate-300 w-14 h-14 rounded-2xl font-bold hover:bg-white/10 hover:text-bb-cream transition flex items-center justify-center flex-shrink-0"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -110,7 +95,7 @@ export default function Header({ currentPage }: HeaderProps) {
         ) : (
           <button
             onClick={() => router.back()}
-            className="bg-gray-400 text-white w-14 h-14 rounded-2xl font-bold hover:bg-gray-500 transition flex items-center justify-center flex-shrink-0"
+            className="bg-white/5 border border-white/10 text-slate-300 w-14 h-14 rounded-2xl font-bold hover:bg-white/10 hover:text-bb-cream transition flex items-center justify-center flex-shrink-0"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -120,12 +105,12 @@ export default function Header({ currentPage }: HeaderProps) {
 
         <div className="flex-1 relative">
           <div
-            className={`w-full px-4 py-3.5 rounded-2xl font-bold text-white ${mobileCurrentClass} transition text-center flex items-center justify-center gap-2`}
+            className="w-full px-4 py-3.5 rounded-2xl font-semibold text-bb-cream bg-white/5 border border-white/10 transition text-center flex items-center justify-center gap-2"
           >
             <span className="flex items-center gap-2">
-              {pageIcons[currentPage] || pages.find((p) => p.name === currentPage)?.icon} {currentPage}
+              <span className="text-bb-gold">{pageIcons[currentPage] || pages.find((p) => p.name === currentPage)?.icon}</span> {currentPage}
             </span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
@@ -138,68 +123,68 @@ export default function Header({ currentPage }: HeaderProps) {
           {isMobileMenuOpen && (
             <>
               <div
-                className="fixed inset-0 bg-black/5 z-40"
+                className="fixed inset-0 bg-black/40 z-40"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
               <div
                 id="mobile-menu-dropdown"
-                className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden border border-white/50 z-50 max-h-[80vh] overflow-y-auto ring-1 ring-black/5"
+                className="absolute top-full left-0 right-0 mt-2 bg-bb-panel rounded-2xl shadow-2xl overflow-hidden border border-white/10 z-50 max-h-[80vh] overflow-y-auto"
               >
                 <div className="py-2">
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50">Shop</div>
+                  <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Shop</div>
                   {['Home', 'Shopping List'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-white/5 text-bb-gold' : 'text-slate-300 hover:bg-white/5 hover:text-bb-cream'}`}
                     >
-                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-bb-gold' : 'text-slate-500'}`}>
                         {pageIcons[pageName]}
                       </div>
                       {pageName}
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Save</div>
+                  <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">Save</div>
                   {['Local Deals', 'Recent Trips', 'Insights'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-white/5 text-bb-gold' : 'text-slate-300 hover:bg-white/5 hover:text-bb-cream'}`}
                     >
-                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-bb-gold' : 'text-slate-500'}`}>
                         {pageIcons[pageName]}
                       </div>
                       {pageName}
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Scan</div>
+                  <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">Scan</div>
                   {['Add Receipt', 'Add Flyer'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-white/5 text-bb-gold' : 'text-slate-300 hover:bg-white/5 hover:text-bb-cream'}`}
                     >
-                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-bb-gold' : 'text-slate-500'}`}>
                         {pageIcons[pageName]}
                       </div>
                       {pageName}
                     </Link>
                   ))}
 
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50/50 mt-2">Favorite</div>
+                  <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">Favorite</div>
                   {['Favorite Items', 'Favorite Stores'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold transition ${currentPage === pageName ? 'bg-white/5 text-bb-gold' : 'text-slate-300 hover:bg-white/5 hover:text-bb-cream'}`}
                     >
-                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      <div className={`w-6 h-6 ${currentPage === pageName ? 'text-bb-gold' : 'text-slate-500'}`}>
                         {pageIcons[pageName]}
                       </div>
                       {pageName}
@@ -220,7 +205,7 @@ export default function Header({ currentPage }: HeaderProps) {
 
             <Link
               href="/list"
-              className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${currentPage === 'Shopping List' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}
+              className={`font-medium flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors ${currentPage === 'Shopping List' ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-400 hover:text-bb-cream'}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -229,7 +214,7 @@ export default function Header({ currentPage }: HeaderProps) {
             </Link>
             <Link
               href="/deals"
-              className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${currentPage === 'Local Deals' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}
+              className={`font-medium flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors ${currentPage === 'Local Deals' ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-400 hover:text-bb-cream'}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
@@ -239,27 +224,27 @@ export default function Header({ currentPage }: HeaderProps) {
             </Link>
           </div>
 
-          <div className="h-6 w-px bg-gray-200 mx-4"></div>
+          <div className="h-6 w-px bg-white/10 mx-4"></div>
 
           <div className="flex items-center gap-0">
             {/* ANALYZE GROUP (Dropdown) */}
             {/* ANALYZE GROUP (Dropdown) */}
             <div className="group relative">
-              <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Insights', 'Recent Trips'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
+              <button className={`font-medium flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors cursor-pointer ${['Insights', 'Recent Trips'].includes(currentPage) ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-400 hover:text-bb-cream'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 Analyze
                 <svg className="w-4 h-4 transition group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-bb-panel border border-white/10 rounded-xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
                 <div className="py-2">
-                  <Link href="/trips" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <Link href="/trips" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     Recent Trips
                   </Link>
-                  <Link href="/insights" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
+                  <Link href="/insights" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548 5.478A1 1 0 0114 21h-4a1 1 0 01-.995-1.104l-.548-5.478z" /></svg>
                     Insights
                   </Link>
                 </div>
@@ -268,21 +253,21 @@ export default function Header({ currentPage }: HeaderProps) {
 
             {/* ADD GROUP (Dropdown) */}
             <div className="group relative">
-              <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Add Receipt', 'Add Flyer'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
+              <button className={`font-medium flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors cursor-pointer ${['Add Receipt', 'Add Flyer'].includes(currentPage) ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-400 hover:text-bb-cream'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Contribute
                 <svg className="w-4 h-4 transition group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-bb-panel border border-white/10 rounded-xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
                 <div className="py-2">
-                  <Link href="/receipts" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <Link href="/receipts" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Add Receipt
                   </Link>
-                  <Link href="/flyers" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                  <Link href="/flyers" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                     Add Flyer
                   </Link>
                 </div>
@@ -291,21 +276,21 @@ export default function Header({ currentPage }: HeaderProps) {
 
             {/* FAVORITE GROUP (Dropdown) */}
             <div className="group relative">
-              <button className={`font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${['Favorite Stores', 'Favorite Items', 'Stores', 'Items'].includes(currentPage) ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-700'}`}>
+              <button className={`font-medium flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors cursor-pointer ${['Favorite Stores', 'Favorite Items', 'Stores', 'Items'].includes(currentPage) ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-400 hover:text-bb-cream'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.518 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
                 Favorites
                 <svg className="w-4 h-4 transition group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-bb-panel border border-white/10 rounded-xl shadow-xl overflow-hidden invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 transform origin-top-right z-50">
                 <div className="py-2">
-                  <Link href="/items" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  <Link href="/items" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     Favorite Items
                   </Link>
-                  <Link href="/stores" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-700">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                  <Link href="/stores" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-bb-cream">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                     Favorite Stores
                   </Link>
                 </div>

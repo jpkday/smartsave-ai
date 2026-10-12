@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* build beautiful palette */
+@theme {
+  --color-bb-navy: #0e1b2a;
+  --color-bb-panel: #13243a;
+  --color-bb-cream: #ece6da;
+  --color-bb-gold: #c9a96e;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -92,4 +100,12 @@ input[type="button"],
   background-color: #0e1b2a;
   background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 191, 0.08), transparent 70%);
   background-attachment: fixed;
+}
+
+/* Top nav bar: same navy as the page, hairline bottom edge */
+.app-header {
+  background-color: rgba(14, 27, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
