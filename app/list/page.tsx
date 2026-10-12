@@ -1345,33 +1345,23 @@ export default function ShoppingList() {
       setFrequentItemCounts(counts);
     }
 
-    // Load suggestion data (all 4 RPCs in parallel)
+    // Load purchase history for the "Your Usuals" empty-state suggestions
     const allListItemIds = listData?.map((r: any) => r.item_id).filter((id: any) => typeof id === 'number') || [];
-    const [overdueRes, upcomingRes, togetherRes, dealsRes, historyRes] = await Promise.all([
-      supabase.rpc('get_overdue_items', { household: householdCode }),
-      supabase.rpc('get_upcoming_items', { household: householdCode }),
-      allListItemIds.length > 0
-        ? supabase.rpc('get_often_together_items', { household: householdCode, current_item_ids: allListItemIds })
-        : Promise.resolve({ data: [] }),
-      supabase.rpc('get_pantry_deals', { household: householdCode }),
-      supabase
-        .from('shopping_list_events')
-        .select('item_id, item_name, checked_at')
-        .eq('household_code', householdCode)
-        .not('item_id', 'is', null)
-        .not('checked_at', 'is', null)
-        .order('checked_at', { ascending: false })
-        .limit(3000),
-    ]);
+    const historyRes = await supabase
+      .from('shopping_list_events')
+      .select('item_id, item_name, checked_at')
+      .eq('household_code', householdCode)
+      .not('item_id', 'is', null)
+      .not('checked_at', 'is', null)
+      .order('checked_at', { ascending: false })
+      .limit(3000);
 
     // Filter out items already on the list
     const onListIds = new Set(allListItemIds);
-    const filterOnList = (items: any[]) => (items || []).filter((i: any) => !onListIds.has(i.item_id));
 
     // Staples: rank items by purchase frequency, decayed by how many shopping days ago each purchase was.
     // Counting shopping days (not calendar days) keeps long gaps in app usage from skewing results.
     const STAPLE_DECAY = 0.85;
-    const ACTIVE_SESSIONS = 6; // items not bought in the last N shopping days are treated as no longer bought
     const shoppingDays = [...new Set((historyRes.data ?? []).map((e) => e.checked_at.slice(0, 10)))]; // newest first
     const sessionIndex = new Map(shoppingDays.map((d, i) => [d, i]));
     const byItem = new Map<number, { item_name: string; days: Set<string>; score: number }>();
@@ -1384,9 +1374,6 @@ export default function ShoppingList() {
       }
       byItem.set(e.item_id, entry);
     });
-    const activeItemIds = new Set(
-      [...byItem].filter(([, v]) => [...v.days].some((d) => sessionIndex.get(d)! < ACTIVE_SESSIONS)).map(([id]) => id)
-    );
     const staples = [...byItem]
       .filter(([id]) => !onListIds.has(id))
       .sort(([, a], [, b]) => b.score - a.score)
@@ -1397,15 +1384,8 @@ export default function ShoppingList() {
         times_purchased: v.days.size,
         last_purchase: [...v.days].sort().pop()!,
       }));
-    const filterActive = (items: any[]) => filterOnList(items).filter((i: any) => activeItemIds.has(i.item_id));
 
-    setSuggestionData({
-      overdue: filterActive(overdueRes.data),
-      upcoming: filterActive(upcomingRes.data),
-      together: filterOnList(togetherRes.data || []),
-      deals: filterOnList(dealsRes.data),
-      staples,
-    });
+    setSuggestionData({ overdue: [], upcoming: [], together: [], deals: [], staples });
 
     setLoading(false);
   }, [householdCode]);

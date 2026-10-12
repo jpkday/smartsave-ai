@@ -4,7 +4,7 @@ import StoreSection from './StoreSection';
 import CategoryGroup from './CategoryGroup';
 import SearchItemInput from './SearchItemInput';
 import LoadingSpinner from '../LoadingSpinner';
-import SuggestionsCarousel, { SuggestionData } from './SuggestionsCarousel';
+import { SuggestionData } from './SuggestionsCarousel';
 import { DEFAULT_ITEMS } from '../../lib/constants';
 
 interface ItemNote {
@@ -285,9 +285,6 @@ export default function ShoppingListPanel({
 
   return (
     <>
-      {/* SUGGESTIONS CAROUSEL */}
-      <SuggestionsCarousel data={suggestionData} onAddItem={onSelectItem} />
-
       {/* SHOPPING LIST HEADER */}
       <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
