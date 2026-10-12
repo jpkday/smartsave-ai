@@ -147,14 +147,14 @@ export default function WelcomePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center p-6">
+            <div className="min-h-screen app-bg flex items-center justify-center p-6">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400">
+        <div className="min-h-screen app-bg">
             <div className="max-w-2xl mx-auto px-4 py-12">
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-700">
                     {/* Hero Banner */}

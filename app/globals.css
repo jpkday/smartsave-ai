@@ -87,3 +87,9 @@ input[type="button"],
 .animate-slide-up {
   animation: slide-up 0.2s ease-out forwards;
 }
+/* App page background: flat deep navy with a faint top glow */
+.app-bg {
+  background-color: #0e1b2a;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 191, 0.08), transparent 70%);
+  background-attachment: fixed;
+}

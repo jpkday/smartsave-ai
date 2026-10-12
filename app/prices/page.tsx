@@ -517,7 +517,7 @@ function PricesContent() {
   });
 
   return (
-    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-0 md:p-8">
+    <div className="min-h-screen app-bg p-0 md:p-8">
       <div className="max-w-5xl mx-auto">
         <div className="sticky top-0 z-50 bg-white shadow-md p-4 mb-6">
           <div className="flex justify-between items-start">
@@ -862,7 +862,7 @@ function PricesContent() {
 export default function Prices() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-1 md:p-8">
+      <div className="min-h-screen app-bg p-1 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>

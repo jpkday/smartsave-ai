@@ -578,7 +578,7 @@ function HistoryContent() {
   }));
 
   return (
-    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20 md:pb-0">
+    <div className="min-h-screen app-bg pb-20 md:pb-0">
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">
@@ -1032,7 +1032,7 @@ function HistoryContent() {
 export default function History() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+      <div className="min-h-screen app-bg p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
             <p className="text-gray-500 text-lg">Loading...</p>

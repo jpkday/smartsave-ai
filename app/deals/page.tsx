@@ -454,7 +454,7 @@ export default function Deals() {
 
 
   return (
-    <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-32">
+    <div className="min-h-screen app-bg pb-32">
       <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center">

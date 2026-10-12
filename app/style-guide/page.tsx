@@ -85,7 +85,7 @@ export default function StyleGuide() {
               <p className="text-xs text-gray-500">bg-gray-400</p>
             </div>
             <div>
-              <div className="bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 h-20 rounded-lg mb-2"></div>
+              <div className="app-bg h-20 rounded-lg mb-2"></div>
               <p className="text-sm font-semibold text-gray-700">Gradient BG</p>
               <p className="text-xs text-gray-500">from-blue to-green</p>
             </div>

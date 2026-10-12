@@ -997,7 +997,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center">
+            <div className="min-h-screen app-bg flex items-center justify-center">
                 <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4">
                     <ProcessingLoader progress={loadingProgress} />
                 </div>
@@ -1043,7 +1043,7 @@ export default function ReceiptImportPage({ params }: { params: Promise<{ id: st
     }
 
     return (
-        <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 pb-20">
+        <div className="min-h-screen app-bg pb-20">
             <div className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
                 <Link href="/receipts" className="p-2 hover:bg-gray-100 rounded-full">
                     <ArrowLeftIcon className="w-5 h-5 text-gray-600" />

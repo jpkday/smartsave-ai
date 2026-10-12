@@ -33,7 +33,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   children,
   maxWidth = '4xl'
 }) => (
-  <div className="min-h-screen bg-blue-500 bg-gradient-to-br from-blue-500 to-green-400 p-4 md:p-8">
+  <div className="min-h-screen app-bg p-4 md:p-8">
     <div className={`max-w-${maxWidth} mx-auto`}>
       {children}
     </div>
