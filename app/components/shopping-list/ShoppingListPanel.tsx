@@ -283,10 +283,21 @@ export default function ShoppingListPanel({
     return storeA.localeCompare(storeB);
   });
 
+  let listTotal = 0;
+  let unpricedCount = 0;
+  displayItems.filter((item) => !item.checked).forEach((item) => {
+    const effStore = getEffectiveStore(item.item_name);
+    const storeId = effStore ? storesByName[effStore] : undefined;
+    const idKey = (storeId && item.item_id) ? `id:${storeId}-${item.item_id}` : null;
+    const pd = effStore ? ((idKey && prices[idKey]) || prices[`${effStore}-${item.item_name}`]) : undefined;
+    if (pd) listTotal += parseFloat(pd.price) * item.quantity;
+    else unpricedCount++;
+  });
+
   return (
     <>
       {/* SHOPPING LIST HEADER */}
-      <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
+      <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6 md:mb-0 md:sticky md:top-[84px] md:max-h-[calc(100vh-100px)] md:flex md:flex-col">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-gray-800">
             Shopping List <span className="text-xl text-gray-500 font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
@@ -331,7 +342,7 @@ export default function ShoppingListPanel({
           </div>
         </div>
 
-        <div className="space-y-6 md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
+        <div className="space-y-6 md:flex-1 md:min-h-0 overflow-y-auto custom-scrollbar pr-2">
           {/* Show First: Active trip stores */}
           {storeEntries
             .filter(([store]) => {
@@ -512,30 +523,19 @@ export default function ShoppingListPanel({
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-200">
-            <div className="flex justify-between items-center">
-              <span className="text-xl font-bold text-gray-800">Total</span>
-              <span className="text-2xl font-bold text-teal-600">
-                {formatMoney(
-                  listItems
-                    .filter(item => !item.checked)
-                    .filter(item => showPriorityOnly ? item.is_priority : true)
-                    .reduce((sum, item) => {
-                      const effStore = getEffectiveStore(item.item_name);
-                      if (!effStore) return sum;
+        </div>
 
-                      const storeId = storesByName[effStore];
-                      const idKey = (storeId && item.item_id) ? `id:${storeId}-${item.item_id}` : null;
-                      const nameKey = `${effStore}-${item.item_name}`;
-
-                      const pd = (idKey && prices[idKey]) || prices[nameKey];
-                      const p = pd ? parseFloat(pd.price) : 0;
-                      return sum + p * item.quantity;
-                    }, 0)
-                )}
+        {/* TOTAL - always visible */}
+        <div className="sticky bottom-0 -mx-4 md:mx-0 -mb-4 md:mb-0 px-4 md:px-0 py-3 md:pb-0 mt-3 bg-white border-t border-gray-200 rounded-b-2xl flex justify-between items-center">
+          <div>
+            <span className="text-lg font-bold text-gray-800">Total</span>
+            {unpricedCount > 0 && (
+              <span className="ml-2 text-sm text-gray-500">
+                + {unpricedCount} {unpricedCount === 1 ? 'item' : 'items'} without price
               </span>
-            </div>
+            )}
           </div>
+          <span className="text-2xl font-bold text-teal-600">{formatMoney(listTotal)}</span>
         </div>
       </div>
 

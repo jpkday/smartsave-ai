@@ -344,7 +344,7 @@ export default function ItemLibrary({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[785px] overflow-y-auto custom-scrollbar pr-2">
+        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2">
           {renderList.map((it: ItemRow, idx: number) => {
             const isFavorite = favorites.includes(it.name);
 
