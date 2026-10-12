@@ -456,6 +456,8 @@ export default function Deals() {
       };
 
       const sortedDeals = [...storeDeals].sort((a, b) => {
+        // Items this household buys come first
+        if ((a.timesBought > 0) !== (b.timesBought > 0)) return a.timesBought > 0 ? -1 : 1;
         const scoreA = qualityScore(a.dealQuality);
         const scoreB = qualityScore(b.dealQuality);
         if (scoreA !== scoreB) return scoreB - scoreA;
@@ -473,16 +475,6 @@ export default function Deals() {
     })
     .filter(group => group.totalSavings >= 2)
     .sort((a, b) => b.totalSavings - a.totalSavings);
-
-  // Deals on items this household has bought before: cheapest store per item
-  const myDealsByItem = new Map<string, Deal>();
-  filteredDeals
-    .filter(d => d.timesBought > 0)
-    .forEach(d => {
-      const existing = myDealsByItem.get(d.item_name);
-      if (!existing || d.price < existing.price) myDealsByItem.set(d.item_name, d);
-    });
-  const myDeals = [...myDealsByItem.values()].sort((a, b) => b.discountPercent - a.discountPercent);
 
   const visibleDeals = visibleGroups.flatMap(g => g.storeDeals);
   const totalVisibleDeals = visibleDeals.length;
@@ -546,7 +538,7 @@ export default function Deals() {
                 </div>
               </div>
             </div>
-          ) : visibleGroups.length === 0 && myDeals.length === 0 ? (
+          ) : visibleGroups.length === 0 ? (
             <div className="relative overflow-hidden rounded-[2.5rem] p-16 text-center border border-white/20 shadow-2xl">
               <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl z-0"></div>
               <div className="relative z-10">
@@ -560,76 +552,6 @@ export default function Deals() {
           ) : (
             <div className="space-y-8 pb-0">
               <div className="py-4">
-
-                {/* Deals on things you buy */}
-                {myDeals.length > 0 && (
-                  <div className="mb-10">
-                    <div className="bg-white rounded-t-[2rem] p-6 pb-4 border-b border-gray-100 flex items-center justify-between shadow-sm relative z-10">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-200 text-bb-gold shadow-sm">
-                          <ShoppingBagIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Deals on Things You Buy</h2>
-                          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                            {myDeals.length} {myDeals.length === 1 ? 'item' : 'items'} from your purchase history
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-b-[2rem] p-4 pt-2 shadow-xl shadow-indigo-900/5 space-y-2">
-                      {myDeals.map((deal) => (
-                        <Link
-                          key={`mine-${deal.item_name}-${deal.store}`}
-                          href={`/history?item=${encodeURIComponent(JSON.stringify(deal.item_name))}&store=${encodeURIComponent(JSON.stringify(deal.store))}`}
-                          className="group flex items-center gap-3 sm:gap-4 rounded-2xl p-3 sm:p-4 border border-gray-50 hover:border-gray-200 hover:bg-gray-50/50 transition"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">
-                              {deal.item_name}
-                            </h3>
-                            <div className="text-xs text-gray-500 mt-1">
-                              <span className="font-semibold text-gray-700">{deal.store}</span>
-                              {' · '}Bought {deal.timesBought}×
-                              {deal.lastBought && `, last ${parseLocalDate(deal.lastBought).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
-                            </div>
-                          </div>
-
-                          <div className="text-right flex-none">
-                            <div className="flex items-center justify-end gap-1 sm:gap-2">
-                              <span className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">${deal.price.toFixed(2)}</span>
-                              <span className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg">
-                                -{deal.discountPercent.toFixed(0)}%
-                              </span>
-                            </div>
-                            <div className="text-[10px] sm:text-xs font-medium text-gray-400 line-through hidden sm:block">
-                              Was ${deal.typicalHighPrice.toFixed(2)}
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (deal.isOnList) {
-                                removeFromList(deal.item_name, deal.item_id);
-                              } else {
-                                addToList(deal.item_name, deal.item_id);
-                              }
-                            }}
-                            className={`w-24 h-10 flex-none flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm cursor-pointer whitespace-nowrap ${deal.isOnList
-                              ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-red-50 hover:text-red-600 hover:border-red-100'
-                              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300'
-                              }`}
-                          >
-                            {deal.isOnList ? 'Remove' : 'Add'}
-                          </button>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {visibleGroups
                   .map(({ storeName, storeDeals, totalSavings }) => (
@@ -694,6 +616,14 @@ export default function Deals() {
                                         <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-indigo-600' : 'text-gray-400'}`}>
                                           {badge.label}
                                         </span>
+                                        {deal.timesBought > 0 && (
+                                          <span
+                                            className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md whitespace-nowrap"
+                                            title={deal.lastBought ? `Last bought ${parseLocalDate(deal.lastBought).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : undefined}
+                                          >
+                                            You buy this · {deal.timesBought}×
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
