@@ -10,6 +10,7 @@ interface HeaderProps {
 export default function Header({ currentPage }: HeaderProps) {
   const pages = [
     { name: 'Home', path: '/', icon: 'ᯓ ' },
+    { name: 'Meal Plan', path: '/meals', icon: '🍽️' },
     { name: 'Shopping List', path: '/list', icon: '📝' },
     { name: 'Insights', path: '/insights', icon: '💡' },
     { name: 'Local Deals', path: '/deals', icon: '🔥' },
@@ -27,6 +28,11 @@ export default function Header({ currentPage }: HeaderProps) {
     'Home': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+    'Meal Plan': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
     'Shopping List': (
@@ -132,7 +138,7 @@ export default function Header({ currentPage }: HeaderProps) {
               >
                 <div className="py-2">
                   <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Shop</div>
-                  {['Home', 'Shopping List'].map(pageName => (
+                  {['Home', 'Meal Plan', 'Shopping List'].map(pageName => (
                     <Link
                       key={pageName}
                       href={pages.find(p => p.name === pageName)?.path || '#'}
@@ -203,6 +209,15 @@ export default function Header({ currentPage }: HeaderProps) {
           {/* SHOP GROUP (Direct Links) */}
           <div className="flex items-center gap-1">
 
+            <Link
+              href="/meals"
+              className={`font-semibold text-[15px] flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors ${currentPage === 'Meal Plan' ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-200 hover:text-bb-cream hover:border-white/20'}`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Meals
+            </Link>
             <Link
               href="/list"
               className={`font-semibold text-[15px] flex items-center gap-1.5 px-3 py-1.5 border-b-2 transition-colors ${currentPage === 'Shopping List' ? 'border-bb-gold text-bb-gold' : 'border-transparent text-slate-200 hover:text-bb-cream hover:border-white/20'}`}

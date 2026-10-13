@@ -62,6 +62,13 @@ function HomeContent() {
               {/* Primary Action: SHOP */}
               <button onClick={handleLockedClick} className="w-full bg-bb-gold text-bb-navy px-6 py-6 rounded-2xl text-xl font-extrabold hover:brightness-110 transition flex items-center justify-between group">
                 <div className="flex items-center gap-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <span>Meal Plan</span>
+                </div>
+                <svg className="w-6 h-6 opacity-75 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+              </button>
+              <button onClick={handleLockedClick} className="w-full bg-bb-gold text-bb-navy px-6 py-6 rounded-2xl text-xl font-extrabold hover:brightness-110 transition flex items-center justify-between group">
+                <div className="flex items-center gap-4">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                   <span>Shopping List</span>
                 </div>
@@ -99,6 +106,13 @@ function HomeContent() {
           ) : (
             <>
               {/* Primary Action: SHOP */}
+              <Link href="/meals" className="w-full bg-bb-gold text-bb-navy px-6 py-6 rounded-2xl text-xl font-extrabold hover:brightness-110 transition flex items-center justify-between group">
+                <div className="flex items-center gap-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <span>Meal Plan</span>
+                </div>
+                <svg className="w-6 h-6 opacity-75 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+              </Link>
               <Link href="/list" className="w-full bg-bb-gold text-bb-navy px-6 py-6 rounded-2xl text-xl font-extrabold hover:brightness-110 transition flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
@@ -146,20 +160,34 @@ function HomeContent() {
 
           {/* Core Loop */}
           <div className="col-span-1 bg-bb-panel rounded-2xl p-6 border border-bb-line">
-            <h3 className="text-bb-muted font-bold uppercase tracking-wider text-sm mb-4">Shop</h3>
+            <h3 className="text-bb-muted font-bold uppercase tracking-wider text-sm mb-4">Plan &amp; Shop</h3>
+            <div className="space-y-3">
             {isLocked ? (
+              <>
+              <button onClick={handleLockedClick} className="w-full bg-bb-gold text-bb-navy p-6 rounded-2xl text-xl font-bold hover:brightness-110 transition flex items-center gap-4">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>Meal Plan</span>
+              </button>
               <button onClick={handleLockedClick} className="w-full bg-bb-gold text-bb-navy p-6 rounded-2xl text-xl font-bold hover:brightness-110 transition flex items-center gap-4">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 <span>Shopping List</span>
               </button>
+              </>
             ) : (
+              <>
+              <Link href="/meals" className="w-full bg-bb-gold text-bb-navy p-6 rounded-2xl text-xl font-bold hover:brightness-110 transition flex items-center gap-4">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>Meal Plan</span>
+              </Link>
               <Link href="/list" className="w-full bg-bb-gold text-bb-navy p-6 rounded-2xl text-xl font-bold hover:brightness-110 transition flex items-center gap-4">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 <span>Shopping List</span>
               </Link>
+              </>
             )}
+            </div>
             <p className="text-bb-muted text-sm mt-4 px-1">
-              Build your list, check off items as you go, and track your total in real-time.
+              Plan the week&apos;s dinners, turn them into your list, and check items off as you shop.
             </p>
           </div>
 
