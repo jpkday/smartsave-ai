@@ -6,6 +6,7 @@ import StatusModal from '../components/StatusModal';
 import { supabase } from '../lib/supabase';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { useStatusModal } from '../hooks/useStatusModal';
+import type { StockUpItem } from '../lib/stockUp';
 import { addDays, mealKey, titleCase, MealSuggestion, SuggestionIngredient, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
 
 interface Idea {
@@ -51,6 +52,8 @@ const ADD_ITEMS_CHUNK = 30;
 const SUGGESTION_CACHE_PREFIX = 'meal-suggestions';
 // Suggestions visible before "Show more"
 const SUGGESTIONS_SHOWN = 3;
+// Stock-up items visible before "Show more"
+const STOCK_UP_SHOWN = 5;
 const SAVE_DELAY_MS = 700;
 
 const dayName = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short' });
@@ -92,6 +95,9 @@ export default function MealsPage() {
   const [days, setDays] = useState<Record<string, string>>({});
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [newIdea, setNewIdea] = useState('');
+  const [stockUp, setStockUp] = useState<StockUpItem[] | null>(null);
+  const [showAllStockUp, setShowAllStockUp] = useState(false);
+  const [stockUpBusy, setStockUpBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [review, setReview] = useState<ReviewMeal[] | null>(null);
@@ -443,6 +449,43 @@ export default function MealsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ household_code: householdCode, item_name: itemName, status }),
     }).catch(() => { /* best effort; the toggle still applies on screen */ });
+  };
+
+  const loadStockUp = useCallback(async () => {
+    if (!householdCode) return;
+    try {
+      const res = await fetch('/api/meals/stock-up', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_code: householdCode, today: toDateStr(new Date()) }),
+      });
+      const data = await res.json();
+      if (res.ok) setStockUp(data.items ?? []);
+    } catch { /* section stays hidden */ }
+  }, [householdCode]);
+
+  useEffect(() => { loadStockUp(); }, [loadStockUp]);
+
+  // Add a stock-up item to the shopping list, or mark it restocked ("Got it")
+  const stockUpAction = async (item: StockUpItem, action: 'add' | 'got') => {
+    if (!householdCode) return;
+    setStockUpBusy(item.label);
+    try {
+      if (action === 'add') {
+        await addNamesToList(householdCode, [item.item_name]);
+      } else {
+        await fetch('/api/meals/on-hand', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ household_code: householdCode, item_name: item.item_name, status: 'have' }),
+        });
+      }
+      await loadStockUp();
+    } catch {
+      showStatus('Not saved', 'Please try again.', 'error');
+    } finally {
+      setStockUpBusy(null);
+    }
   };
 
   // Forget a dinner for good: it leaves suggestions (and favorites) for the household
@@ -895,6 +938,76 @@ export default function MealsPage() {
                 )}
               </div>
             </div>
+
+            {/* Stock up: bulk staples bought every few weeks or months */}
+            {stockUp && stockUp.length > 0 && (() => {
+              const needed = stockUp.filter((i) => i.status !== 'stocked');
+              const stocked = stockUp.filter((i) => i.status === 'stocked');
+              const visible = showAllStockUp ? [...needed, ...stocked] : needed.slice(0, STOCK_UP_SHOWN);
+              const hiddenCount = needed.length + stocked.length - visible.length;
+              const lastLabel = (i: StockUpItem) =>
+                `${new Date(`${i.last_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(i.last_date.slice(0, 4) !== todayStr.slice(0, 4) ? { year: 'numeric' } : {}) })}${i.store ? ` at ${i.store}` : ''}`;
+              return (
+                <div className="bg-bb-panel border border-bb-line rounded-2xl">
+                  <div className="px-4 pt-4 pb-3 md:px-5 border-b border-bb-line">
+                    <h2 className="text-base font-semibold text-bb-cream">Stock up</h2>
+                    <p className="text-xs text-bb-muted mt-0.5">
+                      {needed.length > 0
+                        ? `${needed.length} bulk ${needed.length === 1 ? 'item is' : 'items are'} due. Tap “Got it” if you already have it.`
+                        : 'Your bulk staples are stocked.'}
+                    </p>
+                  </div>
+                  <div className="divide-y divide-bb-line">
+                    {visible.map((item) => (
+                      <div key={item.label} className={`flex items-center gap-3 px-4 md:px-5 py-2.5 ${item.status === 'stocked' ? 'opacity-60' : ''}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[15px] text-bb-cream truncate">{item.label}</span>
+                            {item.status !== 'stocked' && (
+                              <span className={`flex-none text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${item.status === 'due' ? 'text-bb-gold border-bb-gold/40 bg-bb-gold/10' : 'text-bb-muted border-bb-line'}`}>
+                                {item.status === 'due' ? 'Due' : 'Soon'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-bb-muted truncate">Last {lastLabel(item)}</p>
+                        </div>
+                        {item.status !== 'stocked' && !item.on_list && (
+                          <button
+                            onClick={() => stockUpAction(item, 'got')}
+                            disabled={stockUpBusy === item.label}
+                            className="flex-none text-xs font-semibold text-bb-muted hover:text-bb-cream px-2 py-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            Got it
+                          </button>
+                        )}
+                        {item.on_list ? (
+                          <span className="w-9 h-9 flex-none flex items-center justify-center rounded-full border border-bb-green/40 text-bb-green" title="On your list">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => stockUpAction(item, 'add')}
+                            disabled={stockUpBusy === item.label}
+                            aria-label={`Add ${item.label} to list`}
+                            className="w-9 h-9 flex-none flex items-center justify-center rounded-full bg-bb-gold text-bb-navy hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14m7-7H5" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {(hiddenCount > 0 || showAllStockUp) && (
+                    <button
+                      onClick={() => setShowAllStockUp(!showAllStockUp)}
+                      className="w-full px-4 py-2.5 text-sm font-medium text-bb-gold hover:bg-white/[0.03] border-t border-bb-line cursor-pointer"
+                    >
+                      {showAllStockUp ? 'Show fewer' : `Show ${hiddenCount} more`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             </div>
 
