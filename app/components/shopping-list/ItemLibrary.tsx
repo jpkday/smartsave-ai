@@ -385,14 +385,15 @@ export default function ItemLibrary({
                         category_id: it.category_id,
                       });
                     }}
-                    className="text-[15px] leading-snug text-bb-cream hover:text-bb-gold cursor-pointer text-left break-words"
+                    className="block w-full text-[15px] leading-snug text-bb-cream hover:text-bb-gold cursor-pointer text-left truncate"
+                    title={it.name}
                   >
                     {isFavorite && <span className="text-bb-gold mr-1" title="Favorite">★</span>}
                     {it.name}
                   </button>
 
                   {(priceData && price > 0) ? (
-                    <p className="mt-0.5 text-xs text-bb-muted tabular-nums">
+                    <p className="mt-0.5 text-xs text-bb-muted tabular-nums truncate">
                       <span className="text-bb-cream">{formatMoney(price)}</span>
                       {(() => {
                         const unitPrice = getFormattedUnitPrice(it.name, price);
