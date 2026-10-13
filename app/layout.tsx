@@ -17,6 +17,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  themeColor: '#0e1b2a',
 };
 
 export const metadata = {
@@ -24,7 +25,7 @@ export const metadata = {
   description: 'Stop overpaying for groceries. Shop smart and save.',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black',
     title: 'SmartSaveAI',
   },
   other: {
