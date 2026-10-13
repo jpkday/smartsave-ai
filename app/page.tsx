@@ -52,7 +52,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen app-bg flex items-center justify-center p-6">
       <div className="text-center text-bb-cream max-w-xs md:max-w-5xl w-full">
-        <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-8">ᯓ SmartSaveAI</h1>
+        <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-8">ᯓ SmartSave</h1>
         <p className="text-base md:text-xl mb-12 md:mb-20 px-2">Stop overpaying for groceries and essentials. Shop smart and save.</p>
 
         {/* Mobile: Focused Beta Layout */}

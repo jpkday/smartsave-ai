@@ -164,7 +164,7 @@ export default function WelcomePage() {
                             <span className="text-3xl">✨</span>
                         </div>
                         <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight">
-                            Welcome to SmartSaveAI!
+                            Welcome to SmartSave!
                         </h1>
                         <p className="text-lg md:text-xl text-bb-muted max-w-xl mx-auto font-medium">
                             We&apos;re glad you&apos;re here. Let&apos;s build your first shopping list and start saving you money.

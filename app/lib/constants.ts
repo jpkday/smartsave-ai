@@ -1,5 +1,5 @@
 /**
- * Shared constants used across the SmartSaveAI application
+ * Shared constants used across the SmartSave application
  */
 
 /**

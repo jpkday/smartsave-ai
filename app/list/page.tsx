@@ -2150,7 +2150,7 @@ export default function ShoppingList() {
           <div className="flex justify-between items-center">
             <Link href="/" className="text-xl font-bold text-bb-cream hover:text-bb-gold transition flex items-center gap-2">
               <span className="text-2xl hidden lg:inline">ᯓ</span>
-              <span className="hidden lg:inline">SmartSaveAI</span>
+              <span className="hidden lg:inline">SmartSave</span>
             </Link>
             <Header currentPage="Shopping List" />
           </div>

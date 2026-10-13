@@ -1,4 +1,4 @@
-# SmartSaveAI
+# SmartSave
 
 A grocery price comparison app that helps you save money by tracking prices across multiple stores.
 

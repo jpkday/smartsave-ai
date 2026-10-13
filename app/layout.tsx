@@ -21,15 +21,15 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'SmartSaveAI',
+  title: 'SmartSave',
   description: 'Stop overpaying for groceries. Shop smart and save.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black',
-    title: 'SmartSaveAI',
+    title: 'SmartSave',
   },
   other: {
-    'apple-mobile-web-app-title': 'SmartSaveAI',
+    'apple-mobile-web-app-title': 'SmartSave',
   }
 }
 export default function RootLayout({

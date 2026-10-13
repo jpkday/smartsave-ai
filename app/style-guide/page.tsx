@@ -29,7 +29,7 @@ export default function StyleGuide() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl md:text-4xl font-bold text-bb-cream">
-              SmartSaveAI Style Guide
+              SmartSave Style Guide
             </h1>
             <p className="text-xs md:text-sm text-bb-muted mt-2">
               Component library and design system

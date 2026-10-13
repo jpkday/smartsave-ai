@@ -491,7 +491,7 @@ export default function Deals() {
             <div className="hidden md:flex items-center gap-2">
               <Link href="/" className="text-xl font-bold text-bb-cream hover:text-bb-gold transition flex items-center gap-2">
                 <span className="text-2xl">ᯓ</span>
-                <span className="hidden sm:inline">SmartSaveAI</span>
+                <span className="hidden sm:inline">SmartSave</span>
               </Link>
             </div>
             <div className="w-full">

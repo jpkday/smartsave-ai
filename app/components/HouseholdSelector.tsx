@@ -89,7 +89,7 @@ export default function HouseholdSelector({
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-bb-panel text-bb-cream border border-bb-line rounded-lg shadow-sm p-6 max-w-md w-full">
         <h2 className="text-xl font-semibold mb-4 text-bb-cream">
-          {initialCode ? 'Change Beta Code' : 'Welcome to the SmartSaveAI beta!'}
+          {initialCode ? 'Change Beta Code' : 'Welcome to the SmartSave beta!'}
         </h2>
         <p className="text-bb-muted mb-4">
           {initialCode ? 'Enter a new four character code:' : 'Enter your four character code to get started:'}

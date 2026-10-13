@@ -1,5 +1,5 @@
 // app/lib/utils.ts
-// Shared utility functions for SmartSaveAI
+// Shared utility functions for SmartSave
 
 // ============================================================================
 // CONSTANTS

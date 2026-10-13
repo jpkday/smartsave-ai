@@ -1,5 +1,5 @@
 /**
- * Centralized date utility for SmartSaveAI 
+ * Centralized date utility for SmartSave 
  * 
  * Corrects common timezone-related date shift issues by ensuring YYYY-MM-DD
  * strings are interpreted as local time rather than UTC midnight.

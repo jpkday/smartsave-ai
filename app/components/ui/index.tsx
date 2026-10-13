@@ -1,5 +1,5 @@
 // app/components/ui/index.tsx
-// Reusable UI components for SmartSaveAI
+// Reusable UI components for SmartSave
 
 import React from 'react';
 
