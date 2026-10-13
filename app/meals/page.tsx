@@ -6,7 +6,7 @@ import StatusModal from '../components/StatusModal';
 import { supabase } from '../lib/supabase';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { useStatusModal } from '../hooks/useStatusModal';
-import { addDays, mealKey, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
+import { addDays, mealKey, MealSuggestion, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
 
 interface Idea {
   id: string;
@@ -17,6 +17,12 @@ interface ReviewItem {
   name: string;
   checked: boolean;
   onList: boolean;
+  // Date it was last bought, when recent enough that it's probably at home
+  have?: string;
+}
+
+interface Suggestion extends MealSuggestion {
+  selected: boolean;
 }
 
 interface ReviewMeal {
@@ -28,9 +34,18 @@ interface ReviewMeal {
 }
 
 const ADD_ITEMS_CHUNK = 30;
+const SUGGESTION_CACHE_PREFIX = 'meal-suggestions';
+// Suggestions visible before "Show more"
+const SUGGESTIONS_SHOWN = 3;
 const SAVE_DELAY_MS = 700;
 
 const dayName = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short' });
+// Compact display name: drop size notes and keep the first two parts
+// ("Vinegar, Rice, Mizkan, Mild and Mellow (12 fl oz)" → "Vinegar, Rice")
+const shortName = (name: string) =>
+  name.replace(/\s*\([^)]*\)?/g, '').split(',').map((p) => p.trim()).filter(Boolean).slice(0, 2).join(', ') || name;
+const boughtLabel = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 const rangeLabel = (start: Date) => {
   const end = addDays(start, 6);
   const fmt = (d: Date, withMonth: boolean) =>
@@ -75,6 +90,12 @@ export default function MealsPage() {
   const [importResult, setImportResult] = useState<NoteImport | null>(null);
   const [applyingImport, setApplyingImport] = useState(false);
 
+  const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
+  const [placing, setPlacing] = useState(false);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const dates = weekDates(weekStart);
   const dateStrs = dates.map(toDateStr);
@@ -82,6 +103,8 @@ export default function MealsPage() {
   const thisWeekStr = toDateStr(startOfWeek(new Date()));
   const weekStr = toDateStr(weekStart);
   const plannedMeals = dateStrs.map((d) => (days[d] || '').trim()).filter(Boolean);
+  const plannedMealsRef = useRef<string[]>([]);
+  plannedMealsRef.current = plannedMeals;
 
   const weekTitle =
     weekStr === thisWeekStr ? 'This week'
@@ -210,6 +233,9 @@ export default function MealsPage() {
       if (!res.ok) throw new Error(data?.error || 'Could not build ingredients');
 
       const onList = new Set<string>((data.on_list ?? []).map((n: string) => n.toLowerCase()));
+      const recent = new Map<string, string>(
+        (data.recently_bought ?? []).map((r: { name: string; date: string }) => [r.name.toLowerCase(), r.date])
+      );
       const byKey = new Map<string, MealIngredients>((data.meals ?? []).map((m: MealIngredients) => [mealKey(m.meal), m]));
       const seen = new Set<string>();
       const meals: ReviewMeal[] = [];
@@ -222,11 +248,12 @@ export default function MealsPage() {
           meal,
           dayLabel: dayName(d),
           source: result?.source ?? 'none',
-          items: (result?.ingredients ?? []).map((name) => ({
-            name,
-            onList: onList.has(name.toLowerCase()),
-            checked: !onList.has(name.toLowerCase()),
-          })),
+          items: (result?.ingredients ?? []).map((name) => {
+            const isOnList = onList.has(name.toLowerCase());
+            const have = isOnList ? undefined : recent.get(name.toLowerCase());
+            // Probably at home or already on the list: start unchecked
+            return { name, onList: isOnList, have, checked: !isOnList && !have };
+          }),
           newItem: '',
         });
       });
@@ -331,6 +358,91 @@ export default function MealsPage() {
     }
   };
 
+  const suggestionCacheKey = householdCode ? `${SUGGESTION_CACHE_PREFIX}:${householdCode}:${weekStr}` : '';
+  const cacheSuggestions = (list: Suggestion[]) => {
+    try { sessionStorage.setItem(suggestionCacheKey, JSON.stringify(list.map((x) => ({ ...x, selected: false })))); } catch { /* storage unavailable */ }
+  };
+
+  const fetchSuggestions = useCallback(async (force = false) => {
+    if (!householdCode) return;
+    const cacheKey = `${SUGGESTION_CACHE_PREFIX}:${householdCode}:${weekStr}`;
+    if (!force) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) { setSuggestions(JSON.parse(cached)); return; }
+      } catch { /* storage unavailable */ }
+    }
+    setSuggesting(true);
+    setSuggestError('');
+    try {
+      const res = await fetch('/api/meals/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_code: householdCode, exclude: plannedMealsRef.current }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Could not suggest dinners');
+      const list: Suggestion[] = (data.suggestions ?? []).map((x: MealSuggestion) => ({ ...x, selected: false }));
+      setSuggestions(list);
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); } catch { /* storage unavailable */ }
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : 'Could not suggest dinners right now.');
+    } finally {
+      setSuggesting(false);
+    }
+  }, [householdCode, weekStr]);
+
+  // Suggest dinners automatically once the week has loaded
+  useEffect(() => {
+    if (loading || !householdCode) return;
+    setSuggestions(null);
+    fetchSuggestions();
+  }, [loading, householdCode, weekStr, fetchSuggestions]);
+
+  const toggleSuggestion = (index: number) => {
+    setSuggestions((prev) => prev && prev.map((x, i) => (i === index ? { ...x, selected: !x.selected } : x)));
+  };
+
+  // Puts the picked suggestions on the week's open days (from today on) and saves
+  // their ingredients so Build shopping list is instant for them
+  const addSuggestionsToWeek = async () => {
+    if (!suggestions || !householdCode) return;
+    const picked = suggestions.filter((x) => x.selected);
+    const open = dateStrs.filter((d) => d >= todayStr && !(days[d] || '').trim());
+    if (open.length === 0) {
+      showStatus('No open days', 'Every day left this week has a dinner. Clear one or switch to next week.', 'info');
+      return;
+    }
+    const placed = picked.slice(0, open.length);
+    setPlacing(true);
+    try {
+      const updates: Record<string, string> = {};
+      for (let i = 0; i < placed.length; i++) {
+        updates[open[i]] = placed[i].meal;
+        await saveDay(open[i], placed[i].meal);
+        const key = mealKey(placed[i].meal);
+        await supabase.from('meal_ingredients').delete().eq('household_code', householdCode).eq('meal_key', key);
+        await supabase.from('meal_ingredients').insert(
+          placed[i].ingredients.map((ing, order) => ({ household_code: householdCode, meal_key: key, item_name: ing.name, sort_order: order }))
+        );
+      }
+      setDays((prev) => ({ ...prev, ...updates }));
+      const placedKeys = new Set(placed.map((x) => mealKey(x.meal)));
+      const remaining = suggestions.filter((x) => !placedKeys.has(mealKey(x.meal)));
+      setSuggestions(remaining);
+      cacheSuggestions(remaining);
+      if (picked.length > placed.length) {
+        showStatus('Week is full', `Added ${placed.length}. There ${open.length === 1 ? 'was' : 'were'} only ${open.length} open ${open.length === 1 ? 'day' : 'days'} left.`, 'info');
+      }
+    } catch {
+      showStatus('Not saved', 'Those dinners could not be added. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  const selectedCount = suggestions ? suggestions.filter((x) => x.selected).length : 0;
+
   const reviewCount = review ? new Set(review.flatMap((m) => m.items.filter((i) => i.checked && !i.onList).map((i) => i.name.toLowerCase()))).size : 0;
 
   return (
@@ -360,8 +472,93 @@ export default function MealsPage() {
           </div>
         ) : (
           <div className="md:grid md:grid-cols-3 md:gap-6 md:items-start">
+            <div className="md:col-span-2 space-y-4">
+            {/* Suggested dinners */}
+            <div className="bg-bb-panel border border-bb-line rounded-2xl">
+              <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 md:px-5 border-b border-bb-line">
+                <div>
+                  <h2 className="text-base font-semibold text-bb-cream">Suggested dinners</h2>
+                  <p className="text-xs text-bb-muted mt-0.5">Built around what you bought recently. Tap to pick, then add them to the week.</p>
+                </div>
+                <button
+                  onClick={() => fetchSuggestions(true)}
+                  disabled={suggesting}
+                  className="flex-none w-9 h-9 flex items-center justify-center rounded-lg border border-bb-line text-bb-muted hover:text-bb-cream hover:bg-white/5 disabled:opacity-40 cursor-pointer"
+                  aria-label="New suggestions"
+                  title="New suggestions"
+                >
+                  <svg className={`w-4 h-4 ${suggesting ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
+              </div>
+
+              {suggesting && !suggestions?.length ? (
+                <div className="px-4 md:px-5 py-6 space-y-3">
+                  <p className="text-sm text-bb-muted">Finding dinners that use what you have…</p>
+                  {[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-xl bg-white/[0.03] animate-pulse" />)}
+                </div>
+              ) : suggestError ? (
+                <div className="px-4 md:px-5 py-6 text-center">
+                  <p className="text-sm text-bb-muted mb-3">{suggestError}</p>
+                  <button onClick={() => fetchSuggestions(true)} className="px-4 py-2 rounded-xl border border-bb-line text-bb-cream text-sm font-semibold hover:bg-white/5 cursor-pointer">Try again</button>
+                </div>
+              ) : suggestions && suggestions.length === 0 ? (
+                <p className="px-4 md:px-5 py-6 text-sm text-bb-muted">No more suggestions for this week. Tap refresh for new ones.</p>
+              ) : (
+                <div className="divide-y divide-bb-line">
+                  {(suggestions ?? []).slice(0, showAllSuggestions ? undefined : SUGGESTIONS_SHOWN).map((sug, si) => {
+                    const have = sug.ingredients.filter((i) => i.status === 'have');
+                    const buy = sug.ingredients.filter((i) => i.status !== 'have');
+                    const toBuy = sug.ingredients.filter((i) => i.status === 'buy').length;
+                    return (
+                      <button
+                        key={sug.meal}
+                        onClick={() => toggleSuggestion(si)}
+                        aria-pressed={sug.selected}
+                        className={`w-full text-left flex gap-3 px-4 md:px-5 py-3.5 transition-colors cursor-pointer ${sug.selected ? 'bg-bb-gold/[0.07]' : 'hover:bg-white/[0.03]'}`}
+                      >
+                        <span className={`mt-0.5 flex-none w-5 h-5 rounded-full border flex items-center justify-center ${sug.selected ? 'bg-bb-gold border-bb-gold text-bb-navy' : 'border-slate-500'}`}>
+                          {sug.selected && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="text-[15px] text-bb-cream leading-snug">{sug.meal}</span>
+                            <span className={`text-[11px] flex-none ${toBuy === 0 ? 'text-bb-green' : 'text-bb-muted'}`}>
+                              {toBuy === 0 ? 'Nothing to buy' : `${toBuy} to buy`}
+                            </span>
+                          </span>
+                          {sug.reason && <span className="block text-xs text-bb-muted mt-0.5">{sug.reason}</span>}
+                          {have.length > 0 && (
+                            <span className="flex gap-1.5 mt-2 text-xs">
+                              <span className="flex-none w-12 text-bb-green">✓ Have</span>
+                              <span className="text-bb-muted">{have.map((i) => shortName(i.name)).join(' · ')}</span>
+                            </span>
+                          )}
+                          {buy.length > 0 && (
+                            <span className="flex gap-1.5 mt-1 text-xs">
+                              <span className="flex-none w-12 text-bb-gold">+ Buy</span>
+                              <span className="text-bb-cream">
+                                {buy.map((i) => shortName(i.name) + (i.status === 'list' ? ' (on list)' : '')).join(' · ')}
+                              </span>
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {(suggestions?.length ?? 0) > SUGGESTIONS_SHOWN && (
+                    <button
+                      onClick={() => setShowAllSuggestions(!showAllSuggestions)}
+                      className="w-full px-4 py-2.5 text-sm font-medium text-bb-gold hover:bg-white/[0.03] cursor-pointer"
+                    >
+                      {showAllSuggestions ? 'Show fewer' : `Show ${(suggestions?.length ?? 0) - SUGGESTIONS_SHOWN} more`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Week */}
-            <div className="md:col-span-2 bg-bb-panel border border-bb-line rounded-2xl">
+            <div className="bg-bb-panel border border-bb-line rounded-2xl">
               <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-5 border-b border-bb-line">
                 <button
                   onClick={() => setWeekStart((w) => addDays(w, -7))}
@@ -410,6 +607,16 @@ export default function MealsPage() {
 
               {/* Primary action: sticky on phones so it's always in reach */}
               <div className="fixed md:static bottom-0 inset-x-0 z-40 p-4 md:px-5 md:pb-5 md:pt-4 bg-bb-navy/90 md:bg-transparent backdrop-blur md:backdrop-blur-none border-t border-bb-line md:border-t-0">
+                {selectedCount > 0 ? (
+                  <button
+                    onClick={addSuggestionsToWeek}
+                    disabled={placing}
+                    className="w-full bg-bb-gold text-bb-navy rounded-2xl px-5 py-4 text-lg font-bold hover:brightness-110 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    {placing ? 'Adding…' : `Add ${selectedCount} ${selectedCount === 1 ? 'dinner' : 'dinners'} to the week`}
+                  </button>
+                ) : (
                 <button
                   onClick={buildList}
                   disabled={building || plannedMeals.length === 0}
@@ -422,7 +629,10 @@ export default function MealsPage() {
                       ? 'Add dinners to build your list'
                       : `Build shopping list · ${plannedMeals.length} ${plannedMeals.length === 1 ? 'dinner' : 'dinners'}`}
                 </button>
+                )}
               </div>
+            </div>
+
             </div>
 
             {/* Ideas + import */}
@@ -473,7 +683,7 @@ export default function MealsPage() {
             <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-bb-line">
               <div>
                 <h2 className="text-lg font-semibold text-bb-cream">Add to shopping list</h2>
-                <p className="text-xs text-bb-muted mt-0.5">Uncheck what you already have. Edits are remembered for each meal.</p>
+                <p className="text-xs text-bb-muted mt-0.5">Things you bought in the last two weeks start unchecked. Edits are remembered for each meal.</p>
               </div>
               <button onClick={() => setReview(null)} className="text-bb-muted hover:text-bb-cream text-xl leading-none cursor-pointer" aria-label="Close">×</button>
             </div>
@@ -502,6 +712,9 @@ export default function MealsPage() {
                           />
                           <span className={`flex-1 min-w-0 text-sm ${item.onList || !item.checked ? 'text-bb-muted' : 'text-bb-cream'}`}>{item.name}</span>
                           {item.onList && <span className="text-[10px] uppercase tracking-wider text-bb-green flex-none">On list</span>}
+                          {item.have && !item.checked && (
+                            <span className="text-[10px] uppercase tracking-wider text-bb-muted flex-none">Have · {boughtLabel(item.have)}</span>
+                          )}
                           <button
                             onClick={() => updateReviewMeal(mi, (rm) => ({ ...rm, items: rm.items.filter((_, xi) => xi !== ii) }))}
                             className="text-slate-500 hover:text-bb-red text-lg leading-none px-1 cursor-pointer"

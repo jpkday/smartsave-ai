@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { addDays, fromDateStr, toDateStr, NoteImport } from '../../../lib/meals';
-import { getPantryNames } from '../../../lib/pantry';
+import { getPantryNames, nameResolver } from '../../../lib/pantry';
 
 // Reads a pasted note (e.g. a shared Apple Note with the week's dinners and a few
 // groceries) and sorts it into the week's days, meal ideas, and grocery items.
@@ -100,7 +100,7 @@ Respond with JSON only: {"days":[{"date":"YYYY-MM-DD","meal":"..."}],"meals":[".
     const result: NoteImport = {
       days,
       ideas: [...new Set([...overflow, ...(Array.isArray(ai.ideas) ? ai.ideas : []).map((v) => capitalize(clean(v)))].filter(Boolean))].slice(0, 30),
-      grocery_items: [...new Set((Array.isArray(ai.grocery_items) ? ai.grocery_items : []).map(clean).filter(Boolean))].slice(0, 30),
+      grocery_items: [...new Set((Array.isArray(ai.grocery_items) ? ai.grocery_items : []).map((v) => nameResolver(pantryNames)(clean(v))).filter(Boolean))].slice(0, 30),
     };
     return NextResponse.json(result);
   } catch (error) {

@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealIngredients } from '../../../lib/meals';
-import { getPantryNames } from '../../../lib/pantry';
+import { getPantryNames, getRecentPurchases, nameResolver } from '../../../lib/pantry';
 
 // Turns a week of dinners into grocery ingredients. Meals this household has built
 // before come from their saved ingredients; the rest are suggested by Gemini, matched
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const uniqueMeals = [...new Map(meals.map((m) => [mealKey(m), m])).values()];
     const keys = uniqueMeals.map(mealKey);
 
-    const [{ data: saved }, { data: listRows }] = await Promise.all([
+    const [{ data: saved }, { data: listRows }, recent] = await Promise.all([
       supabase
         .from('meal_ingredients')
         .select('meal_key, item_name, sort_order')
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         .select('item_name')
         .eq('household_code', householdCode)
         .eq('checked', false),
+      getRecentPurchases(supabase, householdCode),
     ]);
 
     const savedByKey = new Map<string, string[]>();
@@ -92,12 +93,13 @@ ${missing.map((m) => `- ${m}`).join('\n')}
 
 Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":["..."]}]}`;
 
+      const resolve = nameResolver(pantryNames);
       const ai = await generateJson<{ meals?: { meal?: string; ingredients?: unknown }[] }>(prompt);
       const aiByKey = new Map<string, string[]>();
       (ai.meals ?? []).forEach((m) => {
         if (!m.meal) return;
         const ingredients = Array.isArray(m.ingredients)
-          ? [...new Set(m.ingredients.map((i) => String(i || '').trim().slice(0, 120)).filter(Boolean))].slice(0, 15)
+          ? [...new Set(m.ingredients.map((i) => resolve(String(i || '').trim().slice(0, 120))).filter(Boolean))].slice(0, 15)
           : [];
         aiByKey.set(mealKey(m.meal), ingredients);
       });
@@ -111,6 +113,7 @@ Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":[".
     return NextResponse.json({
       meals: uniqueMeals.map((m) => results.get(mealKey(m))),
       on_list: (listRows ?? []).map((r) => r.item_name),
+      recently_bought: [...recent.values()],
     });
   } catch (error) {
     console.error('Error building meal ingredients:', error);

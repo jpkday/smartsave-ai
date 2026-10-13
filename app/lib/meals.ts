@@ -43,3 +43,16 @@ export interface NoteImport {
   ideas: string[];
   grocery_items: string[];
 }
+
+export interface SuggestionIngredient {
+  name: string;
+  // have: bought recently, so probably at home; list: already on the shopping list; buy: needed
+  status: 'have' | 'list' | 'buy';
+  bought?: string;
+}
+
+export interface MealSuggestion {
+  meal: string;
+  reason: string;
+  ingredients: SuggestionIngredient[];
+}
