@@ -407,6 +407,116 @@ export default function InsightsPage() {
               </div>
             </div>
 
+            {/* Price Decreases */}
+            {priceDecreases.length > 0 && (
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                    <ArrowTrendingDownIcon className="h-6 w-6 text-bb-green" />
+                    Prices Going Down
+                  </h2>
+                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                  {priceDecreases.map((item, idx) => {
+                    const categoryStyle = getCategoryColorById(item.category_id);
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
+                      >
+                        <div className="flex-1">
+                          <Link
+                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
+                            className="hover:text-bb-gold hover:underline"
+                          >
+                            <p className="font-medium text-bb-cream">{item.item_name}</p>
+                          </Link>
+                          <p className="text-sm text-bb-muted">
+                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-bb-green">
+                            {Math.round(parseFloat(item.pct_change))}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Price Increases */}
+            {priceIncreases.length > 0 && (
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
+                    <ArrowTrendingUpIcon className="h-6 w-6 text-bb-red" />
+                    Prices Going Up
+                  </h2>
+                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                  {priceIncreases.map((item, idx) => {
+                    const categoryStyle = getCategoryColorById(item.category_id);
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
+                      >
+                        <div className="flex-1">
+                          <Link
+                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
+                            className="hover:text-bb-gold hover:underline"
+                          >
+                            <p className="font-medium text-bb-cream">{item.item_name}</p>
+                          </Link>
+                          <p className="text-sm text-bb-muted">
+                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-bb-red">
+                            +{Math.round(parseFloat(item.pct_change))}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* No Changes / No Favorites Message */}
+            {priceDecreases.length === 0 && priceIncreases.length === 0 && (
+              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
+                <h2 className="text-xl font-semibold text-bb-cream mb-2 flex items-center gap-2">
+                  <ChartBarIcon className="h-6 w-6 text-bb-muted" />
+                  Price Trends
+                </h2>
+
+                {/* 
+                   If user has NO favorite stores, explain that. 
+                   We check if favStoreIds was populated in loadInsights, 
+                   but we need access to that state here.
+                   Usually trends will be empty if strict filtering is on and list is empty.
+                   Let's assume if trends are empty but we have data in the system, it's a filter issue.
+                */}
+                <div className="bg-white/[0.03] rounded-2xl p-6 text-center border-2 border-dashed border-bb-line mt-4">
+                  <p className="text-bb-muted mb-3">
+                    No significant price changes found in your <strong>Favorite Stores</strong> for the last {timeRange} days.
+                  </p>
+                  <p className="text-sm text-bb-muted mb-4">
+                    Tip: Make sure you have selected your favorite stores on the home page.
+                  </p>
+                  <Link href="/" className="inline-flex items-center justify-center px-4 py-2 border border-bb-line bg-transparent text-bb-cream rounded-lg hover:bg-white/5 transition font-semibold text-sm">
+                    Manage Favorite Stores
+                  </Link>
+                </div>
+              </div>
+            )}
             {/* AI Savings Coach */}
             {recommendations.length > 0 && (
               <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8 text-bb-cream">
@@ -539,116 +649,6 @@ export default function InsightsPage() {
               )}
             </div>
 
-            {/* Price Decreases */}
-            {priceDecreases.length > 0 && (
-              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
-                    <ArrowTrendingDownIcon className="h-6 w-6 text-bb-green" />
-                    Prices Going Down
-                  </h2>
-                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
-                </div>
-                <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                  {priceDecreases.map((item, idx) => {
-                    const categoryStyle = getCategoryColorById(item.category_id);
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
-                      >
-                        <div className="flex-1">
-                          <Link
-                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                            className="hover:text-bb-gold hover:underline"
-                          >
-                            <p className="font-medium text-bb-cream">{item.item_name}</p>
-                          </Link>
-                          <p className="text-sm text-bb-muted">
-                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-bb-green">
-                            {Math.round(parseFloat(item.pct_change))}%
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Price Increases */}
-            {priceIncreases.length > 0 && (
-              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-bb-cream flex items-center gap-2">
-                    <ArrowTrendingUpIcon className="h-6 w-6 text-bb-red" />
-                    Prices Going Up
-                  </h2>
-                  <p className="text-sm text-bb-muted font-normal ml-8 mt-0.5">Last {timeRange} days</p>
-                </div>
-                <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                  {priceIncreases.map((item, idx) => {
-                    const categoryStyle = getCategoryColorById(item.category_id);
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex items-center justify-between border p-4 rounded-xl hover:bg-white/5 transition-colors duration-200 ${categoryStyle}`}
-                      >
-                        <div className="flex-1">
-                          <Link
-                            href={`/history?item=${encodeURIComponent(item.item_name)}`}
-                            className="hover:text-bb-gold hover:underline"
-                          >
-                            <p className="font-medium text-bb-cream">{item.item_name}</p>
-                          </Link>
-                          <p className="text-sm text-bb-muted">
-                            {item.store_name}: ${parseFloat(item.price_30_days_ago).toFixed(2)} → ${parseFloat(item.current_price).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-bb-red">
-                            +{Math.round(parseFloat(item.pct_change))}%
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* No Changes / No Favorites Message */}
-            {priceDecreases.length === 0 && priceIncreases.length === 0 && (
-              <div className="bg-bb-panel border border-bb-line rounded-2xl p-6 mb-8">
-                <h2 className="text-xl font-semibold text-bb-cream mb-2 flex items-center gap-2">
-                  <ChartBarIcon className="h-6 w-6 text-bb-muted" />
-                  Price Trends
-                </h2>
-
-                {/* 
-                   If user has NO favorite stores, explain that. 
-                   We check if favStoreIds was populated in loadInsights, 
-                   but we need access to that state here.
-                   Usually trends will be empty if strict filtering is on and list is empty.
-                   Let's assume if trends are empty but we have data in the system, it's a filter issue.
-                */}
-                <div className="bg-white/[0.03] rounded-2xl p-6 text-center border-2 border-dashed border-bb-line mt-4">
-                  <p className="text-bb-muted mb-3">
-                    No significant price changes found in your <strong>Favorite Stores</strong> for the last {timeRange} days.
-                  </p>
-                  <p className="text-sm text-bb-muted mb-4">
-                    Tip: Make sure you have selected your favorite stores on the home page.
-                  </p>
-                  <Link href="/" className="inline-flex items-center justify-center px-4 py-2 border border-bb-line bg-transparent text-bb-cream rounded-lg hover:bg-white/5 transition font-semibold text-sm">
-                    Manage Favorite Stores
-                  </Link>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
