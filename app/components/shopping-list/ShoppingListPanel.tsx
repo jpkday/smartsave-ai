@@ -342,7 +342,7 @@ export default function ShoppingListPanel({
           </div>
         </div>
 
-        <div className="space-y-6 md:flex-1 md:min-h-0 overflow-y-auto custom-scrollbar pr-2">
+        <div className="space-y-3 md:flex-1 md:min-h-0 overflow-y-auto custom-scrollbar md:pr-2">
           {/* Show First: Active trip stores */}
           {storeEntries
             .filter(([store]) => {
@@ -452,18 +452,16 @@ export default function ShoppingListPanel({
 
           {/* Third: Items without price data */}
           {itemsWithoutPrice.length > 0 && (
-            <div>
-              <h3 className="text-lg font-bold text-bb-cream mb-2 flex items-center gap-2 justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="bg-white/5 border border-bb-line text-bb-muted px-3 py-1 rounded-full text-sm">No Price Data</span>
-                  <span className="text-sm text-bb-muted">
-                    {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'}
-                  </span>
+            <div className="rounded-xl border border-bb-line bg-white/[0.02] overflow-hidden">
+              <div className="px-4 py-3 border-b border-bb-line">
+                <h3 className="text-base font-semibold text-bb-cream">No price yet</h3>
+                <div className="text-xs text-bb-muted">
+                  {itemsWithoutPrice.length} {itemsWithoutPrice.length === 1 ? 'item' : 'items'} · add a price to pick a store
                 </div>
-              </h3>
+              </div>
 
               {/* Group items by category */}
-              <div className="rounded-2xl border border-bb-line bg-bb-panel shadow-sm p-3 space-y-4">
+              <div className="px-4 pb-1">
                 {Object.entries(
                   itemsWithoutPrice.reduce((acc: Record<number, typeof itemsWithoutPrice>, item) => {
                     const catId = item.category_id !== null && item.category_id !== undefined ? item.category_id : -1;

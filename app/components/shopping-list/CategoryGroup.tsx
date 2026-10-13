@@ -102,18 +102,14 @@ export default function CategoryGroup({
 
   return (
     <div>
-      {/* Category header - receipt style thin bar */}
-      <div
-        className={`flex items-center justify-between px-2 py-1 -mx-1 rounded-sm ${getCategoryColorById(
-          categoryId
-        )}`}
-      >
-        <span className="font-semibold text-xs uppercase tracking-wider text-bb-muted">{getCategoryName(categoryId)}</span>
-        <span className="font-semibold text-xs text-bb-cream">${categoryTotal.toFixed(2)}</span>
+      {/* Category header */}
+      <div className="flex items-center justify-between pt-3 pb-0.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-bb-muted">{getCategoryName(categoryId)}</span>
+        {categoryTotal > 0 && <span className="text-[11px] text-bb-muted tabular-nums">${categoryTotal.toFixed(2)}</span>}
       </div>
 
       {/* Items */}
-      <div className="space-y-1.5 mt-1">
+      <div className="divide-y divide-bb-line">
         {sortedItems.map((item) => {
           const isFavorite = !hasActiveTrip && favorites.includes(item.item_name);
           const effStore = getEffectiveStore(item.item_name) || store;
