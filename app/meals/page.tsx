@@ -6,7 +6,7 @@ import StatusModal from '../components/StatusModal';
 import { supabase } from '../lib/supabase';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { useStatusModal } from '../hooks/useStatusModal';
-import { addDays, mealKey, MealSuggestion, SuggestionIngredient, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
+import { addDays, mealKey, titleCase, MealSuggestion, SuggestionIngredient, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
 
 interface Idea {
   id: string;
@@ -207,7 +207,7 @@ export default function MealsPage() {
   };
 
   const addIdea = async () => {
-    const name = newIdea.trim();
+    const name = titleCase(newIdea);
     if (!name || !householdCode) return;
     if (ideas.some((i) => mealKey(i.name) === mealKey(name))) { setNewIdea(''); return; }
     const { data, error } = await supabase
@@ -547,7 +547,7 @@ export default function MealsPage() {
   const addSuggestionsToWeek = async (only?: Suggestion) => {
     if (!suggestions || !householdCode) return;
     const picked = (only ? [only] : suggestions.filter((x) => x.selected))
-      .map((x) => ({ ...x, meal: x.meal.trim() }))
+      .map((x) => ({ ...x, meal: titleCase(x.meal) }))
       .filter((x) => x.meal);
     const open = dateStrs.filter((d) => d >= todayStr && !(days[d] || '').trim());
     if (open.length === 0) {
@@ -852,7 +852,12 @@ export default function MealsPage() {
                         type="text"
                         value={days[ds] || ''}
                         onChange={(e) => setDay(ds, e.target.value)}
-                        onBlur={(e) => saveTimers.current[ds] && flushSave(ds, e.target.value)}
+                        onBlur={(e) => {
+                          // Tidy to title case once typing is done ("chicken tacos" → "Chicken Tacos")
+                          const tidy = e.target.value.trim() ? titleCase(e.target.value) : '';
+                          if (tidy !== e.target.value) setDays((prev) => ({ ...prev, [ds]: tidy }));
+                          if (saveTimers.current[ds] || tidy !== e.target.value) flushSave(ds, tidy);
+                        }}
                         onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                         placeholder={loading ? '' : 'Add dinner'}
                         maxLength={120}

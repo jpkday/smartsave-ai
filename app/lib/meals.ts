@@ -57,3 +57,23 @@ export interface MealSuggestion {
   reason: string;
   ingredients: SuggestionIngredient[];
 }
+
+// Title case for dinner names ("chicken tikka masala" → "Chicken Tikka Masala").
+// Small joining words stay lowercase unless first; acronyms (BLT, BBQ) and words with
+// digits stay as typed; hyphenated parts are each capitalized ("Stir-Fry").
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'w/', 'with']);
+export function titleCase(name: string) {
+  return name
+    .trim()
+    .replace(/\s*([+&])\s*/g, ' $1 ') // "+carrot&celery" → " + carrot & celery"
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map((word, i) => {
+      if (/^[A-Z0-9&+]{2,}$/.test(word) || /\d/.test(word)) return word; // BLT, BBQ, 3-bean
+      const lower = word.toLowerCase();
+      if (i > 0 && SMALL_WORDS.has(lower)) return lower;
+      return lower.replace(/(^|[-(/"])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
+    })
+    .join(' ');
+}

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
-import { mealKey, MealSuggestion, SuggestionIngredient } from '../../../lib/meals';
+import { mealKey, MealSuggestion, SuggestionIngredient, titleCase } from '../../../lib/meals';
 import { getPantryNames, getHaveItems, nameResolver, toHouseholdNames, RECENT_PURCHASE_DAYS } from '../../../lib/pantry';
 import { MEAL_TEMPLATES, proteinFamily, templateFor } from '../../../lib/mealTemplates';
 import { avoidPromptLine, containsAvoided, getAvoidFoods, getDismissedMeals } from '../../../lib/preferences';
@@ -205,7 +205,7 @@ Respond with JSON only: {"suggestions":[{"meal":"...","reason":"...","ingredient
           if (bought) return { name, status: 'have', bought: bought.date };
           return { name, status: 'buy' };
         });
-        return { meal: meal.charAt(0).toUpperCase() + meal.slice(1), reason: clean(s.reason), ingredients };
+        return { meal: titleCase(meal), reason: clean(s.reason), ingredients };
       })
       .filter((s) => {
         const key = mealKey(s.meal);

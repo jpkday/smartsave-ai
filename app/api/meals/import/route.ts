@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
-import { addDays, fromDateStr, toDateStr, NoteImport } from '../../../lib/meals';
+import { addDays, fromDateStr, toDateStr, NoteImport, titleCase } from '../../../lib/meals';
 import { getPantryNames, itemMatcher, nameResolver } from '../../../lib/pantry';
 import { parseNote } from '../../../lib/noteParser';
 
@@ -97,7 +97,7 @@ Respond with JSON only: {"days":[{"date":"YYYY-MM-DD","meal":"..."}],"meals":[".
       }
     }
     const clean = (v: unknown) => String(v || '').trim().slice(0, 120);
-    const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+    const capitalize = titleCase;
     const validDates = new Set(dates);
 
     const seenDates = new Set<string>();
