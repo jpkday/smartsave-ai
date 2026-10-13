@@ -320,18 +320,18 @@ function HomeContent() {
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <Link href="/items" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-bb-gold">
+              <Link href="/items" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-4 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-left flex items-center gap-3">
+                <span className="flex-none text-bb-gold">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 </span>
-                <span className="flex-1 ml-6">Manage Items</span>
+                <span className="flex-1">Manage Items</span>
               </Link>
 
-              <Link href="/stores" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-bb-gold">
+              <Link href="/stores" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-4 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-left flex items-center gap-3">
+                <span className="flex-none text-bb-gold">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                 </span>
-                <span className="flex-1 ml-6">Manage Stores</span>
+                <span className="flex-1">Manage Stores</span>
               </Link>
 
               {/* 
@@ -342,21 +342,21 @@ function HomeContent() {
                 - /prices
                */}
 
-              <Link href="/flyers" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-center relative flex items-center">
-                <span className="absolute left-4 text-bb-gold">
+              <Link href="/flyers" onClick={() => setShowMoreMenu(false)} className="w-full border border-bb-line bg-transparent text-bb-cream px-4 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-left flex items-center gap-3">
+                <span className="flex-none text-bb-gold">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                 </span>
-                <span className="flex-1 ml-6">Add Flyer</span>
+                <span className="flex-1">Add Flyer</span>
               </Link>
 
               <button
                 onClick={() => { setShowMoreMenu(false); setShowCodeModal(true); }}
-                className="w-full border border-bb-line bg-transparent text-bb-cream px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-center relative flex items-center"
+                className="w-full border border-bb-line bg-transparent text-bb-cream px-4 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-left flex items-center gap-3"
               >
-                <span className="absolute left-4 text-bb-gold">
+                <span className="flex-none text-bb-gold">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                 </span>
-                <span className="flex-1 ml-6">Beta Code</span>
+                <span className="flex-1">Beta Code</span>
               </button>
             </div>
           </div>
