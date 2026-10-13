@@ -6,7 +6,7 @@ import StatusModal from '../components/StatusModal';
 import { supabase } from '../lib/supabase';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { useStatusModal } from '../hooks/useStatusModal';
-import { addDays, mealKey, MealSuggestion, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
+import { addDays, mealKey, MealSuggestion, SuggestionIngredient, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
 
 interface Idea {
   id: string;
@@ -22,8 +22,22 @@ interface ReviewItem {
 }
 
 interface Suggestion extends MealSuggestion {
+  id: string;
   selected: boolean;
+  // Meal name the ingredient list was made for; differs after a rename until updated
+  ingredientsFor: string;
+  newIngredient: string;
+  updating: boolean;
 }
+
+const toSuggestion = (x: MealSuggestion & Partial<Suggestion>, i: number): Suggestion => ({
+  ...x,
+  id: x.id || `${Date.now()}-${i}`,
+  selected: false,
+  ingredientsFor: x.ingredientsFor || x.meal,
+  newIngredient: '',
+  updating: false,
+});
 
 interface ReviewMeal {
   meal: string;
@@ -95,6 +109,7 @@ export default function MealsPage() {
   const [suggestError, setSuggestError] = useState('');
   const [placing, setPlacing] = useState(false);
   const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+  const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const dates = weekDates(weekStart);
@@ -369,7 +384,7 @@ export default function MealsPage() {
     if (!force) {
       try {
         const cached = sessionStorage.getItem(cacheKey);
-        if (cached) { setSuggestions(JSON.parse(cached)); return; }
+        if (cached) { setSuggestions(JSON.parse(cached).map(toSuggestion)); return; }
       } catch { /* storage unavailable */ }
     }
     setSuggesting(true);
@@ -382,7 +397,7 @@ export default function MealsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Could not suggest dinners');
-      const list: Suggestion[] = (data.suggestions ?? []).map((x: MealSuggestion) => ({ ...x, selected: false }));
+      const list: Suggestion[] = (data.suggestions ?? []).map(toSuggestion);
       setSuggestions(list);
       try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); } catch { /* storage unavailable */ }
     } catch (err) {
@@ -399,15 +414,52 @@ export default function MealsPage() {
     fetchSuggestions();
   }, [loading, householdCode, weekStr, fetchSuggestions]);
 
-  const toggleSuggestion = (index: number) => {
-    setSuggestions((prev) => prev && prev.map((x, i) => (i === index ? { ...x, selected: !x.selected } : x)));
+  const updateSuggestion = (id: string, update: (x: Suggestion) => Suggestion) => {
+    setSuggestions((prev) => {
+      if (!prev) return prev;
+      const next = prev.map((x) => (x.id === id ? update(x) : x));
+      cacheSuggestions(next);
+      return next;
+    });
+  };
+
+  // After a rename ("Turkey tacos" → "Beef tacos"), rebuild the ingredient list for the new name
+  const refreshSuggestionIngredients = async (sug: Suggestion) => {
+    if (!householdCode || !sug.meal.trim()) return;
+    updateSuggestion(sug.id, (x) => ({ ...x, updating: true }));
+    try {
+      const res = await fetch('/api/meals/ingredients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_code: householdCode, meals: [sug.meal.trim()] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Could not update ingredients');
+      const onList = new Set<string>((data.on_list ?? []).map((n: string) => n.toLowerCase()));
+      const recent = new Map<string, string>(
+        (data.recently_bought ?? []).map((r: { name: string; date: string }) => [r.name.toLowerCase(), r.date])
+      );
+      const names: string[] = data.meals?.[0]?.ingredients ?? [];
+      const ingredients: SuggestionIngredient[] = names.map((name) => {
+        if (onList.has(name.toLowerCase())) return { name, status: 'list' };
+        const bought = recent.get(name.toLowerCase());
+        return bought ? { name, status: 'have', bought } : { name, status: 'buy' };
+      });
+      // The original reason (e.g. "Uses the ground turkey") no longer applies after a rename
+      updateSuggestion(sug.id, (x) => ({ ...x, ingredients, ingredientsFor: sug.meal.trim(), reason: '', updating: false }));
+    } catch (err) {
+      updateSuggestion(sug.id, (x) => ({ ...x, updating: false }));
+      showStatus('Could not update ingredients', err instanceof Error ? err.message : 'Please try again, or edit the list by hand.', 'error');
+    }
   };
 
   // Puts the picked suggestions on the week's open days (from today on) and saves
   // their ingredients so Build shopping list is instant for them
-  const addSuggestionsToWeek = async () => {
+  const addSuggestionsToWeek = async (only?: Suggestion) => {
     if (!suggestions || !householdCode) return;
-    const picked = suggestions.filter((x) => x.selected);
+    const picked = (only ? [only] : suggestions.filter((x) => x.selected))
+      .map((x) => ({ ...x, meal: x.meal.trim() }))
+      .filter((x) => x.meal);
     const open = dateStrs.filter((d) => d >= todayStr && !(days[d] || '').trim());
     if (open.length === 0) {
       showStatus('No open days', 'Every day left this week has a dinner. Clear one or switch to next week.', 'info');
@@ -427,8 +479,8 @@ export default function MealsPage() {
         );
       }
       setDays((prev) => ({ ...prev, ...updates }));
-      const placedKeys = new Set(placed.map((x) => mealKey(x.meal)));
-      const remaining = suggestions.filter((x) => !placedKeys.has(mealKey(x.meal)));
+      const placedIds = new Set(placed.map((x) => x.id));
+      const remaining = suggestions.filter((x) => !placedIds.has(x.id));
       setSuggestions(remaining);
       cacheSuggestions(remaining);
       if (picked.length > placed.length) {
@@ -478,7 +530,7 @@ export default function MealsPage() {
               <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 md:px-5 border-b border-bb-line">
                 <div>
                   <h2 className="text-base font-semibold text-bb-cream">Suggested dinners</h2>
-                  <p className="text-xs text-bb-muted mt-0.5">Built around what you bought recently. Tap to pick, then add them to the week.</p>
+                  <p className="text-xs text-bb-muted mt-0.5">Built around what you bought recently. Tap one to open and change it, or tick a few and add them to the week.</p>
                 </div>
                 <button
                   onClick={() => fetchSuggestions(true)}
@@ -505,44 +557,139 @@ export default function MealsPage() {
                 <p className="px-4 md:px-5 py-6 text-sm text-bb-muted">No more suggestions for this week. Tap refresh for new ones.</p>
               ) : (
                 <div className="divide-y divide-bb-line">
-                  {(suggestions ?? []).slice(0, showAllSuggestions ? undefined : SUGGESTIONS_SHOWN).map((sug, si) => {
+                  {(suggestions ?? []).slice(0, showAllSuggestions ? undefined : SUGGESTIONS_SHOWN).map((sug) => {
                     const have = sug.ingredients.filter((i) => i.status === 'have');
                     const buy = sug.ingredients.filter((i) => i.status !== 'have');
                     const toBuy = sug.ingredients.filter((i) => i.status === 'buy').length;
+                    const expanded = expandedSuggestion === sug.id;
+                    const renamed = mealKey(sug.meal) !== mealKey(sug.ingredientsFor);
                     return (
-                      <button
-                        key={sug.meal}
-                        onClick={() => toggleSuggestion(si)}
-                        aria-pressed={sug.selected}
-                        className={`w-full text-left flex gap-3 px-4 md:px-5 py-3.5 transition-colors cursor-pointer ${sug.selected ? 'bg-bb-gold/[0.07]' : 'hover:bg-white/[0.03]'}`}
-                      >
-                        <span className={`mt-0.5 flex-none w-5 h-5 rounded-full border flex items-center justify-center ${sug.selected ? 'bg-bb-gold border-bb-gold text-bb-navy' : 'border-slate-500'}`}>
-                          {sug.selected && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="text-[15px] text-bb-cream leading-snug">{sug.meal}</span>
-                            <span className={`text-[11px] flex-none ${toBuy === 0 ? 'text-bb-green' : 'text-bb-muted'}`}>
-                              {toBuy === 0 ? 'Nothing to buy' : `${toBuy} to buy`}
+                      <div key={sug.id} className={`transition-colors ${sug.selected ? 'bg-bb-gold/[0.07]' : expanded ? 'bg-white/[0.02]' : ''}`}>
+                        <div className="flex gap-1 pl-2 pr-4 md:pl-3 md:pr-5">
+                          <button
+                            onClick={() => updateSuggestion(sug.id, (x) => ({ ...x, selected: !x.selected }))}
+                            aria-pressed={sug.selected}
+                            aria-label={sug.selected ? `Unpick ${sug.meal}` : `Pick ${sug.meal}`}
+                            className="flex-none w-10 pt-3.5 flex justify-center cursor-pointer"
+                          >
+                            <span className={`w-5 h-5 rounded-full border flex items-center justify-center ${sug.selected ? 'bg-bb-gold border-bb-gold text-bb-navy' : 'border-slate-500'}`}>
+                              {sug.selected && <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </span>
-                          </span>
-                          {sug.reason && <span className="block text-xs text-bb-muted mt-0.5">{sug.reason}</span>}
-                          {have.length > 0 && (
-                            <span className="flex gap-1.5 mt-2 text-xs">
-                              <span className="flex-none w-12 text-bb-green">✓ Have</span>
-                              <span className="text-bb-muted">{have.map((i) => shortName(i.name)).join(' · ')}</span>
-                            </span>
-                          )}
-                          {buy.length > 0 && (
-                            <span className="flex gap-1.5 mt-1 text-xs">
-                              <span className="flex-none w-12 text-bb-gold">+ Buy</span>
-                              <span className="text-bb-cream">
-                                {buy.map((i) => shortName(i.name) + (i.status === 'list' ? ' (on list)' : '')).join(' · ')}
+                          </button>
+                          <button
+                            onClick={() => setExpandedSuggestion(expanded ? null : sug.id)}
+                            aria-expanded={expanded}
+                            className="flex-1 min-w-0 text-left py-3.5 cursor-pointer"
+                          >
+                            <span className="flex items-baseline justify-between gap-2">
+                              <span className="text-[15px] text-bb-cream leading-snug">{sug.meal || 'Untitled dinner'}</span>
+                              <span className={`text-[11px] flex-none ${toBuy === 0 ? 'text-bb-green' : 'text-bb-muted'}`}>
+                                {toBuy === 0 ? 'Nothing to buy' : `${toBuy} to buy`}
                               </span>
                             </span>
-                          )}
-                        </span>
-                      </button>
+                            {sug.reason && !renamed && <span className="block text-xs text-bb-muted mt-0.5">{sug.reason}</span>}
+                            {!expanded && have.length > 0 && (
+                              <span className="flex gap-1.5 mt-2 text-xs">
+                                <span className="flex-none w-12 text-bb-green">✓ Have</span>
+                                <span className="text-bb-muted">{have.map((i) => shortName(i.name)).join(' · ')}</span>
+                              </span>
+                            )}
+                            {!expanded && buy.length > 0 && (
+                              <span className="flex gap-1.5 mt-1 text-xs">
+                                <span className="flex-none w-12 text-bb-gold">+ Buy</span>
+                                <span className="text-bb-cream">
+                                  {buy.map((i) => shortName(i.name) + (i.status === 'list' ? ' (on list)' : '')).join(' · ')}
+                                </span>
+                              </span>
+                            )}
+                          </button>
+                        </div>
+
+                        {expanded && (
+                          <div className="pl-12 pr-4 md:pl-[3.25rem] md:pr-5 pb-4 space-y-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold uppercase tracking-wider text-bb-muted mb-1">Dinner</label>
+                              <input
+                                value={sug.meal}
+                                onChange={(e) => updateSuggestion(sug.id, (x) => ({ ...x, meal: e.target.value }))}
+                                maxLength={120}
+                                className="w-full bg-bb-raised border border-bb-line rounded-xl px-3 py-2.5 text-[16px] md:text-sm text-bb-cream focus:outline-none focus:ring-2 focus:ring-bb-gold/50"
+                              />
+                              {renamed && sug.meal.trim() && (
+                                <button
+                                  onClick={() => refreshSuggestionIngredients(sug)}
+                                  disabled={sug.updating}
+                                  className="mt-2 w-full rounded-xl border border-bb-gold/40 text-bb-gold text-sm font-semibold py-2 hover:bg-bb-gold/10 disabled:opacity-50 cursor-pointer"
+                                >
+                                  {sug.updating ? 'Updating ingredients…' : `Update ingredients for “${sug.meal.trim()}”`}
+                                </button>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-bb-muted mb-1">Ingredients · tap Have/Buy to switch</div>
+                              <div className="divide-y divide-bb-line">
+                                {sug.ingredients.map((ing, ii) => (
+                                  <div key={`${ing.name}-${ii}`} className="flex items-center gap-2 py-1.5">
+                                    {ing.status === 'list' ? (
+                                      <span className="w-16 flex-none text-center text-[10px] font-semibold uppercase tracking-wider text-bb-muted">On list</span>
+                                    ) : (
+                                      <button
+                                        onClick={() => updateSuggestion(sug.id, (x) => ({
+                                          ...x,
+                                          ingredients: x.ingredients.map((y, yi) => (yi === ii ? { ...y, status: y.status === 'have' ? 'buy' : 'have' } : y)),
+                                        }))}
+                                        className={`w-16 flex-none rounded-full border py-1 text-[10px] font-semibold uppercase tracking-wider cursor-pointer ${ing.status === 'have'
+                                          ? 'border-bb-green/30 bg-bb-green/10 text-bb-green'
+                                          : 'border-bb-gold/30 bg-bb-gold/10 text-bb-gold'}`}
+                                      >
+                                        {ing.status === 'have' ? 'Have' : 'Buy'}
+                                      </button>
+                                    )}
+                                    <span className={`flex-1 min-w-0 text-sm ${ing.status === 'have' ? 'text-bb-muted' : 'text-bb-cream'}`}>{shortName(ing.name)}</span>
+                                    <button
+                                      onClick={() => updateSuggestion(sug.id, (x) => ({ ...x, ingredients: x.ingredients.filter((_, yi) => yi !== ii) }))}
+                                      className="text-slate-500 hover:text-bb-red text-lg leading-none px-1 cursor-pointer"
+                                      aria-label={`Remove ${ing.name}`}
+                                    >×</button>
+                                  </div>
+                                ))}
+                              </div>
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const name = sug.newIngredient.trim();
+                                  if (!name) return;
+                                  updateSuggestion(sug.id, (x) => ({ ...x, newIngredient: '', ingredients: [...x.ingredients, { name, status: 'buy' }] }));
+                                }}
+                              >
+                                <input
+                                  value={sug.newIngredient}
+                                  onChange={(e) => updateSuggestion(sug.id, (x) => ({ ...x, newIngredient: e.target.value }))}
+                                  placeholder="+ Add ingredient"
+                                  className="w-full bg-transparent py-2 text-[16px] md:text-sm text-bb-cream placeholder:text-slate-500 focus:outline-none border-b border-transparent focus:border-bb-line"
+                                />
+                              </form>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => addSuggestionsToWeek(sug)}
+                                disabled={placing || !sug.meal.trim() || sug.updating}
+                                className="flex-1 bg-bb-gold text-bb-navy rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                              >
+                                Add to week
+                              </button>
+                              <button
+                                onClick={() => setExpandedSuggestion(null)}
+                                className="px-4 rounded-xl border border-bb-line text-bb-cream text-sm font-semibold hover:bg-white/5 cursor-pointer"
+                              >
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                   {(suggestions?.length ?? 0) > SUGGESTIONS_SHOWN && (
@@ -609,7 +756,7 @@ export default function MealsPage() {
               <div className="fixed md:static bottom-0 inset-x-0 z-40 p-4 md:px-5 md:pb-5 md:pt-4 bg-bb-navy/90 md:bg-transparent backdrop-blur md:backdrop-blur-none border-t border-bb-line md:border-t-0">
                 {selectedCount > 0 ? (
                   <button
-                    onClick={addSuggestionsToWeek}
+                    onClick={() => addSuggestionsToWeek()}
                     disabled={placing}
                     className="w-full bg-bb-gold text-bb-navy rounded-2xl px-5 py-4 text-lg font-bold hover:brightness-110 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                   >
