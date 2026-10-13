@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealSuggestion, SuggestionIngredient } from '../../../lib/meals';
 import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames, RECENT_PURCHASE_DAYS } from '../../../lib/pantry';
-import { MEAL_TEMPLATES, proteinFamily } from '../../../lib/mealTemplates';
+import { MEAL_TEMPLATES, proteinFamily, templateFor } from '../../../lib/mealTemplates';
+import { avoidPromptLine, containsAvoided, getAvoidFoods } from '../../../lib/preferences';
 
 // Suggests dinners for the week from what the household bought recently (to use it
 // up), meals they've planned before, and their ideas list. Each ingredient is marked
@@ -35,20 +36,22 @@ export async function POST(request: NextRequest) {
     if (!household) return NextResponse.json({ error: 'Unknown household' }, { status: 404 });
 
     const pastSince = new Date(Date.now() - PAST_MEALS_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const [pantryNames, recent, { data: listRows }, { data: pastRows }, { data: ideaRows }] = await Promise.all([
+    const [pantryNames, recent, { data: listRows }, { data: pastRows }, { data: ideaRows }, avoid] = await Promise.all([
       getPantryNames(supabase, householdCode),
       getRecentPurchases(supabase, householdCode),
       supabase.from('shopping_list').select('item_name').eq('household_code', householdCode).eq('checked', false),
       supabase.from('meal_plan_days').select('meal').eq('household_code', householdCode).gte('plan_date', pastSince),
       supabase.from('meal_ideas').select('name').eq('household_code', householdCode),
+      getAvoidFoods(supabase, householdCode),
     ]);
 
     const recentLines = [...recent.values()].map((r) => `${r.name} (bought ${r.date})`);
     const pastMeals = [...new Set((pastRows ?? []).map((r) => r.meal as string))];
     const ideas = (ideaRows ?? []).map((r) => r.name as string);
 
-    // Without the AI: the household's own past dinners (with their saved ingredients),
-    // then built-in everyday dinners ranked by how many ingredients were bought recently
+    // Without the AI: the household's favorites and past dinners first (their own
+    // ingredient lists), then built-in everyday dinners, each ranked by how many
+    // ingredients were bought recently
     const historySuggestions = async () => {
       const { data: savedRows } = await supabase
         .from('meal_ingredients')
@@ -58,42 +61,68 @@ export async function POST(request: NextRequest) {
       const savedByKey = new Map<string, string[]>();
       (savedRows ?? []).forEach((r) => savedByKey.set(r.meal_key, [...(savedByKey.get(r.meal_key) ?? []), r.item_name]));
 
-      const timesPlanned = new Map<string, { meal: string; count: number }>();
-      (pastRows ?? []).forEach((r) => {
-        const key = mealKey(r.meal as string);
-        const entry = timesPlanned.get(key) ?? { meal: r.meal as string, count: 0 };
-        entry.count++;
-        timesPlanned.set(key, entry);
-      });
-      const fromHistory = [...timesPlanned.entries()]
-        .filter(([key]) => savedByKey.has(key))
-        .sort(([, a], [, b]) => b.count - a.count)
-        .map(([key, { meal, count }]) => ({
-          meal,
-          reason: count > 1 ? `You've made this ${count} times` : 'One of your recent dinners',
-          ingredients: savedByKey.get(key) ?? [],
-        }));
-
       const candidates = [...[...recent.values()].map((r) => r.name), ...pantryNames];
       const shortDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const scored = MEAL_TEMPLATES.map((t) => {
-        const ingredients = toHouseholdNames(t.ingredients, candidates);
+      const usesLine = (name: string, date: string) =>
+        `uses the ${name.split(',')[0].replace(/\s*\(.*$/, '').toLowerCase()} from ${shortDate(date)}`;
+      const rate = (ingredients: string[]) => {
         const haveNames = ingredients.filter((n) => recent.has(n.toLowerCase()));
-        const protein = proteinFamily(t.ingredients);
+        const protein = proteinFamily(ingredients);
         const proteinHave = haveNames.find((n) => n.toLowerCase().includes(protein));
-        const bought = proteinHave ? recent.get(proteinHave.toLowerCase()) : undefined;
         return {
-          meal: t.meal,
           protein,
-          reason: bought
-            ? `Uses the ${bought.name.split(',')[0].replace(/\s*\(.*$/, '').toLowerCase()} from ${shortDate(bought.date)}`
-            : haveNames.length >= 2
-              ? `You have ${haveNames.length} of the ${ingredients.length} ingredients`
-              : 'An easy family dinner',
-          ingredients,
+          haveCount: haveNames.length,
+          bought: proteinHave ? recent.get(proteinHave.toLowerCase()) : undefined,
           score: haveNames.length - (ingredients.length - haveNames.length) * 0.3,
         };
-      }).sort((a, b) => b.score - a.score);
+      };
+
+      // The household's own dinners: past plans and favorites
+      const timesPlanned = new Map<string, number>();
+      (pastRows ?? []).forEach((r) => timesPlanned.set(mealKey(r.meal as string), (timesPlanned.get(mealKey(r.meal as string)) ?? 0) + 1));
+      const ownMeals = new Map<string, { meal: string; favorite: boolean }>();
+      ideas.forEach((meal) => ownMeals.set(mealKey(meal), { meal, favorite: true }));
+      (pastRows ?? []).forEach((r) => {
+        const key = mealKey(r.meal as string);
+        if (!ownMeals.has(key) && savedByKey.has(key)) ownMeals.set(key, { meal: r.meal as string, favorite: false });
+      });
+      const own = [...ownMeals.entries()]
+        .map(([key, { meal, favorite }]) => {
+          const template = savedByKey.has(key) ? null : templateFor(meal);
+          const ingredients = savedByKey.get(key) ?? (template ? toHouseholdNames(template.ingredients, candidates) : []);
+          const { bought, haveCount, score } = rate(ingredients);
+          const times = timesPlanned.get(key) ?? 0;
+          const why = bought ? usesLine(bought.name, bought.date) : haveCount >= 2 ? `you have ${haveCount} of the ingredients` : '';
+          const reason = favorite
+            ? why ? `Favorite · ${why}` : 'One of your favorites'
+            : times > 1 ? `You've made this ${times} times` : why ? why.charAt(0).toUpperCase() + why.slice(1) : 'One of your recent dinners';
+          return { meal, reason, ingredients, score: score + (favorite ? 1 : 0) + Math.min(times, 3) * 0.5 };
+        })
+        .filter((m) => m.ingredients.length > 0)
+        .sort((a, b) => b.score - a.score);
+      // Rotate so "new suggestions" brings up other favorites
+      const ownOffset = Number.isInteger(body.seed) && own.length > 0 ? Math.abs(body.seed) % own.length : 0;
+      const ownRotated = [...own.slice(ownOffset), ...own.slice(0, ownOffset)];
+
+      const scored = MEAL_TEMPLATES
+        .filter((t) => !ownMeals.has(mealKey(t.meal)))
+        .filter((t) => !containsAvoided([t.meal, ...t.ingredients].join(' | '), avoid))
+        .map((t) => {
+          const ingredients = toHouseholdNames(t.ingredients, candidates);
+          const { protein, bought, haveCount, score } = rate(ingredients);
+          return {
+            meal: t.meal,
+            protein,
+            reason: bought
+              ? usesLine(bought.name, bought.date).replace(/^u/, 'U')
+              : haveCount >= 2
+                ? `You have ${haveCount} of the ${ingredients.length} ingredients`
+                : 'An easy family dinner',
+            ingredients,
+            score,
+          };
+        })
+        .sort((a, b) => b.score - a.score);
       // Spread the main protein: the best dinner for each protein first, then the rest
       const proteinsSeen = new Set<string>();
       const firstPass = scored.filter((t) => {
@@ -107,15 +136,17 @@ export async function POST(request: NextRequest) {
       const offset = Number.isInteger(body.seed) ? Math.abs(body.seed) % top.length : 0;
       const fromTemplates = [...top.slice(offset), ...top.slice(0, offset)];
 
-      return [...fromHistory, ...fromTemplates];
+      // Mostly the household's own dinners, with one slot for something new
+      const ownSlots = SUGGESTION_COUNT - 1;
+      return [...ownRotated.slice(0, ownSlots), ...fromTemplates.slice(0, 1), ...ownRotated.slice(ownSlots), ...fromTemplates.slice(1)];
     };
 
     const prompt = `Suggest ${SUGGESTION_COUNT} dinners for a family of four to cook at home this week.
 
 Favor, in this order:
 1. Using up groceries they bought in the last ${RECENT_PURCHASE_DAYS} days (listed below), especially fresh meat and produce.
-2. Meals like the ones they've planned before, and their saved ideas.
-Vary the main protein and style across the ${SUGGESTION_COUNT}. Don't suggest any of these, which are already planned: ${exclude.length > 0 ? exclude.join('; ') : '(none)'}.
+2. Their favorite dinners and meals like the ones they've planned before.
+Vary the main protein and style across the ${SUGGESTION_COUNT}. ${avoidPromptLine(avoid)} Don't suggest any of these, which are already planned: ${exclude.length > 0 ? exclude.join('; ') : '(none)'}.
 
 For each dinner give:
 - "meal": short, the way a family writes it ("Teriyaki chicken + rice + broccoli").
@@ -128,7 +159,7 @@ ${recentLines.length > 0 ? recentLines.join('\n') : '(nothing recorded)'}
 Meals planned before:
 ${pastMeals.length > 0 ? pastMeals.join('\n') : '(none yet)'}
 
-Saved ideas:
+Their favorite dinners:
 ${ideas.length > 0 ? ideas.join('\n') : '(none)'}
 
 Household item names:
@@ -174,6 +205,8 @@ Respond with JSON only: {"suggestions":[{"meal":"...","reason":"...","ingredient
       .filter((s) => {
         const key = mealKey(s.meal);
         if (!s.meal || s.ingredients.length === 0 || excluded.has(key) || seen.has(key)) return false;
+        // AI ideas must respect foods the household doesn't eat
+        if (source === 'ai' && containsAvoided([s.meal, ...s.ingredients.map((i) => i.name)].join(' | '), avoid)) return false;
         seen.add(key);
         return true;
       })

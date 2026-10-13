@@ -72,6 +72,12 @@ const wordsOf = (text: string) =>
     .filter((w) => w.length > 1 && !UNIT_WORDS.has(w))
     .map((w) => (w.length > 3 && w.endsWith('es') && !w.endsWith('ses') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
 
+// Words that make an item a different product from its first word ("Potato Chips" isn't
+// potatoes, "Pasta Sauce" isn't pasta) unless the plain name asks for them too
+const DIFFERENT_PRODUCT = new Set(wordsOf(
+  'chips sauce paste powder juice soup dressing mix seasoning oil vinegar crackers bars cereal cake pie cookies candy dip spread syrup jam jelly butter flour milk water drink'
+));
+
 export function itemMatcher(candidates: string[]) {
   const prepared = candidates.map((name, order) => {
     const [head] = name.split(',');
@@ -83,6 +89,7 @@ export function itemMatcher(candidates: string[]) {
     let best: { name: string; score: number } | null = null;
     for (const c of prepared) {
       if (!want.every((w) => c.words.has(w)) || !want.some((w) => c.head.has(w))) continue;
+      if ([...c.head].some((w) => DIFFERENT_PRODUCT.has(w) && !want.includes(w))) continue;
       const score = (c.words.size - want.length) * 10 + c.order / 1000;
       if (!best || score < best.score) best = { name: c.name, score };
     }

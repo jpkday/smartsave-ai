@@ -62,6 +62,13 @@ export const MEAL_TEMPLATES: MealTemplate[] = [
   { meal: 'Baked potato bar', ingredients: ['potatoes', 'cheese', 'sour cream', 'bacon', 'broccoli', 'green onions'] },
   { meal: 'Lentil soup', ingredients: ['lentils', 'carrots', 'celery', 'onions', 'crushed tomatoes', 'vegetable broth'] },
   { meal: 'Minestrone soup', ingredients: ['pasta', 'kidney beans', 'crushed tomatoes', 'carrots', 'celery', 'zucchini', 'vegetable broth'] },
+  { meal: 'BLT sandwiches', ingredients: ['bacon', 'bread', 'lettuce', 'tomatoes', 'mayonnaise'] },
+  { meal: 'Beef, chicken and veggie skewers', ingredients: ['steak', 'chicken breast', 'peppers', 'onions', 'zucchini', 'mushrooms', 'skewers', 'rice'] },
+  { meal: 'Tomato soup with sourdough', ingredients: ['whole tomatoes', 'onions', 'garlic', 'butter', 'heavy cream', 'chicken broth', 'bread flour'] },
+  { meal: 'Rotisserie chicken dinner', ingredients: ['rotisserie chicken', 'salad', 'dinner rolls'] },
+  { meal: 'Shredded beef sandwiches', ingredients: ['chuck roast', 'onions', 'beef broth', 'sandwich rolls', 'provolone'] },
+  { meal: 'Egg roll in a bowl', ingredients: ['ground turkey', 'coleslaw mix', 'soy sauce', 'ginger', 'garlic', 'green onions', 'sesame oil', 'rice'] },
+  { meal: 'Fish and chips', ingredients: ['tilapia', 'french fries', 'lemons', 'tartar sauce'] },
 ];
 
 const nameWords = (s: string) =>
@@ -123,11 +130,13 @@ export function templateFor(meal: string): MealTemplate | null {
 }
 
 // Main protein family of a recipe ("chicken", "beef", …), used to vary suggestions
-const PROTEIN_FAMILIES = ['chicken', 'beef', 'turkey', 'pork', 'shrimp', 'salmon', 'fish', 'steak', 'sausage', 'kielbasa', 'chuck'];
+const PROTEIN_FAMILIES = ['chicken', 'beef', 'turkey', 'pork', 'shrimp', 'salmon', 'tilapia', 'fish', 'steak', 'sausage', 'kielbasa', 'chuck', 'bacon'];
 export function proteinFamily(ingredients: string[]) {
   for (const ing of ingredients) {
+    // "Chicken broth" or "beef bouillon" flavors a dish; it isn't the protein
+    if (/broth|stock|bouillon|soup|seasoning/i.test(ing)) continue;
     const family = PROTEIN_FAMILIES.find((p) => ing.toLowerCase().includes(p));
-    if (family) return family === 'chuck' || family === 'steak' ? 'beef' : family === 'kielbasa' ? 'sausage' : family;
+    if (family) return family === 'chuck' || family === 'steak' ? 'beef' : family === 'kielbasa' ? 'sausage' : family === 'tilapia' ? 'fish' : family;
   }
   return 'meatless';
 }

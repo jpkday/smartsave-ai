@@ -366,7 +366,7 @@ export default function MealsPage() {
         'Note imported',
         [
           importResult.days.length && `${importResult.days.length} ${importResult.days.length === 1 ? 'dinner' : 'dinners'} planned`,
-          freshIdeas.length && `${freshIdeas.length} ${freshIdeas.length === 1 ? 'idea' : 'ideas'} saved`,
+          freshIdeas.length && `${freshIdeas.length} added to favorites`,
           totals.added && `${totals.added} ${totals.added === 1 ? 'item' : 'items'} added to your list`,
         ].filter(Boolean).join(', ') + '.',
         'success'
@@ -842,8 +842,8 @@ export default function MealsPage() {
             {/* Ideas + import */}
             <div className="space-y-4 mt-4 md:mt-0">
               <div className="bg-bb-panel border border-bb-line rounded-2xl p-4 md:p-5">
-                <h2 className="text-sm font-semibold text-bb-cream">Meal ideas</h2>
-                <p className="text-xs text-bb-muted mt-0.5 mb-3">Tap one to drop it into the next open day.</p>
+                <h2 className="text-sm font-semibold text-bb-cream">Favorites</h2>
+                <p className="text-xs text-bb-muted mt-0.5 mb-3">Your go-to dinners. Tap one to drop it into the next open day.</p>
                 <div className="flex flex-wrap gap-2">
                   {ideas.map((idea) => (
                     <span key={idea.id} className="inline-flex items-center rounded-full border border-bb-line bg-white/[0.03] text-sm text-bb-cream">
@@ -851,7 +851,7 @@ export default function MealsPage() {
                       <button onClick={() => removeIdea(idea.id)} className="pr-2.5 pl-1 py-1.5 text-slate-500 hover:text-bb-red cursor-pointer" aria-label={`Remove ${idea.name}`}>×</button>
                     </span>
                   ))}
-                  {ideas.length === 0 && !loading && <span className="text-xs text-slate-500">No ideas yet.</span>}
+                  {ideas.length === 0 && !loading && <span className="text-xs text-slate-500">No favorites yet.</span>}
                 </div>
                 <form
                   onSubmit={(e) => { e.preventDefault(); addIdea(); }}
@@ -860,7 +860,7 @@ export default function MealsPage() {
                   <input
                     value={newIdea}
                     onChange={(e) => setNewIdea(e.target.value)}
-                    placeholder="Add an idea"
+                    placeholder="Add a favorite dinner"
                     maxLength={120}
                     className="flex-1 min-w-0 bg-bb-raised border border-bb-line rounded-xl px-3 py-2 text-[16px] md:text-sm text-bb-cream placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-bb-gold/50"
                   />
@@ -1016,7 +1016,7 @@ export default function MealsPage() {
                   </div>
                   {importResult.ideas.length > 0 && (
                     <div>
-                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-bb-muted mb-2">Ideas</h3>
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-bb-muted mb-2">Add to favorites</h3>
                       <div className="flex flex-wrap gap-2">
                         {importResult.ideas.map((n) => (
                           <span key={n} className="rounded-full border border-bb-line px-3 py-1 text-sm text-bb-cream">{n}</span>

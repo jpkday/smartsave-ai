@@ -4,6 +4,7 @@ import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealIngredients } from '../../../lib/meals';
 import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames } from '../../../lib/pantry';
 import { isNotCooking, templateFor } from '../../../lib/mealTemplates';
+import { avoidPromptLine, getAvoidFoods } from '../../../lib/preferences';
 
 // Turns a week of dinners into grocery ingredients. Meals this household has built
 // before come from their saved ingredients; the rest are suggested by Gemini, matched
@@ -90,7 +91,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (unknown.length > 0) {
+        const avoid = await getAvoidFoods(supabase, householdCode);
         const prompt = `You help a family turn their dinner plan into a grocery list.
+${avoidPromptLine(avoid)}
 
 For each dinner below, list the grocery ingredients needed to cook it at home for a family of four.
 Rules:
