@@ -20,6 +20,7 @@ import {
   TagIcon,
   ArrowTrendingDownIcon,
   PlusIcon,
+  CheckIcon,
   StarIcon,
   ShoppingCartIcon
 } from '@heroicons/react/24/solid';
@@ -500,226 +501,141 @@ export default function Deals() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
-
-
+      <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
 
         {/* Deals Grouped by Store */}
-        <div className="px-2 sm:px-4 md:px-0">
+        <div>
           {loading ? (
             <div className="py-20 bg-bb-panel rounded-2xl border border-bb-line items-center justify-center">
               <LoadingSpinner message="Loading Deals..." color="border-bb-gold" textColor="text-bb-muted" />
             </div>
           ) : !hasFavorites ? (
-            <div className="relative overflow-hidden rounded-2xl p-12 text-center bg-bb-panel border border-bb-line">
-              <div className="relative z-10">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-bb-raised rounded-2xl mb-6 border border-bb-line">
-                  <span className="text-4xl">💎</span>
-                </div>
-                <h2 className="text-4xl font-black text-bb-cream mb-4 tracking-tight">
-                  Personalize Your Savings
-                </h2>
-                <p className="text-bb-muted text-lg mb-10 max-w-lg mx-auto font-medium leading-relaxed">
-                  Add your favorite local stores to unlock exclusive AI-powered insights, historical price tracking, and "Market Low" alerts.
-                </p>
-                <div className="flex justify-center">
-                  <Link
-                    href="/stores"
-                    className="bg-bb-gold text-bb-navy px-10 py-4 rounded-2xl font-black hover:brightness-110 active:scale-95 transition-all text-lg flex items-center gap-3"
-                  >
-                    <BuildingStorefrontIcon className="w-6 h-6" />
-                    Manage Stores
-                  </Link>
-                </div>
-              </div>
+            <div className="rounded-2xl p-8 md:p-12 text-center bg-bb-panel border border-bb-line">
+              <BuildingStorefrontIcon className="w-10 h-10 text-bb-gold mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-bb-cream mb-2">Personalize Your Savings</h2>
+              <p className="text-bb-muted mb-6 max-w-md mx-auto leading-relaxed">
+                Add your favorite local stores to see deals, price history and &quot;Market Low&quot; alerts.
+              </p>
+              <Link
+                href="/stores"
+                className="inline-flex items-center gap-2 bg-bb-gold text-bb-navy px-6 py-3 rounded-xl font-semibold hover:brightness-110 transition"
+              >
+                Manage Stores
+              </Link>
             </div>
           ) : visibleGroups.length === 0 ? (
-            <div className="relative overflow-hidden rounded-2xl p-16 text-center bg-bb-panel border border-bb-line">
-              <div className="relative z-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-bb-raised border border-bb-line rounded-full mb-4">
-                  <SparklesIcon className="w-8 h-8 text-bb-muted" />
-                </div>
-                <p className="text-2xl font-bold text-bb-cream">Curating new deals for you...</p>
-                <p className="text-bb-muted text-base mt-3 font-medium">No big savings found yet at your favorited stores.</p>
-              </div>
+            <div className="rounded-2xl p-10 text-center bg-bb-panel border border-bb-line">
+              <SparklesIcon className="w-8 h-8 text-bb-muted mx-auto mb-3" />
+              <p className="text-lg font-semibold text-bb-cream">No big savings right now</p>
+              <p className="text-bb-muted text-sm mt-1">Check back after new flyers or receipts are added for your stores.</p>
             </div>
           ) : (
-            <div className="space-y-8 pb-0">
-              <div className="py-4">
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="bg-bb-panel border border-bb-line rounded-2xl px-5 py-5 md:px-6">
+                <div className="text-xs font-medium uppercase tracking-wider text-bb-muted">Potential savings</div>
+                <div className="font-serif text-4xl md:text-5xl text-bb-green mt-1 tabular-nums">
+                  ${visibleGroups.reduce((sum, g) => sum + g.totalSavings, 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-bb-muted mt-1.5">
+                  {totalVisibleDeals} {totalVisibleDeals === 1 ? 'deal' : 'deals'} at {visibleGroups.length} {visibleGroups.length === 1 ? 'store' : 'stores'}
+                  {' · '}up to {topDiscount}% off
+                </div>
+              </div>
 
-                {visibleGroups
-                  .map(({ storeName, storeDeals, totalSavings }) => (
-                    <div key={storeName} className="mb-6">
-                      {/* Store Header Container */}
-                      <div className="bg-bb-panel rounded-t-2xl p-6 pb-4 border border-bb-line flex items-center justify-between relative z-10">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-bb-raised rounded-xl flex items-center justify-center border border-bb-line text-2xl text-bb-muted">
-                            <StarIcon className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h2 className="text-2xl font-black text-bb-cream tracking-tight">
-                              {storeName}
-                            </h2>
-                            <div className="text-xs font-bold text-bb-muted uppercase tracking-wider mt-0.5">
-                              {storeDeals.length} Deals Found
-                            </div>
-                          </div>
-                        </div>
-                        <div className="bg-bb-green/10 text-bb-green px-5 py-3 rounded-2xl flex items-center gap-3 border border-bb-green/20">
-                          <div className="bg-bb-green/10 p-2 text-bb-green rounded-full">
-                            <ShoppingCartIcon className="w-6 h-6" />
-                          </div>
-                          <div className="flex flex-col items-end text-right">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-bb-green leading-none mb-1">Basket Savings</span>
-                            <span className="text-2xl font-black leading-none">${totalSavings.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Deals List */}
-                      <div className="bg-bb-panel rounded-b-2xl p-4 pt-4 border border-t-0 border-bb-line space-y-3">
-                        {storeDeals.map((deal, idx) => {
-                          const badge = getDealBadge(deal.dealQuality);
-                          const emoji = getItemEmoji(deal.item_name);
-
-                          return (
-                            <div key={`${storeName}-${idx}`} className="group relative">
-                              <Link
-                                href={`/history?item=${encodeURIComponent(JSON.stringify(deal.item_name))}&store=${encodeURIComponent(JSON.stringify(deal.store))}`}
-                                className="block"
-                              >
-                                <div className={`
-                                relative rounded-2xl p-3 sm:p-4 transition-all duration-300 border flex flex-row items-center gap-2 sm:gap-4
-                                ${badge.glow
-                                    ? 'bg-bb-raised border-bb-gold/30 hover:border-bb-gold/50'
-                                    : 'bg-white/[0.03] border-bb-line hover:bg-white/5'
-                                  }
-                              `}>
-                                  {/* Left: Name & Rating */}
-                                  <div className="flex-1 flex items-center gap-4 min-w-0">
-                                    <div className="min-w-0 flex-1">
-                                      <h3 className="text-lg font-bold text-bb-cream leading-tight group-hover:text-bb-gold transition-colors truncate">
-                                        {deal.item_name}
-                                      </h3>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <div className="flex">
-                                          {[...Array(badge.flames)].map((_, i) => (
-                                            <FireIcon key={i} className="w-5 h-5 text-bb-gold" />
-                                          ))}
-                                        </div>
-                                        <span className={`text-[10px] font-black uppercase tracking-wider ${badge.glow ? 'text-bb-gold' : 'text-bb-muted'}`}>
-                                          {badge.label}
-                                        </span>
-                                        {deal.timesBought > 0 && (
-                                          <span
-                                            className="text-[10px] font-bold uppercase tracking-wider bg-bb-gold/10 text-bb-gold border border-bb-gold/30 px-1.5 py-0.5 rounded-md whitespace-nowrap"
-                                            title={deal.lastBought ? `Last bought ${parseLocalDate(deal.lastBought).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : undefined}
-                                          >
-                                            You buy this · {deal.timesBought}×
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Right: Price & Action */}
-                                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-6 flex-none">
-                                    <div className="text-right block">
-                                      <div className="flex items-center justify-end gap-1 sm:gap-2">
-                                        <span className="text-lg sm:text-2xl font-black text-bb-cream tracking-tight">
-                                          ${deal.price.toFixed(2)}
-                                        </span>
-                                        <span className="bg-bb-green/10 text-bb-green text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg">
-                                          -{deal.discountPercent.toFixed(0)}%
-                                        </span>
-                                      </div>
-                                      {deal.typicalHighPrice && (
-                                        <div className="text-[10px] sm:text-xs font-medium text-bb-muted line-through hidden sm:block">
-                                          Was ${deal.typicalHighPrice.toFixed(2)}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (deal.isOnList) {
-                                          removeFromList(deal.item_name, deal.item_id);
-                                        } else {
-                                          addToList(deal.item_name, deal.item_id);
-                                        }
-                                      }}
-                                      className={`
-                                       w-24 h-10 flex items-center justify-center rounded-xl text-sm font-bold transition-all active:scale-95 cursor-pointer whitespace-nowrap
-                                       ${deal.isOnList
-                                          ? 'bg-transparent text-bb-muted border border-bb-line hover:bg-bb-red/10 hover:text-bb-red hover:border-bb-red/30'
-                                          : 'bg-bb-gold text-bb-navy font-semibold hover:brightness-110'
-                                        }
-                                     `}
-                                    >
-                                      {deal.isOnList ? 'Remove' : 'Add'}
-                                    </button>
-                                  </div>
-                                </div>
-                              </Link>
-                            </div>
-                          );
-                        })}
+              {visibleGroups.map(({ storeName, storeDeals, totalSavings }) => (
+                <div key={storeName} className="bg-bb-panel border border-bb-line rounded-2xl overflow-hidden">
+                  {/* Store header */}
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-5 border-b border-bb-line">
+                    <div className="min-w-0">
+                      <h2 className="text-base md:text-lg font-semibold text-bb-cream truncate">{storeName}</h2>
+                      <div className="text-xs text-bb-muted">
+                        {storeDeals.length} {storeDeals.length === 1 ? 'deal' : 'deals'}
                       </div>
                     </div>
-                  ))}
+                    <div className="text-right flex-none">
+                      <div className="text-sm font-semibold text-bb-green tabular-nums">Save ${totalSavings.toFixed(2)}</div>
+                      <div className="text-[11px] text-bb-muted">if you buy all</div>
+                    </div>
+                  </div>
+
+                  {/* Deals */}
+                  <div className="divide-y divide-bb-line">
+                    {storeDeals.map((deal, idx) => {
+                      const badge = getDealBadge(deal.dealQuality);
+                      return (
+                        <Link
+                          key={`${storeName}-${idx}`}
+                          href={`/history?item=${encodeURIComponent(JSON.stringify(deal.item_name))}&store=${encodeURIComponent(JSON.stringify(deal.store))}`}
+                          className="group flex items-center gap-3 px-4 py-3 md:px-5 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-sm md:text-base text-bb-cream truncate group-hover:text-bb-gold transition-colors">
+                              {deal.item_name}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-xs">
+                              <span className="flex text-bb-gold" aria-hidden="true">
+                                {[...Array(badge.flames)].map((_, i) => (
+                                  <FireIcon key={i} className="w-3.5 h-3.5" />
+                                ))}
+                              </span>
+                              <span className={badge.glow ? 'text-bb-gold' : 'text-bb-muted'}>{badge.label}</span>
+                              {deal.timesBought > 0 && (
+                                <span
+                                  className="text-bb-gold whitespace-nowrap"
+                                  title={deal.lastBought ? `Last bought ${parseLocalDate(deal.lastBought).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : undefined}
+                                >
+                                  · You buy this {deal.timesBought}×
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-none">
+                            <div className="text-base font-semibold text-bb-cream tabular-nums">${deal.price.toFixed(2)}</div>
+                            <div className="text-xs tabular-nums whitespace-nowrap">
+                              <span className="text-bb-green">−{deal.discountPercent.toFixed(0)}%</span>
+                              {deal.typicalHighPrice > 0 && (
+                                <span className="text-bb-muted line-through ml-1.5">${deal.typicalHighPrice.toFixed(2)}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (deal.isOnList) {
+                                removeFromList(deal.item_name, deal.item_id);
+                              } else {
+                                addToList(deal.item_name, deal.item_id);
+                              }
+                            }}
+                            aria-label={deal.isOnList ? `Remove ${deal.item_name} from list` : `Add ${deal.item_name} to list`}
+                            title={deal.isOnList ? 'On your list. Tap to remove' : 'Add to list'}
+                            className={`w-9 h-9 flex-none flex items-center justify-center rounded-full transition-all active:scale-95 cursor-pointer ${deal.isOnList
+                              ? 'border border-bb-green/40 text-bb-green hover:border-bb-red/40 hover:text-bb-red hover:bg-bb-red/10'
+                              : 'bg-bb-gold text-bb-navy hover:brightness-110'
+                              }`}
+                          >
+                            {deal.isOnList ? <CheckIcon className="w-5 h-5" /> : <PlusIcon className="w-5 h-5" />}
+                          </button>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 text-xs text-bb-muted">
+                <span className="flex items-center gap-1"><span className="flex text-bb-gold">{[0, 1, 2].map(i => <FireIcon key={i} className="w-3 h-3" />)}</span>Lowest price on record</span>
+                <span className="flex items-center gap-1"><span className="flex text-bb-gold">{[0, 1].map(i => <FireIcon key={i} className="w-3 h-3" />)}</span>Well below average</span>
+                <span className="flex items-center gap-1"><span className="flex text-bb-gold"><FireIcon className="w-3 h-3" /></span>Below typical price</span>
               </div>
             </div>
           )}
         </div>
-
-        {/* Info Legend Card */}
-        {!loading && Object.keys(groupedDeals).length > 0 && (
-          <div className="px-2 sm:px-4 md:px-0 mt-4 mb-24">
-            <div className="bg-bb-panel rounded-2xl p-8 border border-bb-line">
-              <h3 className="text-xl font-bold text-bb-cream mb-6 flex items-center gap-2">
-                <SparklesIcon className="w-5 h-5 text-bb-gold" />
-                Understanding Savvy Savings
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-2">
-
-                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
-                    <div className="flex text-bb-gold">
-                      <FireIcon className="w-4 h-4" />
-                      <FireIcon className="w-4 h-4" />
-                      <FireIcon className="w-4 h-4" />
-                    </div>
-                    Best Price
-                  </h4>
-                  <p className="text-xs text-bb-muted leading-relaxed font-medium">The lowest price point ever recorded for this specific item in our database.</p>
-                </div>
-                <div className="space-y-2">
-
-                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
-                    <div className="flex text-bb-gold">
-                      <FireIcon className="w-4 h-4" />
-                      <FireIcon className="w-4 h-4" />
-                    </div>
-                    Great Deal
-                  </h4>
-                  <p className="text-xs text-bb-muted leading-relaxed font-medium">Pricing that sits in the top 10% of historical savings across all retailers.</p>
-                </div>
-                <div className="space-y-2">
-
-                  <h4 className="font-bold text-bb-cream text-medium flex items-center gap-2">
-                    <div className="flex text-bb-gold">
-                      <FireIcon className="w-4 h-4" />
-                    </div>
-                    Good Price
-                  </h4>
-                  <p className="text-xs text-bb-muted leading-relaxed font-medium">Reliable savings that beat the typical high-season market pricing.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <StatusModal
