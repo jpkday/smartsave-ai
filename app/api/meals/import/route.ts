@@ -76,22 +76,25 @@ ${text}
 
 Respond with JSON only: {"days":[{"date":"YYYY-MM-DD","meal":"..."}],"meals":["..."],"ideas":["..."],"grocery_items":["..."]}`;
 
-    // Without the AI, a simple checklist reader handles the usual note shape
-    let ai: Partial<NoteImport> & { meals?: unknown[] };
-    let source: 'ai' | 'basic' = 'ai';
-    try {
-      ai = await generateJson<Partial<NoteImport> & { meals?: unknown[] }>(prompt);
-    } catch (err) {
-      console.error('AI note import unavailable, using basic reader:', err instanceof Error ? err.message : err);
-      const parsed = parseNote(text);
-      const matchItem = itemMatcher(pantryNames);
-      source = 'basic';
-      ai = {
-        days: parsed.days.map((d) => ({ date: dates[d.weekday], meal: d.meal })),
-        meals: parsed.meals,
-        ideas: parsed.ideas,
-        grocery_items: parsed.grocery_items.map((g) => matchItem(g) ?? g),
-      };
+    // The checklist reader handles the usual note shape instantly; the AI is only
+    // asked when it can't make anything of the note
+    const parsed = parseNote(text);
+    const matchItem = itemMatcher(pantryNames);
+    let ai: Partial<NoteImport> & { meals?: unknown[] } = {
+      days: parsed.days.map((d) => ({ date: dates[d.weekday], meal: d.meal })),
+      meals: parsed.meals,
+      ideas: parsed.ideas,
+      grocery_items: parsed.grocery_items.map((g) => matchItem(g) ?? g),
+    };
+    let source: 'ai' | 'basic' = 'basic';
+    const foundAnything = parsed.days.length + parsed.meals.length + parsed.ideas.length + parsed.grocery_items.length > 0;
+    if (!foundAnything) {
+      try {
+        ai = await generateJson<Partial<NoteImport> & { meals?: unknown[] }>(prompt);
+        source = 'ai';
+      } catch (err) {
+        console.error('AI note import unavailable:', err instanceof Error ? err.message : err);
+      }
     }
     const clean = (v: unknown) => String(v || '').trim().slice(0, 120);
     const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const householdCode = String(body.household_code || '').toUpperCase();
     const exclude: string[] = Array.isArray(body.exclude)
-      ? body.exclude.map((m: unknown) => String(m || '').trim().slice(0, 120)).filter(Boolean).slice(0, 14)
+      ? body.exclude.map((m: unknown) => String(m || '').trim().slice(0, 120)).filter(Boolean).slice(0, 30)
       : [];
     if (!householdCode) return NextResponse.json({ error: 'household_code is required' }, { status: 400 });
 
@@ -136,14 +136,19 @@ ${pantryNames.length > 0 ? pantryNames.join('\n') : '(none yet)'}
 
 Respond with JSON only: {"suggestions":[{"meal":"...","reason":"...","ingredients":["..."]}]}`;
 
+    // Default is instant: past dinners plus built-in recipes. The AI is only asked
+    // when the household taps "More ideas" (mode: 'ai').
     type RawSuggestion = { meal?: string; reason?: string; ingredients?: unknown };
-    let raw: RawSuggestion[];
-    let source: 'ai' | 'history' = 'ai';
-    try {
-      raw = (await generateJson<{ suggestions?: RawSuggestion[] }>(prompt)).suggestions ?? [];
-    } catch (err) {
-      console.error('AI suggestions unavailable, using history and built-in recipes:', err instanceof Error ? err.message : err);
-      source = 'history';
+    let raw: RawSuggestion[] = [];
+    let source: 'ai' | 'history' = 'history';
+    if (body.mode === 'ai') {
+      try {
+        raw = (await generateJson<{ suggestions?: RawSuggestion[] }>(prompt)).suggestions ?? [];
+        source = 'ai';
+      } catch (err) {
+        console.error('AI suggestions unavailable:', err instanceof Error ? err.message : err);
+      }
+    } else {
       raw = await historySuggestions();
     }
 

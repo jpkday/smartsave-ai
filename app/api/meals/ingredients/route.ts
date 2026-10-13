@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealIngredients } from '../../../lib/meals';
 import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames } from '../../../lib/pantry';
-import { templateFor } from '../../../lib/mealTemplates';
+import { isNotCooking, templateFor } from '../../../lib/mealTemplates';
 
 // Turns a week of dinners into grocery ingredients. Meals this household has built
 // before come from their saved ingredients; the rest are suggested by Gemini, matched
@@ -75,8 +75,22 @@ export async function POST(request: NextRequest) {
     const missing = uniqueMeals.filter((m) => !results.has(mealKey(m)));
     if (missing.length > 0) {
       const pantryNames = await getPantryNames(supabase, householdCode);
+      const candidates = [...[...recent.values()].map((r) => r.name), ...pantryNames];
 
-      const prompt = `You help a family turn their dinner plan into a grocery list.
+      // Built-in recipes answer instantly; only dishes they don't cover go to the AI
+      const unknown: string[] = [];
+      missing.forEach((meal) => {
+        if (isNotCooking(meal)) {
+          results.set(mealKey(meal), { meal, ingredients: [], source: 'none' });
+          return;
+        }
+        const template = templateFor(meal);
+        if (template) results.set(mealKey(meal), { meal, ingredients: toHouseholdNames(template.ingredients, candidates), source: 'basic' });
+        else unknown.push(meal);
+      });
+
+      if (unknown.length > 0) {
+        const prompt = `You help a family turn their dinner plan into a grocery list.
 
 For each dinner below, list the grocery ingredients needed to cook it at home for a family of four.
 Rules:
@@ -91,40 +105,31 @@ Household item names:
 ${pantryNames.length > 0 ? pantryNames.join('\n') : '(none yet)'}
 
 Dinners:
-${missing.map((m) => `- ${m}`).join('\n')}
+${unknown.map((m) => `- ${m}`).join('\n')}
 
 Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":["..."]}]}`;
 
-      const resolve = nameResolver(pantryNames);
-      let ai: { meals?: { meal?: string; ingredients?: unknown }[] } | null = null;
-      try {
-        ai = await generateJson<{ meals?: { meal?: string; ingredients?: unknown }[] }>(prompt);
-      } catch (err) {
-        console.error('AI ingredients unavailable, using built-in recipes:', err instanceof Error ? err.message : err);
-        aiUnavailable = true;
-      }
-      const aiByKey = new Map<string, string[]>();
-      (ai?.meals ?? []).forEach((m) => {
-        if (!m.meal) return;
-        const ingredients = Array.isArray(m.ingredients)
-          ? [...new Set(m.ingredients.map((i) => resolve(String(i || '').trim().slice(0, 120))).filter(Boolean))].slice(0, 15)
-          : [];
-        aiByKey.set(mealKey(m.meal), ingredients);
-      });
-
-      // Without the AI, common dinners still get ingredients from the built-in recipes
-      const candidates = [...[...recent.values()].map((r) => r.name), ...pantryNames];
-      missing.forEach((meal) => {
-        if (!aiUnavailable) {
+        const resolve = nameResolver(pantryNames);
+        let ai: { meals?: { meal?: string; ingredients?: unknown }[] } | null = null;
+        try {
+          ai = await generateJson<{ meals?: { meal?: string; ingredients?: unknown }[] }>(prompt);
+        } catch (err) {
+          console.error('AI ingredients unavailable:', err instanceof Error ? err.message : err);
+          aiUnavailable = true;
+        }
+        const aiByKey = new Map<string, string[]>();
+        (ai?.meals ?? []).forEach((m) => {
+          if (!m.meal) return;
+          const ingredients = Array.isArray(m.ingredients)
+            ? [...new Set(m.ingredients.map((i) => resolve(String(i || '').trim().slice(0, 120))).filter(Boolean))].slice(0, 15)
+            : [];
+          aiByKey.set(mealKey(m.meal), ingredients);
+        });
+        unknown.forEach((meal) => {
           const ingredients = aiByKey.get(mealKey(meal)) ?? [];
           results.set(mealKey(meal), { meal, ingredients, source: ingredients.length > 0 ? 'ai' : 'none' });
-          return;
-        }
-        const template = templateFor(meal);
-        results.set(mealKey(meal), template
-          ? { meal, ingredients: toHouseholdNames(template.ingredients, candidates), source: 'basic' }
-          : { meal, ingredients: [], source: 'none' });
-      });
+        });
+      }
     }
 
     return NextResponse.json({

@@ -111,6 +111,8 @@ export default function MealsPage() {
   const [placing, setPlacing] = useState(false);
   const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+  const [findingIdeas, setFindingIdeas] = useState(false);
+  const [ideasNote, setIdeasNote] = useState('');
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const dates = weekDates(weekStart);
@@ -431,6 +433,38 @@ export default function MealsPage() {
     });
   };
 
+  // "More ideas": ask the AI for dinners beyond the household's own and the built-in
+  // recipes. New ones go to the top of the list.
+  const findMoreIdeas = async () => {
+    if (!householdCode) return;
+    setFindingIdeas(true);
+    setIdeasNote('');
+    try {
+      const current = suggestions ?? [];
+      const res = await fetch('/api/meals/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_code: householdCode, mode: 'ai', exclude: [...plannedMealsRef.current, ...current.map((x) => x.meal)] }),
+      });
+      const data = await res.json();
+      const known = new Set(current.map((x) => mealKey(x.meal)));
+      const fresh: Suggestion[] = (data.suggestions ?? [])
+        .filter((x: MealSuggestion) => !known.has(mealKey(x.meal)))
+        .map(toSuggestion);
+      if (fresh.length === 0) {
+        setIdeasNote('No new ideas right now. Try again in a bit.');
+        return;
+      }
+      const next = [...fresh, ...current];
+      setSuggestions(next);
+      cacheSuggestions(next);
+    } catch {
+      setIdeasNote('No new ideas right now. Try again in a bit.');
+    } finally {
+      setFindingIdeas(false);
+    }
+  };
+
   // After a rename ("Turkey tacos" → "Beef tacos"), rebuild the ingredient list for the new name
   const refreshSuggestionIngredients = async (sug: Suggestion) => {
     if (!householdCode || !sug.meal.trim()) return;
@@ -705,14 +739,24 @@ export default function MealsPage() {
                       </div>
                     );
                   })}
-                  {(suggestions?.length ?? 0) > SUGGESTIONS_SHOWN && (
+                  <div className="flex">
+                    {(suggestions?.length ?? 0) > SUGGESTIONS_SHOWN && (
+                      <button
+                        onClick={() => setShowAllSuggestions(!showAllSuggestions)}
+                        className="flex-1 px-4 py-2.5 text-sm font-medium text-bb-gold hover:bg-white/[0.03] cursor-pointer"
+                      >
+                        {showAllSuggestions ? 'Show fewer' : `Show ${(suggestions?.length ?? 0) - SUGGESTIONS_SHOWN} more`}
+                      </button>
+                    )}
                     <button
-                      onClick={() => setShowAllSuggestions(!showAllSuggestions)}
-                      className="w-full px-4 py-2.5 text-sm font-medium text-bb-gold hover:bg-white/[0.03] cursor-pointer"
+                      onClick={findMoreIdeas}
+                      disabled={findingIdeas}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-bb-gold hover:bg-white/[0.03] disabled:opacity-60 cursor-pointer border-l border-bb-line first:border-l-0"
                     >
-                      {showAllSuggestions ? 'Show fewer' : `Show ${(suggestions?.length ?? 0) - SUGGESTIONS_SHOWN} more`}
+                      {findingIdeas ? 'Finding new ideas…' : '✨ More ideas'}
                     </button>
-                  )}
+                  </div>
+                  {ideasNote && <p className="px-4 md:px-5 pb-3 text-xs text-bb-muted text-center">{ideasNote}</p>}
                 </div>
               )}
             </div>

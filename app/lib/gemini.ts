@@ -16,6 +16,8 @@ const RETRY_DELAY_MS = 2000;
 // An overloaded model can hang for minutes; give up on it and try the next one
 const REQUEST_TIMEOUT_MS = 20000;
 const COOL_DOWN_MS = 5 * 60 * 1000;
+// Most a caller waits in total across models and retries before giving up
+const TOTAL_BUDGET_MS = 30000;
 
 let unavailableUntil = 0;
 
@@ -32,15 +34,18 @@ export async function generateJson<T>(prompt: string): Promise<T> {
   }
 
   const genAI = new GoogleGenerativeAI(apiKey.trim());
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
   let lastError: unknown = null;
   let models = CANDIDATE_MODELS;
 
-  for (let attempt = 0; attempt < 2 && models.length > 0; attempt++) {
+  for (let attempt = 0; attempt < 2 && models.length > 0 && Date.now() < deadline - RETRY_DELAY_MS; attempt++) {
     if (attempt > 0) {
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
     }
     const retryable: string[] = [];
     for (const modelName of models) {
+      const remaining = deadline - Date.now();
+      if (remaining < 1000) break;
       try {
         const model = genAI.getGenerativeModel(
           {
@@ -50,7 +55,7 @@ export async function generateJson<T>(prompt: string): Promise<T> {
               temperature: 0.2,
             },
           },
-          { timeout: REQUEST_TIMEOUT_MS },
+          { timeout: Math.min(REQUEST_TIMEOUT_MS, remaining) },
         );
         const result = await model.generateContent(prompt);
         const text = result.response
