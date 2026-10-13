@@ -609,7 +609,7 @@ export default function MealsPage() {
               <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 md:px-5 border-b border-bb-line">
                 <div>
                   <h2 className="text-base font-semibold text-bb-cream">Suggested dinners</h2>
-                  <p className="text-xs text-bb-muted mt-0.5">Built around what you bought recently. Tap one to open and change it, or tick a few and add them to the week.</p>
+                  <p className="text-xs text-bb-muted mt-0.5">Built around your favorites and what you bought recently.</p>
                 </div>
                 <button
                   onClick={() => fetchSuggestions(true)}
