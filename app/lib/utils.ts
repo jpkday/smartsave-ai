@@ -32,6 +32,16 @@ export const getDaysAgo = (dateString: string): string => {
   return years === 1 ? '1 year ago' : `${years} years ago`;
 };
 
+// Compact form used in lists: "today", "2d", "3w", "8mo", "1y"
+export const getShortAgo = (dateString: string): string => {
+  const diffDays = Math.floor(Math.abs(Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'today';
+  if (diffDays < 7) return `${diffDays}d`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`;
+  return `${Math.floor(diffDays / 365)}y`;
+};
+
 export const getTodayDate = (): string => {
   return new Date().toISOString().split('T')[0];
 };

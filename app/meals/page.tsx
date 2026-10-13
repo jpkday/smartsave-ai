@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useHouseholdCode } from '../hooks/useHouseholdCode';
 import { useStatusModal } from '../hooks/useStatusModal';
 import type { StockUpItem } from '../lib/stockUp';
+import { getShortAgo } from '../lib/utils';
 import { addDays, mealKey, titleCase, MealSuggestion, SuggestionIngredient, NoteImport, MealIngredients, startOfWeek, toDateStr, weekDates } from '../lib/meals';
 
 interface Idea {
@@ -945,8 +946,7 @@ export default function MealsPage() {
               const stocked = stockUp.filter((i) => i.status === 'stocked');
               const visible = showAllStockUp ? [...needed, ...stocked] : needed.slice(0, STOCK_UP_SHOWN);
               const hiddenCount = needed.length + stocked.length - visible.length;
-              const lastLabel = (i: StockUpItem) =>
-                `${new Date(`${i.last_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(i.last_date.slice(0, 4) !== todayStr.slice(0, 4) ? { year: 'numeric' } : {}) })}${i.store ? ` at ${i.store}` : ''}`;
+              const lastLabel = (i: StockUpItem) => `${getShortAgo(`${i.last_date}T00:00:00`)}${i.store ? `, ${i.store}` : ''}`;
               return (
                 <div className="bg-bb-panel border border-bb-line rounded-2xl">
                   <div className="px-4 pt-4 pb-3 md:px-5 border-b border-bb-line">
@@ -961,15 +961,15 @@ export default function MealsPage() {
                     {visible.map((item) => (
                       <div key={item.label} className={`flex items-center gap-3 px-4 md:px-5 py-2.5 ${item.status === 'stocked' ? 'opacity-60' : ''}`}>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[15px] text-bb-cream truncate">{item.label}</span>
+                          <p className="text-[15px] text-bb-cream truncate">{item.label}</p>
+                          <div className="flex items-center gap-1.5 min-w-0 mt-0.5">
                             {item.status !== 'stocked' && (
-                              <span className={`flex-none text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${item.status === 'due' ? 'text-bb-gold border-bb-gold/40 bg-bb-gold/10' : 'text-bb-muted border-bb-line'}`}>
+                              <span className={`flex-none text-[10px] font-semibold uppercase tracking-wider px-1.5 py-px rounded-full border ${item.status === 'due' ? 'text-bb-gold border-bb-gold/40 bg-bb-gold/10' : 'text-bb-muted border-bb-line'}`}>
                                 {item.status === 'due' ? 'Due' : 'Soon'}
                               </span>
                             )}
+                            <span className="text-xs text-bb-muted truncate">{lastLabel(item)}</span>
                           </div>
-                          <p className="text-xs text-bb-muted truncate">Last {lastLabel(item)}</p>
                         </div>
                         {item.status !== 'stocked' && !item.on_list && (
                           <button
