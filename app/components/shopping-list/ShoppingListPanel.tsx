@@ -299,15 +299,15 @@ export default function ShoppingListPanel({
       {/* SHOPPING LIST HEADER */}
       <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6 mb-6 md:mb-0 md:sticky md:top-[84px] md:max-h-[calc(100vh-100px)] md:flex md:flex-col">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl md:text-2xl font-bold text-bb-cream">
-            Shopping List <span className="text-xl text-bb-muted font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-bb-cream whitespace-nowrap">
+            Shopping List <span className="text-base sm:text-xl text-bb-muted font-normal">({listItems.filter((i) => !i.checked && (!showPriorityOnly || i.is_priority)).length})</span>
           </h2>
           <div className="flex gap-2 items-center">
             {/* Camera Scan button */}
             {isMobile && mobileMode === 'store' && (
               <button
                 onClick={onOpenPricePhotoCapture}
-                className="border border-bb-line text-bb-cream px-4 py-2 rounded-2xl font-semibold hover:bg-white/5 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
+                className="border border-bb-line text-bb-cream px-3 sm:px-4 py-2 rounded-2xl font-semibold hover:bg-white/5 cursor-pointer transition whitespace-nowrap flex items-center gap-2"
                 title="Scan price tag"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -320,7 +320,7 @@ export default function ShoppingListPanel({
 
             <button
               onClick={onToggleShowPriority}
-              className={`text-sm px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
+              className={`text-sm px-3 sm:px-4 py-2 rounded-2xl font-semibold transition flex items-center gap-2 cursor-pointer ${showPriorityOnly
                 ? 'bg-bb-red/10 text-bb-red border border-bb-red/30'
                 : 'bg-transparent text-bb-muted border border-bb-line hover:bg-white/5 hover:text-bb-cream'
                 }`}

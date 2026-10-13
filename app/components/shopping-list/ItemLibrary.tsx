@@ -344,7 +344,7 @@ export default function ItemLibrary({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 max-h-[400px] md:max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2">
+        <div className="divide-y divide-bb-line max-h-[400px] md:max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar md:pr-2">
           {renderList.map((it: ItemRow, idx: number) => {
             const isFavorite = favorites.includes(it.name);
 
@@ -367,16 +367,11 @@ export default function ItemLibrary({
             return (
               <Fragment key={it.id}>
               {showTripHeader && (
-                <div className={`text-xs font-bold text-bb-muted uppercase tracking-wider px-1 ${idx === 0 ? '' : 'pt-2'}`}>
+                <div className={`text-[11px] font-semibold text-bb-muted uppercase tracking-wider pb-1 ${idx === 0 ? '' : 'pt-3'}`}>
                   {tripGroup!.label}
                 </div>
               )}
-              <div
-                className={`flex flex-wrap items-center gap-3 p-3 rounded-2xl border transition ${isFavorite
-                  ? 'bg-white/[0.03] border-bb-gold/30 hover:bg-white/5'
-                  : 'bg-white/[0.03] border-bb-line hover:bg-white/5'
-                  }`}
-              >
+              <div className="flex items-center gap-3 py-2.5">
                 <div className="flex-1 min-w-0">
                   <button
                     onClick={() => {
@@ -390,43 +385,37 @@ export default function ItemLibrary({
                         category_id: it.category_id,
                       });
                     }}
-                    className="font-medium text-bb-cream hover:text-bb-gold cursor-pointer text-left break-words"
+                    className="text-[15px] leading-snug text-bb-cream hover:text-bb-gold cursor-pointer text-left break-words"
                   >
+                    {isFavorite && <span className="text-bb-gold mr-1" title="Favorite">★</span>}
                     {it.name}
                   </button>
 
-                  <div className="mt-1 flex items-center gap-2">
-                    {(priceData && price > 0) ? (
-                      <p className="text-xs text-bb-cream">
-                        {formatMoney(price)}{' '}
-                        <span className="text-bb-muted ml-1">
-                          ({getDaysAgo(priceData.date)}, {effStore})
-                        </span>
-                      </p>
-                    ) : (
-                      <button
-                        onClick={() => onOpenEditModal({
-                          id: '', // Virtual ID
-                          item_id: it.id,
-                          item_name: it.name,
-                          quantity: 1,
-                          checked: false,
-                          is_priority: false,
-                          category_id: it.category_id,
-                        }, 'price')}
-                        className="text-bb-gold text-xs font-semibold hover:underline cursor-pointer transition inline-block"
-                      >
-                        Add Price
-                      </button>
-                    )}
-
-                    {(priceData && price > 0) && (() => {
-                      const unitPrice = getFormattedUnitPrice(it.name, price);
-                      return unitPrice ? (
-                        <span className="text-bb-muted text-xs font-medium">• {unitPrice}</span>
-                      ) : null;
-                    })()}
-                  </div>
+                  {(priceData && price > 0) ? (
+                    <p className="mt-0.5 text-xs text-bb-muted tabular-nums">
+                      <span className="text-bb-cream">{formatMoney(price)}</span>
+                      {(() => {
+                        const unitPrice = getFormattedUnitPrice(it.name, price);
+                        return unitPrice ? <> · {unitPrice}</> : null;
+                      })()}
+                      {' · '}{getDaysAgo(priceData.date)}, {effStore}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => onOpenEditModal({
+                        id: '', // Virtual ID
+                        item_id: it.id,
+                        item_name: it.name,
+                        quantity: 1,
+                        checked: false,
+                        is_priority: false,
+                        category_id: it.category_id,
+                      }, 'price')}
+                      className="mt-0.5 text-bb-gold text-xs font-semibold hover:underline cursor-pointer"
+                    >
+                      Add price
+                    </button>
+                  )}
 
                   {/* Active Note Preview */}
                   {it.active_note && (
@@ -444,22 +433,21 @@ export default function ItemLibrary({
                   )}
                 </div>
 
-                {listIds.has(it.id) ? (
-                  <button
-                    onClick={() => onToggleItemById(it.id, it.name)}
-                    className="flex items-center justify-center gap-1 bg-transparent hover:bg-bb-red/10 text-bb-muted hover:text-bb-red border border-bb-line hover:border-bb-red/30 text-sm font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer"
-                    title="Remove from list"
-                  >
-                    Remove
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onToggleItemById(it.id, it.name)}
-                    className="bg-bb-gold hover:brightness-110 text-bb-navy text-sm font-semibold px-3.5 py-1.5 rounded-xl transition cursor-pointer"
-                  >
-                    Add
-                  </button>
-                )}
+                <button
+                  onClick={() => onToggleItemById(it.id, it.name)}
+                  aria-label={listIds.has(it.id) ? `Remove ${it.name} from list` : `Add ${it.name} to list`}
+                  title={listIds.has(it.id) ? 'On your list. Tap to remove' : 'Add to list'}
+                  className={`w-9 h-9 flex-none flex items-center justify-center rounded-full transition active:scale-95 cursor-pointer ${listIds.has(it.id)
+                    ? 'border border-bb-green/40 text-bb-green hover:border-bb-red/40 hover:text-bb-red hover:bg-bb-red/10'
+                    : 'bg-bb-gold text-bb-navy hover:brightness-110'
+                    }`}
+                >
+                  {listIds.has(it.id) ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14m7-7H5" /></svg>
+                  )}
+                </button>
               </div>
               </Fragment>
             );
