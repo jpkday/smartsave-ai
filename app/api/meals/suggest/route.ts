@@ -4,7 +4,7 @@ import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealSuggestion, SuggestionIngredient } from '../../../lib/meals';
 import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames, RECENT_PURCHASE_DAYS } from '../../../lib/pantry';
 import { MEAL_TEMPLATES, proteinFamily, templateFor } from '../../../lib/mealTemplates';
-import { avoidPromptLine, containsAvoided, getAvoidFoods } from '../../../lib/preferences';
+import { avoidPromptLine, containsAvoided, getAvoidFoods, getDismissedMeals } from '../../../lib/preferences';
 
 // Suggests dinners for the week from what the household bought recently (to use it
 // up), meals they've planned before, and their ideas list. Each ingredient is marked
@@ -38,13 +38,14 @@ export async function POST(request: NextRequest) {
     if (!household) return NextResponse.json({ error: 'Unknown household' }, { status: 404 });
 
     const pastSince = new Date(Date.now() - PAST_MEALS_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const [pantryNames, recent, { data: listRows }, { data: pastRows }, { data: ideaRows }, avoid] = await Promise.all([
+    const [pantryNames, recent, { data: listRows }, { data: pastRows }, { data: ideaRows }, avoid, dismissed] = await Promise.all([
       getPantryNames(supabase, householdCode),
       getRecentPurchases(supabase, householdCode),
       supabase.from('shopping_list').select('item_name').eq('household_code', householdCode).eq('checked', false),
       supabase.from('meal_plan_days').select('meal').eq('household_code', householdCode).gte('plan_date', pastSince),
       supabase.from('meal_ideas').select('name').eq('household_code', householdCode),
       getAvoidFoods(supabase, householdCode),
+      getDismissedMeals(supabase, householdCode),
     ]);
 
     const recentLines = [...recent.values()].map((r) => `${r.name} (bought ${r.date})`);
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
 Favor, in this order:
 1. Using up groceries they bought in the last ${RECENT_PURCHASE_DAYS} days (listed below), especially fresh meat and produce.
 2. Their favorite dinners and meals like the ones they've planned before.
-Vary the main protein and style across the ${SUGGESTION_COUNT}. ${avoidPromptLine(avoid)} Don't suggest any of these, which are already planned: ${exclude.length > 0 ? exclude.join('; ') : '(none)'}.
+Vary the main protein and style across the ${SUGGESTION_COUNT}. ${avoidPromptLine(avoid)} Don't suggest any of these, which are already planned: ${exclude.length > 0 ? exclude.join('; ') : '(none)'}. The household has also ruled these out: ${dismissed.size > 0 ? [...dismissed].join('; ') : '(none)'}.
 
 For each dinner give:
 - "meal": short, the way a family writes it ("Teriyaki chicken + rice + broccoli").
@@ -208,7 +209,7 @@ Respond with JSON only: {"suggestions":[{"meal":"...","reason":"...","ingredient
       })
       .filter((s) => {
         const key = mealKey(s.meal);
-        if (!s.meal || s.ingredients.length === 0 || excluded.has(key) || seen.has(key)) return false;
+        if (!s.meal || s.ingredients.length === 0 || excluded.has(key) || dismissed.has(key) || seen.has(key)) return false;
         // AI ideas must respect foods the household doesn't eat
         if (source === 'ai' && containsAvoided([s.meal, ...s.ingredients.map((i) => i.name)].join(' | '), avoid)) return false;
         seen.add(key);

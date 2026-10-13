@@ -112,6 +112,8 @@ export default function MealsPage() {
   const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   const [findingIdeas, setFindingIdeas] = useState(false);
+  // Suggestion id waiting for the second tap on Forget
+  const [confirmForget, setConfirmForget] = useState<string | null>(null);
   const [ideasNote, setIdeasNote] = useState('');
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -433,6 +435,36 @@ export default function MealsPage() {
     });
   };
 
+  // Forget a dinner for good: it leaves suggestions (and favorites) for the household
+  const forgetSuggestion = async (sug: Suggestion) => {
+    if (!householdCode) return;
+    if (confirmForget !== sug.id) {
+      setConfirmForget(sug.id);
+      setTimeout(() => setConfirmForget((current) => (current === sug.id ? null : current)), 4000);
+      return;
+    }
+    setConfirmForget(null);
+    try {
+      const res = await fetch('/api/meals/forget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_code: householdCode, meal: sug.ingredientsFor || sug.meal }),
+      });
+      if (!res.ok) throw new Error();
+      const key = mealKey(sug.ingredientsFor || sug.meal);
+      setExpandedSuggestion(null);
+      setSuggestions((prev) => {
+        if (!prev) return prev;
+        const next = prev.filter((x) => x.id !== sug.id);
+        cacheSuggestions(next);
+        return next;
+      });
+      setIdeas((prev) => prev.filter((i) => mealKey(i.name) !== key));
+    } catch {
+      showStatus('Not forgotten', 'That dinner could not be removed. Please try again.', 'error');
+    }
+  };
+
   // "More ideas": ask the AI for dinners beyond the household's own and the built-in
   // recipes. New ones go to the top of the list.
   const findMoreIdeas = async () => {
@@ -734,6 +766,14 @@ export default function MealsPage() {
                                 Done
                               </button>
                             </div>
+                            <button
+                              onClick={() => forgetSuggestion(sug)}
+                              className={`w-full rounded-xl py-2 text-sm font-semibold transition cursor-pointer ${confirmForget === sug.id
+                                ? 'bg-bb-red/10 border border-bb-red/40 text-bb-red'
+                                : 'text-bb-muted hover:text-bb-red'}`}
+                            >
+                              {confirmForget === sug.id ? 'Tap again to forget this dinner' : 'Forget this dinner'}
+                            </button>
                           </div>
                         )}
                       </div>

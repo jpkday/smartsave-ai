@@ -21,3 +21,11 @@ export function avoidPromptLine(avoid: string[]) {
     ? `This household does not eat: ${avoid.join(', ')}. Never suggest dishes built on these or include them as ingredients (bacon is fine unless listed).`
     : '';
 }
+
+// Dinners the household told the app to forget (households.dismissed_meals, normalized
+// meal names). Returns an empty set if the column isn't there yet.
+export async function getDismissedMeals(supabase: SupabaseClient, householdCode: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from('households').select('dismissed_meals').eq('code', householdCode).maybeSingle();
+  if (error || !data || !Array.isArray(data.dismissed_meals)) return new Set();
+  return new Set(data.dismissed_meals.map((m: unknown) => String(m)));
+}
