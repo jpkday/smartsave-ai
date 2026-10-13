@@ -10,7 +10,9 @@ import { avoidPromptLine, containsAvoided, getAvoidFoods } from '../../../lib/pr
 // up), meals they've planned before, and their ideas list. Each ingredient is marked
 // as probably at home (bought recently), already on the list, or still to buy.
 
+// AI asks for a short batch; the instant list returns everything worth showing
 const SUGGESTION_COUNT = 6;
+const INSTANT_SUGGESTION_MAX = 20;
 const PAST_MEALS_DAYS = 120;
 
 function getSupabase() {
@@ -104,8 +106,10 @@ export async function POST(request: NextRequest) {
       const ownOffset = Number.isInteger(body.seed) && own.length > 0 ? Math.abs(body.seed) % own.length : 0;
       const ownRotated = [...own.slice(ownOffset), ...own.slice(0, ownOffset)];
 
+      // Built-in recipes that are really one of the household's own dinners aren't repeated
+      const ownAsTemplates = new Set([...ownMeals.values()].map(({ meal }) => templateFor(meal)?.meal).filter(Boolean));
       const scored = MEAL_TEMPLATES
-        .filter((t) => !ownMeals.has(mealKey(t.meal)))
+        .filter((t) => !ownMeals.has(mealKey(t.meal)) && !ownAsTemplates.has(t.meal))
         .filter((t) => !containsAvoided([t.meal, ...t.ingredients].join(' | '), avoid))
         .map((t) => {
           const ingredients = toHouseholdNames(t.ingredients, candidates);
@@ -210,7 +214,7 @@ Respond with JSON only: {"suggestions":[{"meal":"...","reason":"...","ingredient
         seen.add(key);
         return true;
       })
-      .slice(0, SUGGESTION_COUNT);
+      .slice(0, source === 'ai' ? SUGGESTION_COUNT : INSTANT_SUGGESTION_MAX);
 
     return NextResponse.json({ suggestions, source });
   } catch (error) {
