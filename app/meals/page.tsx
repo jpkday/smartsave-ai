@@ -283,7 +283,7 @@ export default function MealsPage() {
       const res = await fetch('/api/meals/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ household_code: householdCode, text: importText, week_start: weekStr }),
+        body: JSON.stringify({ household_code: householdCode, text: importText, week_start: weekStr, today: todayStr }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Could not read that note');
