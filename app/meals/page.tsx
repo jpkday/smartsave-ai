@@ -107,6 +107,7 @@ export default function MealsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState('');
+  const [reviewAiUnavailable, setReviewAiUnavailable] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export default function MealsPage() {
   const weekStr = toDateStr(weekStart);
   const plannedMeals = dateStrs.map((d) => (days[d] || '').trim()).filter(Boolean);
   const plannedMealsRef = useRef<string[]>([]);
+  const suggestRequestRef = useRef(0);
   plannedMealsRef.current = plannedMeals;
 
   const weekTitle =
@@ -251,6 +253,7 @@ export default function MealsPage() {
       const recent = new Map<string, string>(
         (data.recently_bought ?? []).map((r: { name: string; date: string }) => [r.name.toLowerCase(), r.date])
       );
+      setReviewAiUnavailable(!!data.ai_unavailable);
       const byKey = new Map<string, MealIngredients>((data.meals ?? []).map((m: MealIngredients) => [mealKey(m.meal), m]));
       const seen = new Set<string>();
       const meals: ReviewMeal[] = [];
@@ -380,6 +383,8 @@ export default function MealsPage() {
 
   const fetchSuggestions = useCallback(async (force = false) => {
     if (!householdCode) return;
+    // Only the latest request may update the list (an older, slower one can finish later)
+    const requestId = ++suggestRequestRef.current;
     const cacheKey = `${SUGGESTION_CACHE_PREFIX}:${householdCode}:${weekStr}`;
     if (!force) {
       try {
@@ -393,17 +398,20 @@ export default function MealsPage() {
       const res = await fetch('/api/meals/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ household_code: householdCode, exclude: plannedMealsRef.current }),
+        body: JSON.stringify({ household_code: householdCode, exclude: plannedMealsRef.current, seed: force ? Date.now() % 1000 : 0 }),
       });
       const data = await res.json();
+      if (requestId !== suggestRequestRef.current) return;
       if (!res.ok) throw new Error(data?.error || 'Could not suggest dinners');
       const list: Suggestion[] = (data.suggestions ?? []).map(toSuggestion);
       setSuggestions(list);
       try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); } catch { /* storage unavailable */ }
     } catch (err) {
-      setSuggestError(err instanceof Error ? err.message : 'Could not suggest dinners right now.');
+      if (requestId === suggestRequestRef.current) {
+        setSuggestError(err instanceof Error ? err.message : 'Could not suggest dinners right now.');
+      }
     } finally {
-      setSuggesting(false);
+      if (requestId === suggestRequestRef.current) setSuggesting(false);
     }
   }, [householdCode, weekStr]);
 
@@ -440,6 +448,11 @@ export default function MealsPage() {
         (data.recently_bought ?? []).map((r: { name: string; date: string }) => [r.name.toLowerCase(), r.date])
       );
       const names: string[] = data.meals?.[0]?.ingredients ?? [];
+      if (names.length === 0 && data.ai_unavailable) {
+        updateSuggestion(sug.id, (x) => ({ ...x, ingredientsFor: sug.meal.trim(), reason: '', updating: false }));
+        showStatus('Ingredients not found', `Couldn't find ingredients for “${sug.meal.trim()}”, so the list wasn't changed. Edit it by hand.`, 'info');
+        return;
+      }
       const ingredients: SuggestionIngredient[] = names.map((name) => {
         if (onList.has(name.toLowerCase())) return { name, status: 'list' };
         const bought = recent.get(name.toLowerCase());
@@ -841,11 +854,15 @@ export default function MealsPage() {
                   <div className="flex items-baseline justify-between gap-2">
                     <h3 className="text-[15px] font-semibold text-bb-cream">{m.meal}</h3>
                     <span className="text-[11px] uppercase tracking-wider text-bb-muted flex-none">
-                      {m.dayLabel}{m.source === 'saved' ? ' · saved' : m.source === 'ai' ? ' · suggested' : ''}
+                      {m.dayLabel}{m.source === 'saved' ? ' · saved' : m.source === 'ai' || m.source === 'basic' ? ' · suggested' : ''}
                     </span>
                   </div>
                   {m.items.length === 0 ? (
-                    <p className="text-xs text-slate-500 py-2">Nothing to buy. Add ingredients below if this needs any.</p>
+                    <p className="text-xs text-slate-500 py-2">
+                      {reviewAiUnavailable
+                        ? 'No ingredients yet. Add them below.'
+                        : 'Nothing to buy. Add ingredients below if this needs any.'}
+                    </p>
                   ) : (
                     <div className="divide-y divide-bb-line">
                       {m.items.map((item, ii) => (

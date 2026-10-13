@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { addDays, fromDateStr, toDateStr, NoteImport } from '../../../lib/meals';
-import { getPantryNames, nameResolver } from '../../../lib/pantry';
+import { getPantryNames, itemMatcher, nameResolver } from '../../../lib/pantry';
+import { parseNote } from '../../../lib/noteParser';
 
 // Reads a pasted note (e.g. a shared Apple Note with the week's dinners and a few
 // groceries) and sorts it into the week's days, meal ideas, and grocery items.
@@ -75,7 +76,23 @@ ${text}
 
 Respond with JSON only: {"days":[{"date":"YYYY-MM-DD","meal":"..."}],"meals":["..."],"ideas":["..."],"grocery_items":["..."]}`;
 
-    const ai = await generateJson<Partial<NoteImport> & { meals?: unknown[] }>(prompt);
+    // Without the AI, a simple checklist reader handles the usual note shape
+    let ai: Partial<NoteImport> & { meals?: unknown[] };
+    let source: 'ai' | 'basic' = 'ai';
+    try {
+      ai = await generateJson<Partial<NoteImport> & { meals?: unknown[] }>(prompt);
+    } catch (err) {
+      console.error('AI note import unavailable, using basic reader:', err instanceof Error ? err.message : err);
+      const parsed = parseNote(text);
+      const matchItem = itemMatcher(pantryNames);
+      source = 'basic';
+      ai = {
+        days: parsed.days.map((d) => ({ date: dates[d.weekday], meal: d.meal })),
+        meals: parsed.meals,
+        ideas: parsed.ideas,
+        grocery_items: parsed.grocery_items.map((g) => matchItem(g) ?? g),
+      };
+    }
     const clean = (v: unknown) => String(v || '').trim().slice(0, 120);
     const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
     const validDates = new Set(dates);
@@ -102,7 +119,7 @@ Respond with JSON only: {"days":[{"date":"YYYY-MM-DD","meal":"..."}],"meals":[".
       ideas: [...new Set([...overflow, ...(Array.isArray(ai.ideas) ? ai.ideas : []).map((v) => capitalize(clean(v)))].filter(Boolean))].slice(0, 30),
       grocery_items: [...new Set((Array.isArray(ai.grocery_items) ? ai.grocery_items : []).map((v) => nameResolver(pantryNames)(clean(v))).filter(Boolean))].slice(0, 30),
     };
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, source });
   } catch (error) {
     console.error('Error importing note:', error);
     return NextResponse.json({ error: 'Could not read that note. Please try again.' }, { status: 500 });

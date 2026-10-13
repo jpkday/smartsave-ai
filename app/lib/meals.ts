@@ -35,7 +35,8 @@ export const weekDates = (weekStart: Date) => Array.from({ length: 7 }, (_, i) =
 export interface MealIngredients {
   meal: string;
   ingredients: string[];
-  source: 'saved' | 'ai' | 'none';
+  // basic: from the built-in recipe set, used when the AI is unavailable
+  source: 'saved' | 'ai' | 'basic' | 'none';
 }
 
 export interface NoteImport {

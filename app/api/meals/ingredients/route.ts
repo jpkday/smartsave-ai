@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealIngredients } from '../../../lib/meals';
-import { getPantryNames, getRecentPurchases, nameResolver } from '../../../lib/pantry';
+import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames } from '../../../lib/pantry';
+import { templateFor } from '../../../lib/mealTemplates';
 
 // Turns a week of dinners into grocery ingredients. Meals this household has built
 // before come from their saved ingredients; the rest are suggested by Gemini, matched
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
     const results = new Map<string, MealIngredients>();
+    let aiUnavailable = false;
     uniqueMeals.forEach((meal) => {
       const savedList = savedByKey.get(mealKey(meal));
       if (savedList) results.set(mealKey(meal), { meal, ingredients: savedList, source: 'saved' });
@@ -94,9 +96,15 @@ ${missing.map((m) => `- ${m}`).join('\n')}
 Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":["..."]}]}`;
 
       const resolve = nameResolver(pantryNames);
-      const ai = await generateJson<{ meals?: { meal?: string; ingredients?: unknown }[] }>(prompt);
+      let ai: { meals?: { meal?: string; ingredients?: unknown }[] } | null = null;
+      try {
+        ai = await generateJson<{ meals?: { meal?: string; ingredients?: unknown }[] }>(prompt);
+      } catch (err) {
+        console.error('AI ingredients unavailable, using built-in recipes:', err instanceof Error ? err.message : err);
+        aiUnavailable = true;
+      }
       const aiByKey = new Map<string, string[]>();
-      (ai.meals ?? []).forEach((m) => {
+      (ai?.meals ?? []).forEach((m) => {
         if (!m.meal) return;
         const ingredients = Array.isArray(m.ingredients)
           ? [...new Set(m.ingredients.map((i) => resolve(String(i || '').trim().slice(0, 120))).filter(Boolean))].slice(0, 15)
@@ -104,9 +112,18 @@ Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":[".
         aiByKey.set(mealKey(m.meal), ingredients);
       });
 
+      // Without the AI, common dinners still get ingredients from the built-in recipes
+      const candidates = [...[...recent.values()].map((r) => r.name), ...pantryNames];
       missing.forEach((meal) => {
-        const ingredients = aiByKey.get(mealKey(meal)) ?? [];
-        results.set(mealKey(meal), { meal, ingredients, source: ingredients.length > 0 ? 'ai' : 'none' });
+        if (!aiUnavailable) {
+          const ingredients = aiByKey.get(mealKey(meal)) ?? [];
+          results.set(mealKey(meal), { meal, ingredients, source: ingredients.length > 0 ? 'ai' : 'none' });
+          return;
+        }
+        const template = templateFor(meal);
+        results.set(mealKey(meal), template
+          ? { meal, ingredients: toHouseholdNames(template.ingredients, candidates), source: 'basic' }
+          : { meal, ingredients: [], source: 'none' });
       });
     }
 
@@ -114,6 +131,7 @@ Respond with JSON only: {"meals":[{"meal":"<exactly as given>","ingredients":[".
       meals: uniqueMeals.map((m) => results.get(mealKey(m))),
       on_list: (listRows ?? []).map((r) => r.item_name),
       recently_bought: [...recent.values()],
+      ai_unavailable: aiUnavailable,
     });
   } catch (error) {
     console.error('Error building meal ingredients:', error);

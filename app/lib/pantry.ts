@@ -57,3 +57,43 @@ export function nameResolver(householdNames: string[]) {
   });
   return (name: string) => byLoose.get(looseName(name)) ?? name;
 }
+
+// Word-level matching of an everyday grocery name ("ground beef") to the household's
+// item names ("Beef, ground, 88% (lb)"), for use without AI. Every word of the plain
+// name must appear in the item, and at least one must be in the item's main part
+// (before the first comma), so "rice" doesn't match "Vinegar, Rice". Earlier
+// candidates win ties; fewer extra words wins otherwise.
+const UNIT_WORDS = new Set(['lb', 'lbs', 'oz', 'fl', 'ct', 'ea', 'gal', 'gallon', 'pk', 'pack', 'count', 'organic', 'fresh']);
+const wordsOf = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/\([^)]*\)?/g, ' ')
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 1 && !UNIT_WORDS.has(w))
+    .map((w) => (w.length > 3 && w.endsWith('es') && !w.endsWith('ses') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+
+export function itemMatcher(candidates: string[]) {
+  const prepared = candidates.map((name, order) => {
+    const [head] = name.split(',');
+    return { name, order, words: new Set(wordsOf(name)), head: new Set(wordsOf(head)) };
+  });
+  return (plain: string): string | null => {
+    const want = wordsOf(plain);
+    if (want.length === 0) return null;
+    let best: { name: string; score: number } | null = null;
+    for (const c of prepared) {
+      if (!want.every((w) => c.words.has(w)) || !want.some((w) => c.head.has(w))) continue;
+      const score = (c.words.size - want.length) * 10 + c.order / 1000;
+      if (!best || score < best.score) best = { name: c.name, score };
+    }
+    return best?.name ?? null;
+  };
+}
+
+// Plain ingredient names ("ground beef") → the household's item names where one
+// matches, otherwise the plain name capitalized. Candidates earlier in the list win,
+// so pass recent purchases first.
+export function toHouseholdNames(plain: string[], candidates: string[]) {
+  const match = itemMatcher(candidates);
+  return [...new Set(plain.map((p) => match(p) ?? p.charAt(0).toUpperCase() + p.slice(1)))];
+}
