@@ -271,7 +271,8 @@ function HomeContent() {
                 </button>
               </div>
             ) : (
-              <div className="bg-bb-panel border border-bb-line rounded-lg p-4 inline-block text-left">
+              // On phones the code lives in the More menu instead
+              <div className="bg-bb-panel border border-bb-line rounded-lg p-4 hidden md:inline-block text-left">
                 <div className="text-xs uppercase tracking-wider text-bb-muted mb-2">
                   Beta Code
                 </div>
@@ -347,6 +348,17 @@ function HomeContent() {
                 </span>
                 <span className="flex-1 ml-6">Add Flyer</span>
               </Link>
+
+              <button
+                onClick={() => { setShowMoreMenu(false); setShowCodeModal(true); }}
+                className="w-full border border-bb-line bg-transparent text-bb-cream px-10 py-3 rounded-lg text-base font-semibold hover:bg-white/5 transition cursor-pointer text-center relative flex items-center"
+              >
+                <span className="absolute left-4 text-bb-gold">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                </span>
+                <span className="flex-1 ml-6">Beta Code</span>
+                <span className="absolute right-4 font-mono text-sm tracking-widest text-bb-muted">{householdCode}</span>
+              </button>
             </div>
           </div>
         </div>
