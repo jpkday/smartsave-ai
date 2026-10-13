@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealIngredients } from '../../../lib/meals';
-import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames } from '../../../lib/pantry';
+import { getPantryNames, getHaveItems, nameResolver, toHouseholdNames } from '../../../lib/pantry';
 import { isNotCooking, templateFor } from '../../../lib/mealTemplates';
 import { avoidPromptLine, getAvoidFoods } from '../../../lib/preferences';
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         .select('item_name')
         .eq('household_code', householdCode)
         .eq('checked', false),
-      getRecentPurchases(supabase, householdCode),
+      getHaveItems(supabase, householdCode),
     ]);
 
     const savedByKey = new Map<string, string[]>();

@@ -435,6 +435,16 @@ export default function MealsPage() {
     });
   };
 
+  // Remember "we have this" / "we need this" for the household (shared, both phones)
+  const saveOnHand = (itemName: string, status: 'have' | 'need') => {
+    if (!householdCode) return;
+    fetch('/api/meals/on-hand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ household_code: householdCode, item_name: itemName, status }),
+    }).catch(() => { /* best effort; the toggle still applies on screen */ });
+  };
+
   // Forget a dinner for good: it leaves suggestions (and favorites) for the household
   const forgetSuggestion = async (sug: Suggestion) => {
     if (!householdCode) return;
@@ -714,10 +724,14 @@ export default function MealsPage() {
                                       <span className="w-16 flex-none text-center text-[10px] font-semibold uppercase tracking-wider text-bb-muted">On list</span>
                                     ) : (
                                       <button
-                                        onClick={() => updateSuggestion(sug.id, (x) => ({
-                                          ...x,
-                                          ingredients: x.ingredients.map((y, yi) => (yi === ii ? { ...y, status: y.status === 'have' ? 'buy' : 'have' } : y)),
-                                        }))}
+                                        onClick={() => {
+                                          const next = ing.status === 'have' ? 'buy' : 'have';
+                                          saveOnHand(ing.name, next === 'have' ? 'have' : 'need');
+                                          updateSuggestion(sug.id, (x) => ({
+                                            ...x,
+                                            ingredients: x.ingredients.map((y, yi) => (yi === ii ? { ...y, status: next } : y)),
+                                          }));
+                                        }}
                                         className={`w-16 flex-none rounded-full border py-1 text-[10px] font-semibold uppercase tracking-wider cursor-pointer ${ing.status === 'have'
                                           ? 'border-bb-green/30 bg-bb-green/10 text-bb-green'
                                           : 'border-bb-gold/30 bg-bb-gold/10 text-bb-gold'}`}
@@ -870,7 +884,7 @@ export default function MealsPage() {
                   {building
                     ? 'Finding ingredients…'
                     : plannedMeals.length === 0
-                      ? 'Add dinners to build your list'
+                      ? 'Add dinners'
                       : `Build shopping list · ${plannedMeals.length} ${plannedMeals.length === 1 ? 'dinner' : 'dinners'}`}
                 </button>
                 )}
@@ -927,7 +941,7 @@ export default function MealsPage() {
             <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-bb-line">
               <div>
                 <h2 className="text-lg font-semibold text-bb-cream">Add to shopping list</h2>
-                <p className="text-xs text-bb-muted mt-0.5">Things you bought in the last two weeks start unchecked. Edits are remembered for each meal.</p>
+                <p className="text-xs text-bb-muted mt-0.5">Things you have start unchecked. Uncheck anything else you have — it&apos;s remembered.</p>
               </div>
               <button onClick={() => setReview(null)} className="text-bb-muted hover:text-bb-cream text-xl leading-none cursor-pointer" aria-label="Close">×</button>
             </div>
@@ -955,7 +969,14 @@ export default function MealsPage() {
                             type="checkbox"
                             checked={item.onList || item.checked}
                             disabled={item.onList}
-                            onChange={() => updateReviewMeal(mi, (rm) => ({ ...rm, items: rm.items.map((x, xi) => (xi === ii ? { ...x, checked: !x.checked } : x)) }))}
+                            onChange={() => {
+                              // Unchecked means "we have it"; remembered for the household
+                              saveOnHand(item.name, item.checked ? 'have' : 'need');
+                              updateReviewMeal(mi, (rm) => ({
+                                ...rm,
+                                items: rm.items.map((x, xi) => (xi === ii ? { ...x, checked: !x.checked, have: x.checked ? x.have ?? todayStr : undefined } : x)),
+                              }));
+                            }}
                             className="w-5 h-5 accent-[#c9a96e] [color-scheme:dark] cursor-pointer disabled:opacity-40"
                           />
                           <span className={`flex-1 min-w-0 text-sm ${item.onList || !item.checked ? 'text-bb-muted' : 'text-bb-cream'}`}>{item.name}</span>

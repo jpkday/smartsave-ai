@@ -104,3 +104,31 @@ export function toHouseholdNames(plain: string[], candidates: string[]) {
   const match = itemMatcher(candidates);
   return [...new Set(plain.map((p) => match(p) ?? p.charAt(0).toUpperCase() + p.slice(1)))];
 }
+
+// How long a manual "we have this" stays in effect
+export const MANUAL_HAVE_DAYS = 30;
+
+// What the household probably has at home, keyed by lowercase name: recent purchases,
+// plus items they marked "have" (for 30 days), minus items they marked "need" since
+// last buying them. Falls back to recent purchases alone if the table isn't there.
+export async function getHaveItems(supabase: SupabaseClient, householdCode: string) {
+  const have = await getRecentPurchases(supabase, householdCode);
+  const { data: marks, error } = await supabase
+    .from('household_on_hand')
+    .select('item_key, item_name, status, marked_at')
+    .eq('household_code', householdCode);
+  if (error || !marks) return have;
+
+  const haveSince = new Date(Date.now() - MANUAL_HAVE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  marks.forEach((m) => {
+    const markedDay = (m.marked_at as string).slice(0, 10);
+    const bought = have.get(m.item_key);
+    if (m.status === 'need') {
+      // A purchase after the "need" mark means it's been bought again
+      if (!bought || bought.date <= markedDay) have.delete(m.item_key);
+    } else if (m.marked_at >= haveSince && !bought) {
+      have.set(m.item_key, { name: m.item_name, date: markedDay });
+    }
+  });
+  return have;
+}

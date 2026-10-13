@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateJson } from '../../../lib/gemini';
 import { mealKey, MealSuggestion, SuggestionIngredient } from '../../../lib/meals';
-import { getPantryNames, getRecentPurchases, nameResolver, toHouseholdNames, RECENT_PURCHASE_DAYS } from '../../../lib/pantry';
+import { getPantryNames, getHaveItems, nameResolver, toHouseholdNames, RECENT_PURCHASE_DAYS } from '../../../lib/pantry';
 import { MEAL_TEMPLATES, proteinFamily, templateFor } from '../../../lib/mealTemplates';
 import { avoidPromptLine, containsAvoided, getAvoidFoods, getDismissedMeals } from '../../../lib/preferences';
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const pastSince = new Date(Date.now() - PAST_MEALS_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const [pantryNames, recent, { data: listRows }, { data: pastRows }, { data: ideaRows }, avoid, dismissed] = await Promise.all([
       getPantryNames(supabase, householdCode),
-      getRecentPurchases(supabase, householdCode),
+      getHaveItems(supabase, householdCode),
       supabase.from('shopping_list').select('item_name').eq('household_code', householdCode).eq('checked', false),
       supabase.from('meal_plan_days').select('meal').eq('household_code', householdCode).gte('plan_date', pastSince),
       supabase.from('meal_ideas').select('name').eq('household_code', householdCode),
