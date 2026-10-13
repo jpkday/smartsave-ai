@@ -38,11 +38,15 @@ interface TripWithEvents extends Trip {
 
 const SHARED_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+// Categories shown in the spending summary before "Show all"
+const TOP_CATEGORY_COUNT = 5;
+
 export default function TripsPage() {
   const [trips, setTrips] = useState<TripWithEvents[]>([]);
   const [loading, setLoading] = useState(true);
   const [daysToShow, setDaysToShow] = useState(7);
   const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedStoreFilter, setSelectedStoreFilter] = useState('All');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -63,7 +67,7 @@ export default function TripsPage() {
   }, []);
 
   /* Refactored to use dynamic categories */
-  const { categories, getCategoryName, getCategoryColorById } = useCategories();
+  const { categories, getCategoryName } = useCategories();
   const { householdCode, loading: householdLoading } = useHouseholdCode();
 
   const [hasAnyTrips, setHasAnyTrips] = useState(true);
@@ -433,80 +437,83 @@ export default function TripsPage() {
           </div>
         ) : (
           <>
-            {/* Summary Stats */}
+            {/* Summary: total spend + category breakdown */}
             {(() => {
               const filteredTrips = trips.filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter);
+              const totalSpend = filteredTrips.reduce((sum, t) => sum + t.totalCost, 0);
+              const itemCount = filteredTrips.reduce((sum, t) => sum + t.itemCount, 0);
+
+              const categoryTotals: { [categoryId: number]: number } = {};
+              filteredTrips.forEach(trip => {
+                trip.events.forEach(event => {
+                  const catId = event.category_id !== null ? event.category_id : -1;
+                  if (event.price) {
+                    categoryTotals[catId] = (categoryTotals[catId] || 0) + event.price * event.quantity;
+                  }
+                });
+              });
+              const sortedCategories = Object.entries(categoryTotals).sort(([, a], [, b]) => b - a);
+              const categorySum = sortedCategories.reduce((sum, [, total]) => sum + total, 0);
+              const maxCategory = sortedCategories.length > 0 ? sortedCategories[0][1] : 0;
+
               return (
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div className="col-span-1 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
-                    <div className="text-3xl font-bold text-bb-cream">{filteredTrips.length}</div>
-                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Trips</div>
-                  </div>
-                  <div className="col-span-1 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
-                    <div className="text-3xl font-bold text-bb-cream">
-                      {filteredTrips.reduce((sum, t) => sum + t.itemCount, 0)}
+                <div className="bg-bb-panel border border-bb-line rounded-2xl mb-4">
+                  <div className="px-5 pt-5 pb-4 md:px-6">
+                    <div className="text-xs font-medium uppercase tracking-wider text-bb-muted">Spent</div>
+                    <div className="font-serif text-4xl md:text-5xl text-bb-cream mt-1 tabular-nums">{formatMoney(totalSpend)}</div>
+                    <div className="text-sm text-bb-muted mt-1.5">
+                      {filteredTrips.length} {filteredTrips.length === 1 ? 'trip' : 'trips'}
+                      {' · '}{itemCount} {itemCount === 1 ? 'item' : 'items'}
+                      {filteredTrips.length > 1 && <>{' · '}{formatMoney(totalSpend / filteredTrips.length)} avg</>}
                     </div>
-                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Items</div>
                   </div>
-                  <div className="col-span-2 bg-bb-panel rounded-2xl border border-bb-line p-4 text-right">
-                    <div className="text-3xl font-bold text-bb-cream">
-                      {formatMoney(filteredTrips.reduce((sum, t) => sum + t.totalCost, 0))}
+
+                  {sortedCategories.length > 0 && (
+                    <div className="border-t border-bb-line px-2 py-2 md:px-3">
+                      {(showAllCategories ? sortedCategories : sortedCategories.slice(0, TOP_CATEGORY_COUNT)).map(([catIdStr, total]) => {
+                        const catId = parseInt(catIdStr);
+                        const share = categorySum > 0 ? Math.round((total / categorySum) * 100) : 0;
+                        return (
+                          <button
+                            key={catId}
+                            onClick={() => openCategoryModal(catId)}
+                            className="w-full text-left rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-baseline justify-between gap-3">
+                              <span className="text-sm text-bb-cream">{getCategoryName(catId)}</span>
+                              <span className="text-sm tabular-nums">
+                                <span className="text-bb-muted mr-2">{share}%</span>
+                                <span className="text-bb-cream font-semibold">{formatMoney(total)}</span>
+                              </span>
+                            </div>
+                            <div className="mt-1.5 h-1 rounded-full bg-white/5 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-bb-gold/70"
+                                style={{ width: `${maxCategory > 0 ? (total / maxCategory) * 100 : 0}%` }}
+                              />
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {sortedCategories.length > TOP_CATEGORY_COUNT && (
+                        <button
+                          onClick={() => setShowAllCategories(!showAllCategories)}
+                          className="w-full flex items-center justify-center gap-1 mt-1 px-3 py-2 rounded-xl text-sm font-medium text-bb-gold hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                          {showAllCategories ? 'Show less' : `Show all ${sortedCategories.length} categories`}
+                          <svg className={`w-4 h-4 transition-transform ${showAllCategories ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
-                    <div className="text-xs font-medium text-bb-muted tracking-wide mt-1">Total Spend</div>
-                  </div>
+                  )}
                 </div>
               );
             })()}
 
-            {/* Category Breakdown */}
-            <div className="bg-bb-panel border border-bb-line rounded-2xl overflow-hidden mb-4">
-              <div className="border-b border-bb-line px-6 md:px-8 py-4">
-                <h2 className="text-lg font-semibold text-bb-cream">Spending by Category</h2>
-              </div>
-              <div className="p-4 md:p-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {(() => {
-                    const filteredTrips = trips.filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter);
-                    const categoryTotals: { [categoryId: number]: number } = {};
-
-                    filteredTrips.forEach(trip => {
-                      trip.events.forEach(event => {
-                        const catId = event.category_id !== null ? event.category_id : -1;
-                        if (event.price) {
-                          if (!categoryTotals[catId]) {
-                            categoryTotals[catId] = 0;
-                          }
-                          categoryTotals[catId] += event.price * event.quantity;
-                        }
-                      });
-                    });
-
-                    const sortedCategories = Object.entries(categoryTotals)
-                      .sort(([, a], [, b]) => b - a);
-
-                    return sortedCategories.map(([catIdStr, total]) => {
-                      const catId = parseInt(catIdStr);
-                      const name = getCategoryName(catId);
-                      const color = getCategoryColorById(catId);
-
-                      return (
-                        <button
-                          key={catId}
-                          onClick={() => openCategoryModal(catId)}
-                          className={`rounded-xl p-3 border transition-colors duration-200 hover:bg-white/5 text-right cursor-pointer ${color}`}
-                        >
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-2 text-bb-muted">{name}</div>
-                          <div className="text-2xl font-bold text-bb-cream">{formatMoney(total)}</div>
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </div>
-
             {/* Store Filters */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-1 p-1 mb-4 rounded-xl bg-white/5 border border-bb-line">
               {(() => {
                 // Calculate top 3 stores
                 const storeCounts: { [store: string]: number } = {};
@@ -523,20 +530,20 @@ export default function TripsPage() {
                   <>
                     <button
                       onClick={() => setSelectedStoreFilter('All')}
-                      className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer text-center ${selectedStoreFilter === 'All'
-                        ? 'bg-bb-gold text-bb-navy font-semibold border border-bb-gold'
-                        : 'border border-bb-line text-bb-muted hover:text-bb-cream hover:bg-white/5'
+                      className={`flex-1 min-w-0 px-2 py-2 rounded-lg text-sm transition-colors duration-200 cursor-pointer text-center whitespace-nowrap ${selectedStoreFilter === 'All'
+                        ? 'bg-bb-gold text-bb-navy font-semibold'
+                        : 'text-bb-muted hover:text-bb-cream'
                         }`}
                     >
-                      All Stores
+                      All
                     </button>
                     {topStores.map(store => (
                       <button
                         key={store}
                         onClick={() => setSelectedStoreFilter(store)}
-                        className={`flex-1 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
-                          ? 'bg-bb-gold text-bb-navy font-semibold border border-bb-gold'
-                          : 'border border-bb-line text-bb-muted hover:text-bb-cream hover:bg-white/5'
+                        className={`flex-1 min-w-0 px-2 py-2 rounded-lg text-sm transition-colors duration-200 cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis ${selectedStoreFilter === store
+                          ? 'bg-bb-gold text-bb-navy font-semibold'
+                          : 'text-bb-muted hover:text-bb-cream'
                           }`}
                       >
                         {store}
@@ -548,7 +555,7 @@ export default function TripsPage() {
             </div>
 
             {/* Trips list */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {trips
                 .filter(trip => selectedStoreFilter === 'All' || trip.store === selectedStoreFilter)
                 .map(trip => {
@@ -568,41 +575,39 @@ export default function TripsPage() {
                       {/* Trip header - clickable */}
                       <button
                         onClick={() => toggleTrip(trip.id)}
-                        className="w-full p-4 md:p-5 hover:bg-white/5 cursor-pointer transition"
+                        className="w-full px-4 py-3 md:px-5 md:py-4 hover:bg-white/5 cursor-pointer transition text-left"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="text-left">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-bb-muted text-xl">{isExpanded ? '▼' : '▶'}</span>
-                              <h3 className="text-xl md:text-2xl font-bold text-bb-cream">{trip.store}</h3>
-                              {!trip.ended_at && (
-                                <span className="text-xs bg-bb-gold/10 text-bb-gold border border-bb-gold/30 px-2 py-1 rounded-full font-semibold">
-                                  In Progress
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-bb-muted ml-8">{formatDate(trip.started_at)}</p>
-                            <p className="text-s text-bb-muted mt-1 ml-8 text-left"><b>{trip.duration}</b></p>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <svg className={`w-4 h-4 flex-none text-bb-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <h3 className="text-base md:text-lg font-semibold text-bb-cream truncate">{trip.store}</h3>
+                            {!trip.ended_at && (
+                              <span className="text-[10px] bg-bb-gold/10 text-bb-gold border border-bb-gold/30 px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider flex-none">
+                                In Progress
+                              </span>
+                            )}
                           </div>
-                          <div className="text-right">
-                            <p className="text-2xl md:text-3xl font-bold text-bb-cream">
-                              {trip.totalCost > 0 ? formatMoney(trip.totalCost) : '—'}
-                            </p>
-                            <p className="text-sm text-bb-muted">{trip.itemCount} items</p>
-                          </div>
+                          <span className="text-lg font-semibold text-bb-cream tabular-nums flex-none">
+                            {trip.totalCost > 0 ? formatMoney(trip.totalCost) : '—'}
+                          </span>
                         </div>
+                        <p className="text-xs text-bb-muted mt-0.5 ml-6">
+                          {formatDate(trip.started_at)}
+                          {trip.duration && <>{' · '}{trip.duration}</>}
+                          {' · '}{trip.itemCount} {trip.itemCount === 1 ? 'item' : 'items'}
+                        </p>
                       </button>
 
                       {/* Trip items - collapsible */}
                       {isExpanded && trip.events.length > 0 && (
                         <div className="border-t border-bb-line">
                           {/* Scrollable items section */}
-                          <div className="p-4 md:p-5 max-h-80 overflow-y-auto">
+                          <div className="px-4 pb-3 md:px-5 max-h-96 overflow-y-auto">
                             {categoryIds.map(categoryId => {
                               const events = eventsByCategory[categoryId];
                               const categoryName = getCategoryName(categoryId);
-                              const categoryColor = getCategoryColorById(categoryId); // Use helper if needed for styling headers? 
-                              // Headers currently grey. logic was hardcoded bg-gray-100.
 
                               const categorySubtotal = events.reduce((sum, event) => {
                                 if (event.price) {
@@ -612,22 +617,22 @@ export default function TripsPage() {
                               }, 0);
 
                               return (
-                                <div key={categoryId} className="mb-4 last:mb-0">
-                                  <div className={`flex items-center justify-between py-2 mb-2 -mx-4 md:-mx-5 px-4 md:px-5 ${categoryColor} border-y`}>
-                                    <h4 className="text-xs font-bold text-bb-muted uppercase tracking-wider">
+                                <div key={categoryId}>
+                                  <div className="flex items-center justify-between pt-3 pb-1">
+                                    <h4 className="text-[11px] font-semibold text-bb-muted uppercase tracking-wider">
                                       {categoryName}
                                     </h4>
-                                    <span className="text-sm font-bold text-bb-cream">
+                                    <span className="text-xs text-bb-muted tabular-nums">
                                       {formatMoney(categorySubtotal)}
                                     </span>
                                   </div>
-                                  <div className="space-y-2">
+                                  <div>
                                     {events.map((event, idx) => (
-                                      <div key={idx} className="flex justify-between items-center py-2 border-b border-bb-line last:border-b-0">
+                                      <div key={idx} className="flex justify-between items-center gap-3 py-1.5 border-b border-bb-line last:border-b-0">
                                         <div className="flex-1">
-                                          <span className="text-bb-cream font-medium">{event.item_name}</span>
+                                          <span className="text-sm text-bb-cream">{event.item_name}</span>
                                           {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
-                                            <span className="text-bb-muted text-sm ml-2">
+                                            <span className="text-bb-muted text-xs ml-1.5">
                                               × {event.quantity}{event.unit && (event.unit === 'lb' || event.unit === 'oz') ? ` ${event.unit}` : ''}
                                             </span>
                                           )}
@@ -635,17 +640,17 @@ export default function TripsPage() {
                                         <div className="text-right">
                                           {event.price ? (
                                             <>
-                                              <p className="font-semibold text-bb-cream">
+                                              <p className="text-sm text-bb-cream tabular-nums">
                                                 {formatMoney(event.price * event.quantity)}
                                               </p>
                                               {((event.is_weighted || event.unit === 'lb' || event.unit === 'oz') || event.quantity !== 1) && (
-                                                <p className="text-xs text-bb-muted">
+                                                <p className="text-[11px] text-bb-muted tabular-nums">
                                                   {formatMoney(event.price)} {event.is_weighted || (event.unit && (event.unit === 'lb' || event.unit === 'oz')) ? `/${event.unit || 'lb'}` : 'each'}
                                                 </p>
                                               )}
                                             </>
                                           ) : (
-                                            <p className="text-slate-600 text-sm">No price</p>
+                                            <p className="text-slate-600 text-xs">No price</p>
                                           )}
                                         </div>
                                       </div>
@@ -656,15 +661,6 @@ export default function TripsPage() {
                             })}
                           </div>
 
-                          {/* Trip total - fixed at bottom, outside scroll container */}
-                          {trip.totalCost > 0 && (
-                            <div className="bg-white/[0.03] border-t border-bb-line px-4 md:px-5 py-4">
-                              <div className="flex justify-between items-center">
-                                <span className="text-lg font-bold text-bb-cream">Total</span>
-                                <span className="text-2xl font-bold text-bb-cream">{formatMoney(trip.totalCost)}</span>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
