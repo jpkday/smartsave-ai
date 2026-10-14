@@ -501,7 +501,7 @@ export default function Deals() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
+      <div className="max-w-2xl mx-auto px-4 md:px-0 pt-6">
 
         {/* Deals Grouped by Store */}
         <div>
