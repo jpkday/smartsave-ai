@@ -329,7 +329,7 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
+      <div className="max-w-2xl mx-auto px-2 sm:px-4 md:px-0 pt-6">
 
 
         {(loading || householdLoading) ? (

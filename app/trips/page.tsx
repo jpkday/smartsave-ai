@@ -369,7 +369,7 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 md:px-8 pt-6">
+      <div className="max-w-2xl mx-auto px-2 md:px-0 pt-6">
         {/* Time Range Selector */}
         {hasAnyTrips && (
           <div className="inline-flex flex-wrap gap-1 mb-6 bg-white/5 border border-bb-line rounded-xl p-1">

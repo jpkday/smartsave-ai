@@ -165,7 +165,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
             </div>
 
-            <main className="max-w-3xl mx-auto px-4 pt-6">
+            <main className="max-w-2xl mx-auto px-4 md:px-0 pt-6">
                 {/* Back Link */}
                 <Link href="/trips" className="inline-flex items-center text-bb-muted hover:text-bb-cream mb-6">
                     <ArrowLeftIcon className="w-4 h-4 mr-1" />

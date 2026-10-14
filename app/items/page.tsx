@@ -861,8 +861,8 @@ function ItemsContent() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 md:px-6 pt-4">
-        <div className="max-w-5xl mx-auto space-y-3">
+      <div className="max-w-2xl mx-auto px-2 md:px-0 pt-4">
+        <div className="space-y-3">
 
 
 

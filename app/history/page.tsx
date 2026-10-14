@@ -595,7 +595,7 @@ function HistoryContent() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6">
+      <div className="max-w-2xl mx-auto px-4 md:px-0 pt-6">
 
         {/* Filters - Desktop: Item then Store */}
         <div className="hidden md:block bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-4 md:p-6 mb-6">

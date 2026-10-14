@@ -460,7 +460,7 @@ export default function Stores() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pt-6">
+      <div className="max-w-2xl mx-auto px-2 sm:px-4 md:px-0 pt-6">
         <div className="bg-bb-panel border border-bb-line rounded-2xl shadow-sm p-6">
 
           {/* Add Store Button */}
